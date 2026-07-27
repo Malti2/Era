@@ -9,8 +9,8 @@ jobs:
   build:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Verify Swift installation
         run: swift --version
-      - name: Build the Swift sources
-        run: swift build
+      - name: Build the Swift package
+        run: swift build -c release
