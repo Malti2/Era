@@ -8,18 +8,15 @@ struct TagBarView: View {
     
     var body: some View {
         HStack(spacing: 8) {
-            // Preset icon button
+            // Preset icon button - minimal icon without background
             Button(action: onPresetTap) {
-                Image(systemName: "bookmark")
+                Image(systemName: "slider.horizontal.3")
                     .foregroundColor(.white)
-                    .padding(6)
-                    .background(Color.black.opacity(0.8))
-                    .clipShape(Circle())
             }
             .simultaneousGesture(LongPressGesture().onEnded { _ in
                 onPresetLongPress()
             })
-            // Tag chips
+            // Tag chips scroll view
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 6) {
                     ForEach(allTags, id: \ .self) { tag in
