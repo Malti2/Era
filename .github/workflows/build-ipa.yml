@@ -12,5 +12,5 @@ jobs:
       - uses: actions/checkout@v4
       - name: Verify Swift installation
         run: swift --version
-      - name: Build the Swift package
-        run: swift build -c release
+      - name: Build the Swift package for iOS
+        run: swift build -c release -Xswiftc -target -Xswiftc arm64-apple-ios18.0
