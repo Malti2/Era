@@ -12,5 +12,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Verify Swift installation
         run: swift --version
-      - name: Build the Swift package
-        run: swift build -c release
+      - name: Generate Xcode project from Swift package
+        run: swift package generate-xcodeproj
+      - name: Build iOS app archive
+        run: |
+          xcodebuild -scheme Era -sdk iphoneos -destination 'generic/platform=iOS' -configuration Release clean build
