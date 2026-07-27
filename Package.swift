@@ -11,7 +11,7 @@ let package = Package(
         )
     ],
     targets: [
-        .target(
+        .executableTarget(
             name: "Era",
             dependencies: [],
             path: ".",
