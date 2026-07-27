@@ -1,12 +1,26 @@
 import SwiftUI
 import SwiftData
+import MusicKit
 
 @main
 struct EraApp: App {
+    // SwiftData container
+    var container: ModelContainer
+    
+    init() {
+        // Initialize SwiftData container with models
+        do {
+            container = try ModelContainer(for: [Tag.self, Preset.self])
+        } catch {
+            fatalError("Failed to create ModelContainer: \(error)")
+        }
+    }
+    
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .environment(\.$modelContext, ModelContainer(defaultSchema: Schema([Track.self, Tag.self, Preset.self])).modelContext)
+                .modelContext(container.mainContext)
+                .background(Color.black.ignoresSafeArea())
         }
     }
 }
