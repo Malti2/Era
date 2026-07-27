@@ -10,7 +10,6 @@ on:
 jobs:
   build:
     runs-on: macos-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -18,30 +17,43 @@ jobs:
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app
 
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode Project
+        run: |
+          cat << 'EOF' > project.yml
+          name: Era
+          options:
+            bundlePrefix: com.malte
+            deploymentTarget:
+              iOS: "16.0"
+          targets:
+            Era:
+              type: application
+              platform: iOS
+              deploymentTarget: "16.0"
+              sources:
+                - path: Sources/Era
+              settings:
+                PRODUCT_BUNDLE_IDENTIFIER: com.malte.Era
+                MARKETING_VERSION: "1.0"
+                CURRENT_PROJECT_VERSION: "1"
+                GENERATE_INFOPLIST_FILE: YES
+                CODE_SIGNING_ALLOWED: NO
+          EOF
+          xcodegen generate
+
       - name: Build with xcodebuild
         run: |
-          xcodebuild -scheme Era -sdk iphoneos -destination 'generic/platform=iOS' -configuration Release -derivedDataPath derivedData CODE_SIGNING_ALLOWED=NO
+          xcodebuild -project Era.xcodeproj -scheme Era -sdk iphoneos -configuration Release -derivedDataPath derivedData CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
 
       - name: Package IPA
         run: |
-          echo "Searching for build products..."
-          find derivedData/Build/Products -maxdepth 3
-          
-          APP_PATH=$(find derivedData/Build/Products -name "Era.app" -o -name "Era" | head -n 1)
-          echo "Found product: $APP_PATH"
-          
-          mkdir -p Payload/Era.app
-          if [ -d "$APP_PATH" ]; then
-            cp -r "$APP_PATH/" Payload/Era.app/
-          elif [ -f "$APP_PATH" ]; then
-            cp "$APP_PATH" Payload/Era.app/Era
-            chmod +x Payload/Era.app/Era
-            printf '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0">\n<dict>\n    <key>CFBundleExecutable</key>\n    <string>Era</string>\n    <key>CFBundleIdentifier</key>\n    <string>com.malte.Era</string>\n    <key>CFBundleName</key>\n    <string>Era</string>\n    <key>CFBundlePackageType</key>\n    <string>APPL</string>\n    <key>CFBundleShortVersionString</key>\n    <string>1.0</string>\n    <key>CFBundleVersion</key>\n    <string>1</string>\n    <key>LSRequiresIPhoneOS</key>\n    <true/>\n    <key>MinimumOSVersion</key>\n    <string>16.0</string>\n    <key>CFBundleSupportedPlatforms</key>\n    <array>\n        <string>iPhoneOS</string>\n    </array>\n    <key>UIDeviceFamily</key>\n    <array>\n        <integer>1</integer>\n        <integer>2</integer>\n    </array>\n</dict>\n</plist>\n' > Payload/Era.app/Info.plist
-          else
-            echo "Error: No product found!"
-            exit 1
-          fi
-          
+          APP_PATH=$(find derivedData/Build/Products/Release-iphoneos -name "Era.app" | head -n 1)
+          echo "Found App Bundle: $APP_PATH"
+          mkdir -p Payload
+          cp -r "$APP_PATH" Payload/
           zip -r Era.ipa Payload
 
       - name: Upload IPA Artifact
