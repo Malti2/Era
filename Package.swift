@@ -14,8 +14,8 @@ let package = Package(
         .target(
             name: "Era",
             dependencies: [],
-            path: ".",
-            exclude: [".github"]
+            path: "Sources/Era",
+            exclude: [".github", "EraApp.swift", "ContentView.swift", "PlaylistView.swift", "TagBarView.swift"]
         )
     ]
 )
