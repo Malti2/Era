@@ -1,0 +1,14 @@
+name: Era
+options:
+  bundleIdPrefix: com.malti2
+settings:
+  base:
+    INFOPLIST_FILE: Sources/Era/Info.plist
+targets:
+  Era:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: Sources/Era
+    dependencies: []
