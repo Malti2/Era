@@ -5,13 +5,13 @@ let package = Package(
     name: "Era",
     platforms: [.iOS(.v18)],
     products: [
-        .executable(
+        .library(
             name: "Era",
             targets: ["Era"]
         )
     ],
     targets: [
-        .executableTarget(
+        .target(
             name: "Era",
             dependencies: [],
             path: ".",
