@@ -35,7 +35,8 @@ jobs:
             cp -r "$APP_PATH/" Payload/Era.app/
           elif [ -f "$APP_PATH" ]; then
             cp "$APP_PATH" Payload/Era.app/Era
-            printf '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0">\n<dict>\n    <key>CFBundleExecutable</key>\n    <string>Era</string>\n    <key>CFBundleIdentifier</key>\n    <string>com.malte.Era</string>\n    <key>CFBundleName</key>\n    <string>Era</string>\n    <key>CFBundlePackageType</key>\n    <string>APPL</string>\n    <key>CFBundleShortVersionString</key>\n    <string>1.0</string>\n    <key>CFBundleVersion</key>\n    <string>1</string>\n    <key>LSRequiresIPhoneOS</key>\n    <true/>\n</dict>\n</plist>\n' > Payload/Era.app/Info.plist
+            chmod +x Payload/Era.app/Era
+            printf '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0">\n<dict>\n    <key>CFBundleExecutable</key>\n    <string>Era</string>\n    <key>CFBundleIdentifier</key>\n    <string>com.malte.Era</string>\n    <key>CFBundleName</key>\n    <string>Era</string>\n    <key>CFBundlePackageType</key>\n    <string>APPL</string>\n    <key>CFBundleShortVersionString</key>\n    <string>1.0</string>\n    <key>CFBundleVersion</key>\n    <string>1</string>\n    <key>LSRequiresIPhoneOS</key>\n    <true/>\n    <key>MinimumOSVersion</key>\n    <string>16.0</string>\n    <key>CFBundleSupportedPlatforms</key>\n    <array>\n        <string>iPhoneOS</string>\n    </array>\n    <key>UIDeviceFamily</key>\n    <array>\n        <integer>1</integer>\n        <integer>2</integer>\n    </array>\n</dict>\n</plist>\n' > Payload/Era.app/Info.plist
           else
             echo "Error: No product found!"
             exit 1
