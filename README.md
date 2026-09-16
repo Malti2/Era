@@ -51,16 +51,20 @@ open Era.xcodeproj
 
 The repository intentionally stores `project.yml` instead of a generated Xcode project.
 
-### Build an unsigned IPA
+### Install a ready-made build
 
-GitHub Actions builds the device archive, simulator app, Mac Catalyst app, release packages, and UI verification screenshots. To run it manually:
+Most users should download the latest IPA or DMG from the [Releases page](https://github.com/Malti2/Era/releases/latest). You do not need access to this repository's GitHub Actions.
 
-1. Open the repository's [Actions page](https://github.com/Malti2/Era/actions).
-2. Select the **Era** workflow.
-3. Choose **Run workflow**.
-4. Download the generated artifacts after the run finishes.
+### Build an unsigned IPA yourself
 
-The workflow also runs automatically for pushes to `main`.
+GitHub only lets repository collaborators run this repository's workflow manually. To build with your own GitHub account:
+
+1. Fork this repository.
+2. Open the **Actions** tab in your fork and enable workflows if GitHub asks.
+3. Select the **Era** workflow and choose **Run workflow**.
+4. Download the generated IPA, DMG, ZIP, and screenshots from the completed run's artifacts.
+
+The workflow also runs automatically when you push to `main` in your fork. You can also generate `Era.xcodeproj` with XcodeGen and build locally on a Mac.
 
 ## Project structure
 
