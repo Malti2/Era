@@ -109,11 +109,7 @@ struct SettingsView: View {
                     .disabled(!spotlightEnabled)
                     Label("Siri: „Mit Era abspielen“, „pausieren“, „weiter“", systemImage: "mic.fill")
                 }
-                Section("Updates") {
-                    updateSection
-                } footer: {
-                    Text("Era downloads the latest unsigned IPA directly from GitHub. Use the share sheet to open it in your sideloading app. iOS does not let Era install or replace its own app binary.")
-                }
+                updateSection
                 Section("Zurücksetzen") {
                     Button(role: .destructive) { confirmReset = true } label: {
                         Label("Alle Daten löschen", systemImage: "trash")
@@ -152,8 +148,21 @@ struct SettingsView: View {
         }
     }
 
+    private var updateFooter: String {
+        "Era downloads the latest unsigned IPA directly from GitHub. Use the share sheet to open it in your sideloading app. iOS does not let Era install or replace its own app binary."
+    }
+
     @ViewBuilder
     private var updateSection: some View {
+        Section("Updates") {
+            updateContent
+        } footer: {
+            Text(updateFooter)
+        }
+    }
+
+    @ViewBuilder
+    private var updateContent: some View {
         switch updater.state {
         case .idle:
             Button {

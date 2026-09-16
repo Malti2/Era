@@ -12,7 +12,7 @@ final class UpdateService: ObservableObject {
         case failed(String)
     }
 
-    struct Release: Codable, Equatable {
+    struct Release: Decodable, Equatable {
         let version: String
         let notes: String
         let ipaURL: URL
@@ -24,7 +24,7 @@ final class UpdateService: ObservableObject {
             case assets
         }
 
-        struct Asset: Codable, Equatable {
+        struct Asset: Decodable, Equatable {
             let name: String
             let browserDownloadURL: URL
 
