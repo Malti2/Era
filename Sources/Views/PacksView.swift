@@ -1,0 +1,154 @@
+import SwiftUI
+import SwiftData
+
+// Packs = gespeicherte Queries ueber Tags/Status (Spec 7) + Vorschlagsliste (7.1).
+struct PacksView: View {
+    @Binding var showNowPlaying: Bool
+    @EnvironmentObject private var store: EraStore
+    @Query private var packs: [Pack]
+    @Query private var songs: [Song]
+    @Query private var tags: [Tag]
+
+    private var confirmed: [Pack] { packs.filter { $0.confirmed } }
+    private var suggested: [Pack] { packs.filter { !$0.confirmed } }
+
+    // Dynamische Packs, nur lokal berechnet (Spec 7.1)
+    private var dynamicPacks: [(String, String, [Song])] {
+        var result: [(String, String, [Song])] = []
+        let mostPlayed = songs.filter { $0.playCount > 0 }.sorted { $0.playCount > $1.playCount }
+        if !mostPlayed.isEmpty { result.append(("Meistgespielt", "chart.bar.fill", Array(mostPlayed.prefix(25)))) }
+        let recent = Array(songs.sorted { $0.dateAdded > $1.dateAdded }.prefix(25))
+        if !recent.isEmpty { result.append(("Zuletzt hinzugefügt", "clock.fill", recent)) }
+        let favs = songs.filter(\.isFavorite)
+        if !favs.isEmpty { result.append(("Favoriten", "heart.fill", favs)) }
+        return result
+    }
+
+    var body: some View {
+        NavigationStack {
+            List {
+                if !dynamicPacks.isEmpty {
+                    Section("Dynamisch") {
+                        ForEach(dynamicPacks, id: \.0) { name, icon, packSongs in
+                            NavigationLink {
+                                SongListView(title: name, songs: packSongs, showNowPlaying: $showNowPlaying)
+                            } label: {
+                                Label("\(name) (\(packSongs.count))", systemImage: icon)
+                            }
+                        }
+                    }
+                }
+
+                if !confirmed.isEmpty {
+                    Section("Deine Packs") {
+                        ForEach(confirmed) { pack in
+                            NavigationLink {
+                                PackDetailView(pack: pack, showNowPlaying: $showNowPlaying)
+                            } label: {
+                                Label("\(pack.name) (\(matching(pack).count))", systemImage: "square.stack.fill")
+                            }
+                        }
+                    }
+                }
+
+                if !suggested.isEmpty {
+                    Section("Vorschläge") {
+                        ForEach(suggested) { pack in
+                            HStack {
+                                Label("\(pack.name) (\(matching(pack).count))", systemImage: "square.stack")
+                                Spacer()
+                                Button {
+                                    pack.confirmed = true
+                                    store.save()
+                                } label: {
+                                    Text("Hinzufügen").font(.subheadline.weight(.medium))
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                            }
+                            .swipeActions {
+                                Button(role: .destructive) { store.dismissPackSuggestion(pack) } label: {
+                                    Label("Verwerfen", systemImage: "xmark")
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if confirmed.isEmpty && suggested.isEmpty && dynamicPacks.isEmpty {
+                    ContentUnavailableView("Noch keine Packs", systemImage: "square.stack", description: Text("Packs bündeln Songs quer über die Bibliothek - als gespeicherte Suche über Tags und Status."))
+                }
+            }
+            .navigationTitle("Packs")
+        }
+    }
+
+    func matching(_ pack: Pack) -> [Song] {
+        songs.filter { song in
+            let tagMatch = pack.tagIDs.isEmpty || pack.tagIDs.allSatisfy { id in song.tags.contains { $0.id == id } }
+            let statusMatch = pack.statusNames.isEmpty || pack.statusNames.allSatisfy { name in song.statusTags.contains { $0.name == name } }
+            return tagMatch && statusMatch
+        }
+    }
+}
+
+struct PackDetailView: View {
+    let pack: Pack
+    @Binding var showNowPlaying: Bool
+    @EnvironmentObject private var player: PlayerEngine
+    @Query private var songs: [Song]
+
+    private var matching: [Song] {
+        songs.filter { song in
+            let tagMatch = pack.tagIDs.isEmpty || pack.tagIDs.allSatisfy { id in song.tags.contains { $0.id == id } }
+            let statusMatch = pack.statusNames.isEmpty || pack.statusNames.allSatisfy { name in song.statusTags.contains { $0.name == name } }
+            return tagMatch && statusMatch
+        }
+    }
+
+    private func count(_ status: String) -> Int {
+        matching.filter { $0.statusTags.contains { $0.name == status } }.count
+    }
+
+    var body: some View {
+        List {
+            Section {
+                HStack(spacing: 16) {
+                    stat("Songs", matching.count)
+                    stat("Released", count("Released"))
+                    stat("Unreleased", count("Unreleased"))
+                    stat("Leaks", count("Leak"))
+                }
+                .frame(maxWidth: .infinity)
+                .listRowBackground(Color.clear)
+            }
+            Section {
+                Button {
+                    let versions = matching.compactMap(\.primaryVersion)
+                    if let first = versions.first { player.play(first, from: versions) }
+                } label: { Label("Alle abspielen", systemImage: "play.fill") }
+                .disabled(matching.isEmpty)
+                Button {
+                    player.playShuffled(matching.compactMap(\.primaryVersion))
+                } label: { Label("Zufällige Wiedergabe", systemImage: "shuffle") }
+                .disabled(matching.isEmpty)
+                ForEach(matching) { song in
+                    NavigationLink {
+                        SongDetailView(song: song, showNowPlaying: $showNowPlaying)
+                    } label: {
+                        SongRow(song: song, version: nil)
+                    }
+                }
+            }
+        }
+        .navigationTitle(pack.name)
+    }
+
+    private func stat(_ label: String, _ value: Int) -> some View {
+        VStack(spacing: 2) {
+            Text("\(value)").font(.title3.bold())
+            Text(label).font(.caption2).foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+    }
+}

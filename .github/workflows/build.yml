@@ -1,0 +1,136 @@
+name: Era
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode 26
+        run: |
+          XC=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          if [ -z "$XC" ]; then XC=$(ls -d /Applications/Xcode*.app | sort -V | tail -1); fi
+          echo "Using $XC"
+          sudo xcode-select -s "$XC/Contents/Developer"
+          xcodebuild -version
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate project
+        run: xcodegen generate
+      - name: Archive device app (unsigned)
+        run: |
+          xcodebuild -project Era.xcodeproj -scheme Era -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' -archivePath build/Era.xcarchive archive CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" CURRENT_PROJECT_VERSION=$GITHUB_RUN_NUMBER
+          mkdir -p build/Payload
+          cp -R build/Era.xcarchive/Products/Applications/Era.app build/Payload/
+          cd build && zip -qry Era-unsigned.ipa Payload && cd ..
+          mv build/Era-unsigned.ipa Era-unsigned.ipa
+      - name: Verify unsigned device IPA
+        run: |
+          file build/Payload/Era.app/Era
+          lipo -info build/Payload/Era.app/Era
+          test ! -d build/Payload/Era.app/_CodeSignature
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' build/Payload/Era.app/Info.plist
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' build/Payload/Era.app/Info.plist
+          /usr/libexec/PlistBuddy -c 'Print :MinimumOSVersion' build/Payload/Era.app/Info.plist
+          ls build/Payload/Era.app/PlugIns/ 2>/dev/null || true
+      - name: Build simulator
+        run: xcodebuild -project Era.xcodeproj -scheme Era -configuration Debug -sdk iphonesimulator -derivedDataPath build/sim CODE_SIGNING_ALLOWED=NO CURRENT_PROJECT_VERSION=$GITHUB_RUN_NUMBER build
+      - name: Build Mac Catalyst app
+        run: |
+          xcodebuild -project Era.xcodeproj -scheme Era -configuration Release -destination 'platform=macOS,variant=Mac Catalyst' -derivedDataPath build/catalyst CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CURRENT_PROJECT_VERSION=$GITHUB_RUN_NUMBER build
+          mkdir -p build/mac/dmg-root
+          MAC_APP=$(find build/catalyst/Build/Products -maxdepth 2 -name Era.app -type d | head -1)
+          test -n "$MAC_APP"
+          cp -R "$MAC_APP" build/mac/dmg-root/Era.app
+          ln -s /Applications build/mac/dmg-root/Applications
+          hdiutil create -volname "Era" -srcfolder build/mac/dmg-root -ov -format UDZO build/mac/Era-macOS-Catalyst-unsigned.dmg
+          ditto -c -k --sequesterRsrc --keepParent "$MAC_APP" build/mac/Era-macOS-Catalyst-unsigned.zip
+      - name: Prepare test audio files
+        run: |
+          mkdir -p testaudio
+          python3 - <<'PY'
+          import wave, struct, math
+          for name, freq in [("Testton Alpha", 440), ("Testton Beta", 523)]:
+              w = wave.open(f"testaudio/{name}.wav", "w")
+              w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100)
+              frames = b"".join(struct.pack("<h", int(10000*math.sin(2*math.pi*freq*i/44100))) for i in range(44100*3))
+              w.writeframes(frames); w.close()
+          open("testaudio/Notiz.txt", "w").write("keine Audiodatei")
+          PY
+          ls -la testaudio
+      - name: Boot newest iPhone simulator
+        id: sim
+        run: |
+          UDID=$(xcrun simctl list devices available -j | python3 -c '
+          import json, sys, re
+          d = json.load(sys.stdin)["devices"]
+          def rtkey(rt):
+              m = re.search(r"iOS-(\d+)-(\d+)", rt)
+              return (int(m.group(1)), int(m.group(2))) if m else (0, 0)
+          best = None
+          for rt, devs in d.items():
+              if "iOS" not in rt: continue
+              for x in devs:
+                  if "iPhone" in x["name"]:
+                      cand = (rtkey(rt), "Pro" in x["name"], x["udid"])
+                      if best is None or cand > best: best = cand
+          print(best[2])')
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl install "$UDID" build/sim/Build/Products/Debug-iphonesimulator/Era.app
+      - name: Capture simulator screenshots
+        run: |
+          set -e
+          UDID="${{ steps.sim.outputs.udid }}"
+          mkdir -p screenshots
+          shot() {
+            xcrun simctl launch "$UDID" de.malte.era "$@"
+            sleep 4
+            xcrun simctl io "$UDID" screenshot "screenshots/$1.png" || true
+            xcrun simctl terminate "$UDID" de.malte.era || true
+          }
+          shot 01-home --era-demo
+          shot 02-library --era-demo --era-library
+          shot 03-song --era-demo --era-library --era-song
+          shot 03b-playlists --era-demo --era-library --era-playlists
+          shot 03c-playlist --era-demo --era-library --era-playlists --era-playlist
+          shot 04-packs --era-demo --era-packs
+          shot 05-search --era-demo --era-search-preview
+          shot 06-settings --era-demo --era-library --era-settings
+          shot 09-queue --era-demo --era-player --era-queue
+          shot 10-onboarding --era-demo --era-onboarding
+          shot 11-onboarding-settings --era-demo --era-onboarding --era-onboarding-settings
+      - name: Capture player screenshot
+        run: |
+          UDID="${{ steps.sim.outputs.udid }}"
+          xcrun simctl launch "$UDID" de.malte.era --era-demo --era-player
+          sleep 5
+          xcrun simctl io "$UDID" screenshot screenshots/07-player.png
+          xcrun simctl terminate "$UDID" de.malte.era || true
+      - name: Import pipeline test with real audio files
+        run: |
+          set -e
+          UDID="${{ steps.sim.outputs.udid }}"
+          CONTAINER=$(xcrun simctl get_app_container "$UDID" de.malte.era data)
+          mkdir -p "$CONTAINER/Documents/ImportTest"
+          cp testaudio/*.wav testaudio/*.txt "$CONTAINER/Documents/ImportTest/"
+          xcrun simctl launch "$UDID" de.malte.era --era-import-test --era-library
+          sleep 10
+          xcrun simctl io "$UDID" screenshot screenshots/08-import-test.png
+          xcrun simctl terminate "$UDID" de.malte.era || true
+          echo "--- import report ---"
+          cat "$CONTAINER/Documents/import-report.txt" || true
+          echo "--- EraLibrary after import test ---"
+          ls -la "$CONTAINER/Library/Application Support/EraLibrary/" || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Era
+          retention-days: 3
+          path: |
+            Era-unsigned.ipa
+            build/mac/Era-macOS-Catalyst-unsigned.dmg
+            build/mac/Era-macOS-Catalyst-unsigned.zip
+            screenshots/*.png

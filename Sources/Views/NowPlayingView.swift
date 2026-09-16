@@ -1,0 +1,234 @@
+import SwiftUI
+
+// Now Playing als Sheet (Apple-Music-Stil), kein eigener Tab (Spec 13.4).
+struct NowPlayingView: View {
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var player: PlayerEngine
+    @EnvironmentObject private var store: EraStore
+    @State private var showQueue = false
+    @State private var showTimer = false
+    @State private var confirmClearQueue = false
+    @AppStorage(AppSettings.skipIntervalKey) private var skipInterval = 15
+    @AppStorage(AppSettings.hapticsEnabledKey) private var haptics = true
+
+    init() {
+        if ProcessInfo.processInfo.arguments.contains("--era-queue") {
+            _showQueue = State(initialValue: true)
+        }
+    }
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                if let version = player.current, let song = version.song {
+                    content(version, song)
+                } else {
+                    ContentUnavailableView("Nichts läuft", systemImage: "play.circle", description: Text("Wähle einen Song aus deiner Mediathek"))
+                }
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button { dismiss() } label: { Image(systemName: "chevron.down") }
+                }
+            }
+            .sheet(isPresented: $showQueue) { queueSheet }
+            .sheet(isPresented: $showTimer) { timerSheet }
+            .background {
+                // Tastaturkurzbefehle (iPad/Mac): Leertaste + Pfeile, unsichtbar
+                Group {
+                    Button("") { player.toggle() }.keyboardShortcut(.space, modifiers: [])
+                    Button("") { player.next() }.keyboardShortcut(.rightArrow, modifiers: [])
+                    Button("") { player.previous() }.keyboardShortcut(.leftArrow, modifiers: [])
+                }
+                .hidden()
+                .accessibilityHidden(true)
+            }
+        }
+    }
+
+    private func content(_ version: SongVersion, _ song: Song) -> some View {
+        ZStack {
+            playerBackground(song: song, version: version)
+            VStack(spacing: 0) {
+                Capsule().fill(.secondary.opacity(0.55)).frame(width: 38, height: 5).padding(.top, 8)
+                Spacer(minLength: 20)
+                Artwork(song: song, version: version, radius: 14)
+                    .frame(maxWidth: 330).aspectRatio(1, contentMode: .fit)
+                    .scaleEffect(player.isPlaying ? 1 : 0.92)
+                    .animation(.spring(response: 0.45), value: player.isPlaying)
+                    .shadow(color: .black.opacity(0.32), radius: 30, y: 16)
+                    .padding(.horizontal, 30)
+                Spacer(minLength: 24)
+                HStack(alignment: .center) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        HStack(spacing: 6) {
+                            Text(version.displayTitle).font(.title3.bold()).lineLimit(1)
+                            if song.tags.contains(where: { $0.name == "Explicit" }) {
+                                Text("E").font(.caption2.bold()).padding(.horizontal, 4).padding(.vertical, 1)
+                                    .background(.white.opacity(0.18), in: RoundedRectangle(cornerRadius: 3))
+                            }
+                        }
+                        Text(version.displayArtist).font(.title3).foregroundStyle(.secondary).lineLimit(1)
+                    }
+                    Spacer()
+                    Button { song.isFavorite.toggle(); store.save() } label: {
+                        Image(systemName: song.isFavorite ? "star.fill" : "star")
+                            .font(.title2).contentTransition(.symbolEffect(.replace))
+                    }
+                    .sensoryFeedback(.impact(flexibility: .soft), trigger: song.isFavorite) { _, _ in haptics }
+                    Menu {
+                        ForEach(song.sortedVersions) { v in
+                            Button {
+                                let queue = player.queue
+                                player.play(v, from: queue)
+                            } label: { Label(v.name, systemImage: v.id == version.id ? "checkmark" : "opticaldisc") }
+                            .disabled(v.id == version.id)
+                        }
+                    } label: { Image(systemName: "ellipsis").font(.title2).frame(width: 44, height: 44) }
+                }
+                .padding(.horizontal, 30)
+
+                VStack(spacing: 6) {
+                    Slider(value: Binding(get: { player.currentTime }, set: { player.seek($0) }), in: 0...max(1, player.duration))
+                        .tint(.primary)
+                    ZStack {
+                        HStack {
+                            Text(TimeFormatting.mmss(player.currentTime))
+                            Spacer()
+                            Text("-" + TimeFormatting.mmss(max(0, player.duration - player.currentTime)))
+                        }
+                        Label(version.name, systemImage: "waveform")
+                            .font(.caption2.weight(.semibold))
+                            .padding(.horizontal, 9).padding(.vertical, 4)
+                            .background(.ultraThinMaterial, in: .capsule)
+                    }
+                    .font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                }
+                .padding(.horizontal, 30).padding(.top, 22)
+
+                HStack {
+                    Button { player.previous() } label: { Image(systemName: "backward.fill") }
+                    Spacer()
+                    Button { player.toggle() } label: {
+                        Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
+                            .contentTransition(.symbolEffect(.replace))
+                    }
+                    Spacer()
+                    Button { player.next() } label: { Image(systemName: "forward.fill") }
+                }
+                .font(.system(size: 38, weight: .semibold))
+                .padding(.horizontal, 65).padding(.top, 26)
+
+                HStack(spacing: 10) {
+                    Image(systemName: "speaker.fill").font(.caption).foregroundStyle(.secondary)
+                    VolumeSlider().frame(height: 28)
+                    Image(systemName: "speaker.wave.3.fill").font(.body).foregroundStyle(.secondary)
+                }
+                .padding(.horizontal, 30).padding(.top, 26)
+
+                HStack {
+                    Menu {
+                        ForEach([0.75, 1.0, 1.25, 1.5, 2.0], id: \.self) { r in
+                            Button {
+                                player.setRate(Float(r))
+                            } label: {
+                                if Float(r) == player.rate { Label("\(String(format: "%g", r))x", systemImage: "checkmark") }
+                                else { Text("\(String(format: "%g", r))x") }
+                            }
+                        }
+                    } label: {
+                        Text(player.rate == 1.0 ? "1x" : "\(String(format: "%g", player.rate))x")
+                            .font(.subheadline.bold()).frame(width: 40, height: 40)
+                    }
+                    Spacer()
+                    AirPlayRouteButton().frame(width: 40, height: 40)
+                    Spacer()
+                    control("list.bullet", active: showQueue) { showQueue = true }
+                }
+                .padding(.horizontal, 75).padding(.top, 22).padding(.bottom, 16)
+            }
+        }
+        .foregroundStyle(.primary)
+        .toolbarBackground(.hidden, for: .navigationBar)
+    }
+
+    @ViewBuilder
+    private func playerBackground(song: Song, version: SongVersion) -> some View {
+        ZStack {
+            Color(.systemBackground)
+            Artwork(song: song, version: version, radius: 0)
+                .scaleEffect(1.9).blur(radius: 72).opacity(0.42)
+            LinearGradient(colors: [.clear, Color(.systemBackground).opacity(0.7)], startPoint: .top, endPoint: .bottom)
+        }
+        .ignoresSafeArea()
+    }
+
+    private func control(_ icon: String, active: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.body)
+                .foregroundStyle(active ? Color.accentColor : .secondary)
+                .contentTransition(.symbolEffect(.replace))
+                .frame(width: 40, height: 40)
+        }
+    }
+
+    // "Als Naechstes" mit nativem Bearbeiten: Verschieben, Entfernen, Leeren.
+    private var queueSheet: some View {
+        NavigationStack {
+            List {
+                ForEach(player.queue, id: \.id) { v in
+                    HStack {
+                        if let song = v.song { SongRow(song: song, version: v, isCurrent: player.current?.id == v.id) }
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture { player.play(v, from: player.queue) }
+                }
+                .onMove { player.moveInQueue(from: $0, to: $1) }
+                .onDelete { player.removeFromQueue(at: $0) }
+            }
+            .navigationTitle("Als Nächstes")
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) { EditButton() }
+                ToolbarItem(placement: .topBarTrailing) { Button("Fertig") { showQueue = false } }
+                ToolbarItem(placement: .topBarTrailing) {
+                    if player.queue.count > 1 {
+                        Menu {
+                            Button("Queue leeren", role: .destructive) { confirmClearQueue = true }
+                        } label: {
+                            Image(systemName: "ellipsis.circle")
+                        }
+                    }
+                }
+            }
+            .confirmationDialog("Queue leeren?", isPresented: $confirmClearQueue, titleVisibility: .visible) {
+                Button("Queue leeren", role: .destructive) { player.clearQueue() }
+                Button("Abbrechen", role: .cancel) {}
+            } message: {
+                Text("Alle Titel außer dem aktuellen werden aus der Warteschlange entfernt.")
+            }
+        }
+        .presentationDetents([.medium, .large])
+    }
+
+    private var timerSheet: some View {
+        NavigationStack {
+            List {
+                if let r = player.sleepRemaining {
+                    Section {
+                        Text("Noch \(r / 60):\(String(format: "%02d", r % 60))").font(.title.bold())
+                        Button("Timer stoppen", role: .destructive) { player.cancelSleep(); showTimer = false }
+                    }
+                }
+                Section("Wiedergabe stoppen nach") {
+                    ForEach([5, 10, 15, 30, 45, 60], id: \.self) { m in
+                        Button("\(m) Minuten") { player.setSleep(minutes: m); showTimer = false }
+                    }
+                }
+            }
+            .navigationTitle("Sleep Timer")
+        }
+        .presentationDetents([.medium])
+    }
+}
