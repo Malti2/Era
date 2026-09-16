@@ -21,6 +21,8 @@ struct SettingsView: View {
     @State private var showOnboarding = false
     @State private var confirmReset = false
     @State private var resetDone = false
+    @StateObject private var updater = UpdateService()
+    @State private var updateShareItem: ShareItem?
 
     private var appVersion: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "27.0.0"
@@ -107,6 +109,11 @@ struct SettingsView: View {
                     .disabled(!spotlightEnabled)
                     Label("Siri: „Mit Era abspielen“, „pausieren“, „weiter“", systemImage: "mic.fill")
                 }
+                Section("Updates") {
+                    updateSection
+                } footer: {
+                    Text("Era downloads the latest unsigned IPA directly from GitHub. Use the share sheet to open it in your sideloading app. iOS does not let Era install or replace its own app binary.")
+                }
                 Section("Zurücksetzen") {
                     Button(role: .destructive) { confirmReset = true } label: {
                         Label("Alle Daten löschen", systemImage: "trash")
@@ -128,6 +135,7 @@ struct SettingsView: View {
                 }
             }
             .sheet(item: $backupItem) { item in ShareSheet(items: [item.url]) }
+            .sheet(item: $updateShareItem) { item in ShareSheet(items: [item.url]) }
             .sheet(isPresented: $showOnboarding) { OnboardingView() }
             .alert("Backup fehlgeschlagen", isPresented: $backupError) {
                 Button("OK", role: .cancel) {}
@@ -140,6 +148,55 @@ struct SettingsView: View {
                 Button("Abbrechen", role: .cancel) {}
             } message: {
                 Text("Songs, Versionen, Playlists, Tags, Packs, Einstellungen und lokale Audiodateien werden dauerhaft gelöscht.")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var updateSection: some View {
+        switch updater.state {
+        case .idle:
+            Button {
+                Task { await updater.check(currentVersion: appVersion) }
+            } label: {
+                Label("Check for Updates", systemImage: "arrow.triangle.2.circlepath")
+            }
+        case .checking:
+            HStack {
+                ProgressView()
+                Text("Checking GitHub Releases…")
+            }
+        case .upToDate:
+            Label("Era is up to date", systemImage: "checkmark.circle.fill")
+                .foregroundStyle(.green)
+            Button("Check Again") {
+                Task { await updater.check(currentVersion: appVersion) }
+            }
+        case .available(let release):
+            LabeledContent("Update Available", value: release.version)
+            Button {
+                Task { await updater.download(release) }
+            } label: {
+                Label("Download IPA", systemImage: "arrow.down.circle.fill")
+            }
+        case .downloading(let release, _):
+            HStack {
+                ProgressView()
+                Text("Downloading Era \(release.version)…")
+            }
+        case .downloaded(let release, let url):
+            Label("Era \(release.version) downloaded", systemImage: "checkmark.circle.fill")
+                .foregroundStyle(.green)
+            Button {
+                updateShareItem = ShareItem(url: url)
+            } label: {
+                Label("Open in Sideloading App", systemImage: "square.and.arrow.up")
+            }
+        case .failed(let message):
+            Label(message, systemImage: "exclamationmark.triangle.fill")
+                .foregroundStyle(.red)
+            Button("Try Again") {
+                Task { await updater.check(currentVersion: appVersion) }
             }
         }
     }
