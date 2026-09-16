@@ -154,8 +154,10 @@ struct SettingsView: View {
 
     @ViewBuilder
     private var updateSection: some View {
-        Section("Updates") {
+        Section {
             updateContent
+        } header: {
+            Text("Updates")
         } footer: {
             Text(updateFooter)
         }
