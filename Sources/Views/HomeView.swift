@@ -57,7 +57,7 @@ struct HomeView: View {
             HStack(spacing: 14) {
                 Artwork(song: song, radius: 12).frame(width: 64, height: 64)
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("Fortsetzen").font(.caption).foregroundStyle(.secondary)
+                    Text("Continue Listening").font(.caption).foregroundStyle(.secondary)
                     Text(song.title).font(.headline).lineLimit(1)
                     Text(song.displayArtist).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
                 }
