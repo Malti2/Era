@@ -41,7 +41,7 @@ jobs:
           test -d build/Payload/Era.app/PlugIns/EraWidgetsExtension.appex
           ls build/Payload/Era.app/vinyl-crackle.wav
       - name: Build simulator
-        run: xcodebuild -project Era.xcodeproj -scheme Era -configuration Debug -sdk iphonesimulator -derivedDataPath build/sim CODE_SIGN_IDENTITY=- CURRENT_PROJECT_VERSION=$GITHUB_RUN_NUMBER build
+        run: xcodebuild -project Era.xcodeproj -scheme Era -configuration Debug -sdk iphonesimulator -derivedDataPath build/sim CODE_SIGNING_ALLOWED=YES CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=- CURRENT_PROJECT_VERSION=$GITHUB_RUN_NUMBER build
       - name: Build Mac Catalyst app
         run: |
           xcodebuild -project Era.xcodeproj -scheme Era -configuration Release -destination 'platform=macOS,variant=Mac Catalyst' -derivedDataPath build/catalyst CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CURRENT_PROJECT_VERSION=$GITHUB_RUN_NUMBER build
@@ -123,8 +123,13 @@ jobs:
           UDID="${{ steps.sim.outputs.udid }}"
           xcrun simctl launch "$UDID" de.malte.era --era-demo --era-player
           sleep 6
-          GROUP=$(xcrun simctl get_app_container "$UDID" group.de.malte.era data)
+          codesign -d --entitlements :- build/sim/Build/Products/Debug-iphonesimulator/Era.app 2>/dev/null | grep -A2 application-groups || { echo "App Group entitlement missing from simulator build"; exit 1; }
+          GROUP=$(xcrun simctl get_app_container "$UDID" group.de.malte.era data 2>/dev/null || true)
+          if [ -z "$GROUP" ]; then
+            GROUP=$(dirname "$(find "$HOME/Library/Developer/CoreSimulator/Devices/$UDID/data/Containers/Shared/AppGroup" -name recent.json 2>/dev/null | head -1)")
+          fi
           echo "App Group container: $GROUP"
+          test -n "$GROUP"
           ls -la "$GROUP"
           test -s "$GROUP/recent.json"
           test -s "$GROUP/nowplaying.json"
