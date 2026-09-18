@@ -21,18 +21,18 @@ struct MassImportView: View {
             List {
                 Section {
                     Button { showFilePicker = true } label: {
-                        Label("Dateien hinzufügen", systemImage: "plus")
+                        Label("Add Files", systemImage: "plus")
                     }
                 }
 
                 if !importer.staged.isEmpty {
-                    Section("Für alle") {
+                    Section("For All") {
                         Picker("Status", selection: $bulkStatus) {
-                            Text("Kein Status").tag("")
+                            Text("No Status").tag("")
                             ForEach(statusNames, id: \.self) { Text($0).tag($0) }
                         }
                         HStack {
-                            TextField("Tag für alle", text: $bulkTag)
+                            TextField("Tag for All", text: $bulkTag)
                             Button {
                                 applyBulk()
                             } label: { Image(systemName: "arrow.down.circle.fill") }
@@ -40,7 +40,7 @@ struct MassImportView: View {
                         }
                     }
 
-                    Section("\(importer.staged.count) Dateien") {
+                    Section("\(importer.staged.count) files") {
                         ForEach($importer.staged) { $item in
                             VStack(alignment: .leading, spacing: 6) {
                                 HStack {
@@ -54,10 +54,10 @@ struct MassImportView: View {
                                 if item.error == nil {
                                     HStack(spacing: 8) {
                                         Menu {
-                                            Button("Neuer Song") { item.linkToSongID = nil }
+                                            Button("New Song") { item.linkToSongID = nil }
                                             Divider()
                                             if let suggested = item.suggestedSongID, let match = songs.first(where: { $0.id == suggested }) {
-                                                Button("Vorschlag: \(match.title)") { item.linkToSongID = match.id }
+                                                Button("Suggestion: \(match.title)") { item.linkToSongID = match.id }
                                                 Divider()
                                             }
                                             ForEach(songs) { s in
@@ -85,7 +85,7 @@ struct MassImportView: View {
                                         Button {
                                             item.linkToSongID = match.id
                                         } label: {
-                                            Text("Gehört das zu „\(match.title)“? Tippen zum Verknüpfen")
+                                            Text("Does this belong to “\(match.title)”? Tap to link it")
                                                 .font(.caption)
                                                 .foregroundStyle(Color.accentColor)
                                         }
@@ -99,14 +99,14 @@ struct MassImportView: View {
                     }
                 }
             }
-            .navigationTitle("Massenimport")
+            .navigationTitle("Bulk Import")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Abbrechen") { importer.staged = []; dismiss() }
+                    Button("Cancel") { importer.staged = []; dismiss() }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Importieren (\(importer.staged.filter { $0.error == nil }.count))") {
+                    Button("Import (\(importer.staged.filter { $0.error == nil }.count))") {
                         Task {
                             await importer.confirmStaged(into: store, songs: songs)
                             dismiss()
@@ -127,9 +127,9 @@ struct MassImportView: View {
 
     private func linkLabel(_ item: StagedImport) -> String {
         if let id = item.linkToSongID, let song = songs.first(where: { $0.id == id }) {
-            return "Version von „\(song.title)“"
+            return "Version of “\(song.title)”"
         }
-        return "Neuer Song"
+        return "New Song"
     }
 
     private func applyBulk() {

@@ -23,7 +23,7 @@ struct NowPlayingView: View {
                 if let version = player.current, let song = version.song {
                     content(version, song)
                 } else {
-                    ContentUnavailableView("Nichts läuft", systemImage: "play.circle", description: Text("Wähle einen Song aus deiner Mediathek"))
+                    ContentUnavailableView("Nothing Playing", systemImage: "play.circle", description: Text("Choose a song from your library"))
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -174,7 +174,7 @@ struct NowPlayingView: View {
         }
     }
 
-    // "Als Naechstes" mit nativem Bearbeiten: Verschieben, Entfernen, Leeren.
+    // "Up Next" mit nativem Bearbeiten: Verschieben, Entfernen, Leeren.
     private var queueSheet: some View {
         NavigationStack {
             List {
@@ -188,25 +188,25 @@ struct NowPlayingView: View {
                 .onMove { player.moveInQueue(from: $0, to: $1) }
                 .onDelete { player.removeFromQueue(at: $0) }
             }
-            .navigationTitle("Als Nächstes")
+            .navigationTitle("Up Next")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) { EditButton() }
-                ToolbarItem(placement: .topBarTrailing) { Button("Fertig") { showQueue = false } }
+                ToolbarItem(placement: .topBarTrailing) { Button("Done") { showQueue = false } }
                 ToolbarItem(placement: .topBarTrailing) {
                     if player.queue.count > 1 {
                         Menu {
-                            Button("Queue leeren", role: .destructive) { confirmClearQueue = true }
+                            Button("Clear Queue", role: .destructive) { confirmClearQueue = true }
                         } label: {
                             Image(systemName: "ellipsis.circle")
                         }
                     }
                 }
             }
-            .confirmationDialog("Queue leeren?", isPresented: $confirmClearQueue, titleVisibility: .visible) {
-                Button("Queue leeren", role: .destructive) { player.clearQueue() }
-                Button("Abbrechen", role: .cancel) {}
+            .confirmationDialog("Clear Queue?", isPresented: $confirmClearQueue, titleVisibility: .visible) {
+                Button("Clear Queue", role: .destructive) { player.clearQueue() }
+                Button("Cancel", role: .cancel) {}
             } message: {
-                Text("Alle Titel außer dem aktuellen werden aus der Warteschlange entfernt.")
+                Text("All tracks except the current one will be removed from the queue.")
             }
         }
         .presentationDetents([.medium, .large])
@@ -217,13 +217,13 @@ struct NowPlayingView: View {
             List {
                 if let r = player.sleepRemaining {
                     Section {
-                        Text("Noch \(r / 60):\(String(format: "%02d", r % 60))").font(.title.bold())
-                        Button("Timer stoppen", role: .destructive) { player.cancelSleep(); showTimer = false }
+                        Text("Remaining \(r / 60):\(String(format: "%02d", r % 60))").font(.title.bold())
+                        Button("Stop Timer", role: .destructive) { player.cancelSleep(); showTimer = false }
                     }
                 }
-                Section("Wiedergabe stoppen nach") {
+                Section("Stop Playback After") {
                     ForEach([5, 10, 15, 30, 45, 60], id: \.self) { m in
-                        Button("\(m) Minuten") { player.setSleep(minutes: m); showTimer = false }
+                        Button("\(m) Minutes") { player.setSleep(minutes: m); showTimer = false }
                     }
                 }
             }

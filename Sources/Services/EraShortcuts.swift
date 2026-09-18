@@ -5,8 +5,8 @@ import AppIntents
 // Siri-Kurzbefehle ohne Nutzer-Setup. Steuern den lokalen Player - komplett offline.
 
 struct EraPlayIntent: AppIntent {
-    static var title: LocalizedStringResource = "Musik abspielen"
-    static var description = IntentDescription("Spielt die zuletzt gehörte Musik in Era weiter.")
+    static var title: LocalizedStringResource = "Play music"
+    static var description = IntentDescription("Resumes the last music played in Era.")
     static var openAppWhenRun: Bool = true
 
     @MainActor
@@ -17,8 +17,8 @@ struct EraPlayIntent: AppIntent {
 }
 
 struct EraPauseIntent: AppIntent {
-    static var title: LocalizedStringResource = "Musik pausieren"
-    static var description = IntentDescription("Pausiert die Wiedergabe in Era.")
+    static var title: LocalizedStringResource = "Pause music"
+    static var description = IntentDescription("Pauses playback in Era.")
 
     @MainActor
     func perform() async throws -> some IntentResult {
@@ -29,8 +29,8 @@ struct EraPauseIntent: AppIntent {
 }
 
 struct EraNextIntent: AppIntent {
-    static var title: LocalizedStringResource = "Nächster Titel"
-    static var description = IntentDescription("Springt in Era zum nächsten Titel.")
+    static var title: LocalizedStringResource = "Next track"
+    static var description = IntentDescription("Skips to the next track in Era.")
     static var openAppWhenRun: Bool = true
 
     @MainActor
@@ -47,29 +47,29 @@ struct EraShortcuts: AppShortcutsProvider {
         AppShortcut(
             intent: EraPlayIntent(),
             phrases: [
-                "Musik abspielen mit \(.applicationName)",
-                "\(.applicationName) abspielen",
-                "Weiterhören mit \(.applicationName)"
+                "Play music with \(.applicationName)",
+                "Play \(.applicationName)",
+                "Continue listening with \(.applicationName)"
             ],
-            shortTitle: "Abspielen",
+            shortTitle: "Play",
             systemImageName: "play.fill"
         )
         AppShortcut(
             intent: EraPauseIntent(),
             phrases: [
-                "Musik pausieren mit \(.applicationName)",
-                "\(.applicationName) pausieren"
+                "Pause music with \(.applicationName)",
+                "Pause \(.applicationName)"
             ],
-            shortTitle: "Pausieren",
+            shortTitle: "Pause",
             systemImageName: "pause.fill"
         )
         AppShortcut(
             intent: EraNextIntent(),
             phrases: [
-                "Nächster Titel mit \(.applicationName)",
-                "\(.applicationName) weiter"
+                "Next track with \(.applicationName)",
+                "Next in \(.applicationName)"
             ],
-            shortTitle: "Nächster Titel",
+            shortTitle: "Next track",
             systemImageName: "forward.fill"
         )
     }

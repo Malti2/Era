@@ -36,9 +36,9 @@ enum AudioHasher {
             AVLinearPCMIsBigEndianKey: false
         ]
         let output = AVAssetReaderTrackOutput(track: track, outputSettings: settings)
-        guard reader.canAdd(output) else { lastError = "Output nicht moeglich"; return nil }
+        guard reader.canAdd(output) else { lastError = "Cannot create output"; return nil }
         reader.add(output)
-        guard reader.startReading() else { lastError = "startReading fehlgeschlagen"; return nil }
+        guard reader.startReading() else { lastError = "Could not start reading"; return nil }
         var hasher = SHA256()
         while let sample = output.copyNextSampleBuffer() {
             if let block = CMSampleBufferGetDataBuffer(sample) {
@@ -61,13 +61,13 @@ enum AudioHasher {
 
     private static func hashWithAudioFile(url: URL) -> Result? {
         guard let file = try? AVAudioFile(forReading: url) else {
-            lastError = "AVAudioFile init fehlgeschlagen"
+            lastError = "Could not open audio file"
             return nil
         }
         let format = file.processingFormat
         let duration = Double(file.length) / max(1, format.sampleRate)
         guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 65_536) else {
-            lastError = "Buffer-Allokation fehlgeschlagen"
+            lastError = "Could not allocate audio buffer"
             return nil
         }
         var hasher = SHA256()

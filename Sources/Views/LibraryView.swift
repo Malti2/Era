@@ -3,7 +3,7 @@ import SwiftData
 import UniformTypeIdentifiers
 
 enum LibrarySection: String, CaseIterable, Identifiable {
-    case songs = "Songs", artists = "Artists", albums = "Alben", playlists = "Playlists", versions = "Versionen"
+    case songs = "Songs", artists = "Artists", albums = "Albums", playlists = "Playlists", versions = "Versions"
     var id: String { rawValue }
     var icon: String {
         switch self {
@@ -17,7 +17,7 @@ enum LibrarySection: String, CaseIterable, Identifiable {
 }
 
 enum LibrarySort: String, CaseIterable, Identifiable {
-    case recent = "Zuletzt hinzugefügt", title = "Titel", artist = "Künstler"
+    case recent = "Recently Added", title = "Title", artist = "Artist"
     var id: String { rawValue }
 }
 
@@ -56,32 +56,32 @@ struct LibraryView: View {
             Group {
                 if songs.isEmpty { emptyState } else { content }
             }
-            .navigationTitle("Mediathek")
+            .navigationTitle("Library")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
-                        Button { showImporter = true } label: { Label("Dateien importieren", systemImage: "doc") }
-                        Button { showFolderImporter = true } label: { Label("Ordner importieren", systemImage: "folder") }
+                        Button { showImporter = true } label: { Label("Import Files", systemImage: "doc") }
+                        Button { showFolderImporter = true } label: { Label("Import Folder", systemImage: "folder") }
                         Divider()
-                        Button { importer.showMassImport = true } label: { Label("Massenimport", systemImage: "square.and.arrow.down.on.square") }
+                        Button { importer.showMassImport = true } label: { Label("Bulk Import", systemImage: "square.and.arrow.down.on.square") }
                     } label: {
                         Image(systemName: "square.and.arrow.down")
                     }
-                    .accessibilityLabel("Importieren")
+                    .accessibilityLabel("Import")
                 }
                 ToolbarItem(placement: .topBarLeading) {
                     Button { showSettings = true } label: { Image(systemName: "gearshape") }
-                        .accessibilityLabel("Einstellungen")
+                        .accessibilityLabel("Settings")
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
-                        Picker("Sortierung", selection: $sort) {
+                        Picker("Sort", selection: $sort) {
                             ForEach(LibrarySort.allCases) { Text($0.rawValue).tag($0) }
                         }
                     } label: {
                         Image(systemName: "arrow.up.arrow.down")
                     }
-                    .accessibilityLabel("Sortieren")
+                    .accessibilityLabel("Sort")
                 }
             }
             .sheet(isPresented: $showSettings) { SettingsView() }
@@ -121,7 +121,7 @@ struct LibraryView: View {
             }
             .overlay(alignment: .bottom) {
                 if importer.isImporting {
-                    Label("Importiere …", systemImage: "square.and.arrow.down")
+                    Label("Importing…", systemImage: "square.and.arrow.down")
                         .font(.subheadline.weight(.semibold))
                         .padding(.horizontal, 18).padding(.vertical, 12)
                         .eraGlassCapsule()
@@ -134,7 +134,7 @@ struct LibraryView: View {
     private func noFilesNotice() {
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 500_000_000)
-            importer.message = "Keine Dateien übernommen. Liegen die Songs lokal auf dem iPhone vor (nicht nur in iCloud)?"
+            importer.message = "No files were imported. Are the songs stored locally on this iPhone, not only in iCloud?"
         }
     }
 
@@ -147,16 +147,16 @@ struct LibraryView: View {
                     VStack(spacing: 0) {
                         libraryLink("Playlists", icon: "music.note.list", destination: AnyView(playlistList))
                         Divider().padding(.leading, 54)
-                        libraryLink("Künstler:innen", icon: "music.mic", destination: AnyView(artistList))
+                        libraryLink("Artists", icon: "music.mic", destination: AnyView(artistList))
                         Divider().padding(.leading, 54)
-                        libraryLink("Alben", icon: "square.stack", destination: AnyView(albumList))
+                        libraryLink("Albums", icon: "square.stack", destination: AnyView(albumList))
                         Divider().padding(.leading, 54)
-                        libraryLink("Titel", icon: "music.note", destination: AnyView(songList))
+                        libraryLink("Title", icon: "music.note", destination: AnyView(songList))
                         Divider().padding(.leading, 54)
-                        libraryLink("Versionen", icon: "opticaldisc", destination: AnyView(versionList))
+                        libraryLink("Versions", icon: "opticaldisc", destination: AnyView(versionList))
                     }
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("Zuletzt hinzugefügt").font(.title2.bold()).padding(.horizontal, 18)
+                        Text("Recently Added").font(.title2.bold()).padding(.horizontal, 18)
                         LazyVGrid(columns: [.init(.flexible(), spacing: 14), .init(.flexible())], spacing: 20) {
                             ForEach(Array(songs.prefix(8))) { song in
                                 NavigationLink {
@@ -188,21 +188,21 @@ struct LibraryView: View {
     }
 
     private var playlistList: some View { List { playlistsSection }.listStyle(.plain).navigationTitle("Playlists") }
-    private var songList: some View { List { songsSection }.listStyle(.plain).navigationTitle("Titel") }
-    private var versionList: some View { List { versionsSection }.listStyle(.plain).navigationTitle("Versionen") }
+    private var songList: some View { List { songsSection }.listStyle(.plain).navigationTitle("Title") }
+    private var versionList: some View { List { versionsSection }.listStyle(.plain).navigationTitle("Versions") }
     private var artistList: some View {
         let grouped = Dictionary(grouping: songs) { $0.displayArtist }
         return List(grouped.keys.sorted(), id: \.self) { name in
             NavigationLink { CollectionDetailView(title: name, songs: grouped[name] ?? [], kind: .artist, showNowPlaying: $showNowPlaying) } label: {
                 HStack(spacing: 14) {
                     Artwork(song: grouped[name]?.first, radius: 34).frame(width: 64, height: 64).clipShape(Circle())
-                    VStack(alignment: .leading) { Text(name); Text("\(grouped[name]?.count ?? 0) Titel").font(.subheadline).foregroundStyle(.secondary) }
+                    VStack(alignment: .leading) { Text(name); Text("\(grouped[name]?.count ?? 0) tracks").font(.subheadline).foregroundStyle(.secondary) }
                 }
             }
-        }.listStyle(.plain).navigationTitle("Künstler:innen")
+        }.listStyle(.plain).navigationTitle("Artists")
     }
     private var albumList: some View {
-        let grouped = Dictionary(grouping: songs) { $0.album.isEmpty ? "Unbekanntes Album" : $0.album }
+        let grouped = Dictionary(grouping: songs) { $0.album.isEmpty ? "Unknown Album" : $0.album }
         return List(grouped.keys.sorted(), id: \.self) { name in
             NavigationLink { CollectionDetailView(title: name, songs: grouped[name] ?? [], kind: .album, showNowPlaying: $showNowPlaying) } label: {
                 HStack(spacing: 14) {
@@ -210,7 +210,7 @@ struct LibraryView: View {
                     VStack(alignment: .leading) { Text(name); Text(grouped[name]?.first?.displayArtist ?? "").font(.subheadline).foregroundStyle(.secondary) }
                 }
             }
-        }.listStyle(.plain).navigationTitle("Alben")
+        }.listStyle(.plain).navigationTitle("Albums")
     }
 
     private var sortedSongs: [Song] {
@@ -230,12 +230,12 @@ struct LibraryView: View {
                 let versions = sortedSongs.compactMap(\.primaryVersion)
                 if let first = versions.first { player.play(first, from: versions) }
             } label: {
-                Label("Alle abspielen (\(sortedSongs.count))", systemImage: "play.fill")
+                Label("Play All (\(sortedSongs.count))", systemImage: "play.fill")
             }
             Button {
                 player.playShuffled(sortedSongs.compactMap(\.primaryVersion))
             } label: {
-                Label("Zufällige Wiedergabe", systemImage: "shuffle")
+                Label("Shuffle", systemImage: "shuffle")
             }
             ForEach(sortedSongs) { song in
                 NavigationLink {
@@ -245,11 +245,11 @@ struct LibraryView: View {
                 }
                 .swipeActions(edge: .leading) {
                     Button { song.isFavorite.toggle(); store.save() } label: {
-                        Label("Favorit", systemImage: song.isFavorite ? "heart.slash" : "heart.fill")
+                        Label("Favorite", systemImage: song.isFavorite ? "heart.slash" : "heart.fill")
                     }.tint(.pink)
                 }
                 .swipeActions {
-                    Button(role: .destructive) { store.deleteSong(song) } label: { Label("Löschen", systemImage: "trash") }
+                    Button(role: .destructive) { store.deleteSong(song) } label: { Label("Delete", systemImage: "trash") }
                 }
                 .contextMenu { SongContextMenu(song: song, showNowPlaying: $showNowPlaying) }
             }
@@ -271,7 +271,7 @@ struct LibraryView: View {
     }
 
     private var albumsSection: some View {
-        let grouped = Dictionary(grouping: songs) { $0.album.isEmpty ? "Unbekanntes Album" : $0.album }
+        let grouped = Dictionary(grouping: songs) { $0.album.isEmpty ? "Unknown Album" : $0.album }
         let names = grouped.keys.sorted { $0.localizedStandardCompare($1) == .orderedAscending }
         return Section {
             ForEach(names, id: \.self) { name in
@@ -295,29 +295,29 @@ struct LibraryView: View {
                             .frame(width: 64, height: 64)
                         VStack(alignment: .leading, spacing: 3) {
                             Text(playlist.name).font(.body)
-                            Text("\(playlist.entries.count) Titel")
+                            Text("\(playlist.entries.count) tracks")
                                 .font(.subheadline).foregroundStyle(.secondary)
                         }
                     }
                     .padding(.vertical, 3)
                 }
                 .swipeActions {
-                    Button(role: .destructive) { store.deletePlaylist(playlist) } label: { Label("Löschen", systemImage: "trash") }
+                    Button(role: .destructive) { store.deletePlaylist(playlist) } label: { Label("Delete", systemImage: "trash") }
                 }
                 .contextMenu {
-                    Button("Playlist löschen", systemImage: "trash", role: .destructive) { store.deletePlaylist(playlist) }
+                    Button("Delete Playlist", systemImage: "trash", role: .destructive) { store.deletePlaylist(playlist) }
                 }
             }
-            Button { showNewPlaylist = true } label: { Label("Neue Playlist", systemImage: "plus") }
+            Button { showNewPlaylist = true } label: { Label("New Playlist", systemImage: "plus") }
         }
-        .alert("Neue Playlist", isPresented: $showNewPlaylist) {
+        .alert("New Playlist", isPresented: $showNewPlaylist) {
             TextField("Name", text: $newPlaylistName)
             Button("Erstellen") {
                 let name = newPlaylistName.trimmingCharacters(in: .whitespaces)
                 if !name.isEmpty { store.insertPlaylist(Playlist(name: name)) }
                 newPlaylistName = ""
             }
-            Button("Abbrechen", role: .cancel) { newPlaylistName = "" }
+            Button("Cancel", role: .cancel) { newPlaylistName = "" }
         }
     }
 
@@ -347,11 +347,11 @@ struct LibraryView: View {
 
     private var emptyState: some View {
         ContentUnavailableView {
-            Label("Deine Musik. Dein iPhone.", systemImage: "waveform.circle.fill")
+            Label("Your Music. Your iPhone.", systemImage: "waveform.circle.fill")
         } description: {
-            Text("Importiere MP3, M4A, WAV, FLAC und mehr aus der Dateien-App.")
+            Text("Import MP3, M4A, WAV, FLAC, and more from the Files app.")
         } actions: {
-            Button { showImporter = true } label: { Label("Songs importieren", systemImage: "square.and.arrow.down") }
+            Button { showImporter = true } label: { Label("Import Songs", systemImage: "square.and.arrow.down") }
                 .eraProminentButton()
         }
     }
@@ -372,10 +372,10 @@ struct SongListView: View {
                     Button {
                         let versions = songs.compactMap(\.primaryVersion)
                         if let first = versions.first { player.play(first, from: versions) }
-                    } label: { Label("Alle abspielen", systemImage: "play.fill") }
+                    } label: { Label("Play All", systemImage: "play.fill") }
                     Button {
                         player.playShuffled(songs.compactMap(\.primaryVersion))
-                    } label: { Label("Zufällige Wiedergabe", systemImage: "shuffle") }
+                    } label: { Label("Shuffle", systemImage: "shuffle") }
                 }
             }
             Section {
@@ -387,7 +387,7 @@ struct SongListView: View {
                     }
                     .swipeActions(edge: .leading) {
                         Button { song.isFavorite.toggle(); store.save() } label: {
-                            Label("Favorit", systemImage: song.isFavorite ? "heart.slash" : "heart.fill")
+                            Label("Favorite", systemImage: song.isFavorite ? "heart.slash" : "heart.fill")
                         }.tint(.pink)
                     }
                     .contextMenu { SongContextMenu(song: song, showNowPlaying: $showNowPlaying) }
@@ -445,7 +445,7 @@ struct CollectionDetailView: View {
                             Text(song.displayArtist).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
                         }
                         Spacer()
-                        Menu { Button("Als Nächstes") { if let v = song.primaryVersion { player.playNext(v) } } } label: { Image(systemName: "ellipsis").frame(width: 40, height: 40) }
+                        Menu { Button("Up Next") { if let v = song.primaryVersion { player.playNext(v) } } } label: { Image(systemName: "ellipsis").frame(width: 40, height: 40) }
                     }
                     .padding(.horizontal, 18).padding(.vertical, 10)
                     .contentShape(Rectangle()).onTapGesture { if let v = song.primaryVersion { player.play(v, from: songs.compactMap(\.primaryVersion)) } }

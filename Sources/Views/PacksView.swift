@@ -16,11 +16,11 @@ struct PacksView: View {
     private var dynamicPacks: [(String, String, [Song])] {
         var result: [(String, String, [Song])] = []
         let mostPlayed = songs.filter { $0.playCount > 0 }.sorted { $0.playCount > $1.playCount }
-        if !mostPlayed.isEmpty { result.append(("Meistgespielt", "chart.bar.fill", Array(mostPlayed.prefix(25)))) }
+        if !mostPlayed.isEmpty { result.append(("Most Played", "chart.bar.fill", Array(mostPlayed.prefix(25)))) }
         let recent = Array(songs.sorted { $0.dateAdded > $1.dateAdded }.prefix(25))
-        if !recent.isEmpty { result.append(("Zuletzt hinzugefügt", "clock.fill", recent)) }
+        if !recent.isEmpty { result.append(("Recently Added", "clock.fill", recent)) }
         let favs = songs.filter(\.isFavorite)
-        if !favs.isEmpty { result.append(("Favoriten", "heart.fill", favs)) }
+        if !favs.isEmpty { result.append(("Favorites", "heart.fill", favs)) }
         return result
     }
 
@@ -40,7 +40,7 @@ struct PacksView: View {
                 }
 
                 if !confirmed.isEmpty {
-                    Section("Deine Packs") {
+                    Section("Your Packs") {
                         ForEach(confirmed) { pack in
                             NavigationLink {
                                 PackDetailView(pack: pack, showNowPlaying: $showNowPlaying)
@@ -52,7 +52,7 @@ struct PacksView: View {
                 }
 
                 if !suggested.isEmpty {
-                    Section("Vorschläge") {
+                    Section("Suggestions") {
                         ForEach(suggested) { pack in
                             HStack {
                                 Label("\(pack.name) (\(matching(pack).count))", systemImage: "square.stack")
@@ -61,7 +61,7 @@ struct PacksView: View {
                                     pack.confirmed = true
                                     store.save()
                                 } label: {
-                                    Text("Hinzufügen").font(.subheadline.weight(.medium))
+                                    Text("Add").font(.subheadline.weight(.medium))
                                 }
                                 .buttonStyle(.bordered)
                                 .controlSize(.small)
@@ -76,7 +76,7 @@ struct PacksView: View {
                 }
 
                 if confirmed.isEmpty && suggested.isEmpty && dynamicPacks.isEmpty {
-                    ContentUnavailableView("Noch keine Packs", systemImage: "square.stack", description: Text("Packs bündeln Songs quer über die Bibliothek - als gespeicherte Suche über Tags und Status."))
+                    ContentUnavailableView("No Packs Yet", systemImage: "square.stack", description: Text("Packs group songs across your library as saved searches using tags and status."))
                 }
             }
             .navigationTitle("Packs")
@@ -126,11 +126,11 @@ struct PackDetailView: View {
                 Button {
                     let versions = matching.compactMap(\.primaryVersion)
                     if let first = versions.first { player.play(first, from: versions) }
-                } label: { Label("Alle abspielen", systemImage: "play.fill") }
+                } label: { Label("Play All", systemImage: "play.fill") }
                 .disabled(matching.isEmpty)
                 Button {
                     player.playShuffled(matching.compactMap(\.primaryVersion))
-                } label: { Label("Zufällige Wiedergabe", systemImage: "shuffle") }
+                } label: { Label("Shuffle", systemImage: "shuffle") }
                 .disabled(matching.isEmpty)
                 ForEach(matching) { song in
                     NavigationLink {

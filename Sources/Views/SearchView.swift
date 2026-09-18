@@ -25,9 +25,9 @@ struct SearchView: View {
             Group {
                 if query.isEmpty {
                     ContentUnavailableView {
-                        Label("Keine letzten Suchanfragen", systemImage: "magnifyingglass")
+                        Label("No Recent Searches", systemImage: "magnifyingglass")
                     } description: {
-                        Text("Deine letzten Suchanfragen werden hier angezeigt.")
+                        Text("Your recent searches will appear here.")
                     }
                 } else if results.isEmpty {
                     ContentUnavailableView.search(text: query)
@@ -40,8 +40,8 @@ struct SearchView: View {
                     }.listStyle(.plain)
                 }
             }
-            .navigationTitle("Suche")
-            .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Künstler:in, Titel, Album, Tag")
+            .navigationTitle("Search")
+            .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Artist, title, album, tag")
             .searchFocused($focused)
             .onAppear {
                 if ProcessInfo.processInfo.arguments.contains("--era-search-preview") && false {

@@ -18,8 +18,8 @@ struct VersionDrawer: View {
         NavigationStack {
             VStack(spacing: 16) {
                 Picker("Quelle", selection: $mode) {
-                    Text("Importieren").tag(0)
-                    Text("Aus Bibliothek").tag(1)
+                    Text("Import").tag(0)
+                    Text("From Library").tag(1)
                 }
                 .pickerStyle(.segmented)
                 .padding(.horizontal)
@@ -27,10 +27,10 @@ struct VersionDrawer: View {
                 if mode == 0 { importPane } else { libraryPane }
             }
             .padding(.top)
-            .navigationTitle("Version für „\(song.title)“")
+            .navigationTitle("Version for “\(song.title)”")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) { Button("Abbrechen") { dismiss() } }
+                ToolbarItem(placement: .topBarLeading) { Button("Cancel") { dismiss() } }
             }
             .presentationDetents([.medium, .large])
             .sheet(isPresented: $showFilePicker) {
@@ -72,7 +72,7 @@ struct VersionDrawer: View {
                         }
                     }
                 }
-                TextField("Eigener Name", text: $customName)
+                TextField("Custom Name", text: $customName)
                     .textFieldStyle(.roundedBorder)
             }
             .padding(.horizontal)
@@ -80,7 +80,7 @@ struct VersionDrawer: View {
             Spacer()
 
             Button { showFilePicker = true } label: {
-                Label("Datei wählen", systemImage: "doc.badge.plus")
+                Label("Choose File", systemImage: "doc.badge.plus")
                     .frame(maxWidth: .infinity)
             }
             .eraProminentButton()

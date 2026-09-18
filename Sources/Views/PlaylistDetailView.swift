@@ -36,7 +36,7 @@ struct PlaylistDetailView: View {
                     }
                 }
                 Button { showAddSongs = true } label: {
-                    Label("Songs hinzufügen", systemImage: "plus.circle.fill")
+                    Label("Add Songs", systemImage: "plus.circle.fill")
                         .font(.headline).frame(maxWidth: .infinity, alignment: .leading)
                         .padding(20)
                 }
@@ -48,7 +48,7 @@ struct PlaylistDetailView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
-                    Button { showAddSongs = true } label: { Label("Songs hinzufügen", systemImage: "plus") }
+                    Button { showAddSongs = true } label: { Label("Add Songs", systemImage: "plus") }
                 } label: { Image(systemName: "ellipsis") }
             }
         }
@@ -64,7 +64,7 @@ struct PlaylistDetailView: View {
             VStack(spacing: 4) {
                 Text(playlist.name).font(.title2.bold()).multilineTextAlignment(.center)
                 Text("Era").font(.title3).foregroundStyle(.tint)
-                Text("Zuletzt aktualisiert")
+                Text("Recently Updated")
                     .font(.subheadline).foregroundStyle(.secondary)
             }
             HStack(spacing: 18) {
@@ -89,7 +89,7 @@ struct PlaylistDetailView: View {
     private var filters: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
-                filterChip(nil, label: "Alle")
+                filterChip(nil, label: "All")
                 ForEach(usedTags) { tag in filterChip(tag.id, label: tag.name) }
             }.padding(.horizontal, 18)
         }
@@ -161,9 +161,9 @@ struct PlaylistEntryRow: View {
             Spacer(minLength: 4)
             if player.current?.id == version?.id { Image(systemName: "waveform").foregroundStyle(.tint) }
             Menu {
-                Button { if let v = version { player.playNext(v) } } label: { Label("Als Nächstes abspielen", systemImage: "text.line.first.and.arrowtriangle.forward") }
-                Button { if let v = version { player.playLater(v) } } label: { Label("Zum Schluss hinzufügen", systemImage: "text.line.last.and.arrowtriangle.forward") }
-                Button { showDrawer = true } label: { Label("Version wählen", systemImage: "square.stack") }
+                Button { if let v = version { player.playNext(v) } } label: { Label("Play Next", systemImage: "text.line.first.and.arrowtriangle.forward") }
+                Button { if let v = version { player.playLater(v) } } label: { Label("Add to End", systemImage: "text.line.last.and.arrowtriangle.forward") }
+                Button { showDrawer = true } label: { Label("Choose Version", systemImage: "square.stack") }
                 Divider()
                 Button(role: .destructive) { store.removeEntry(entry, from: playlist) } label: { Label("Entfernen", systemImage: "minus.circle") }
             } label: { Image(systemName: "ellipsis").frame(width: 32, height: 44) }
@@ -190,9 +190,9 @@ struct AddToPlaylistSheet: View {
                 Button { store.appendEntry(song: song, version: song.primaryVersion, to: playlist) } label: {
                     HStack { SongRow(song: song, version: nil); Image(systemName: "plus.circle").foregroundStyle(.tint) }
                 }
-            }.listStyle(.plain).searchable(text: $search, prompt: "Song suchen")
-                .navigationTitle("Hinzufügen").navigationBarTitleDisplayMode(.inline)
-                .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Fertig") { dismiss() } } }
+            }.listStyle(.plain).searchable(text: $search, prompt: "Search Songs")
+                .navigationTitle("Add").navigationBarTitleDisplayMode(.inline)
+                .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Done") { dismiss() } } }
         }
     }
 }

@@ -115,8 +115,8 @@ extension EraStore {
               let packs = try? allPacks(), let tags = try? allTags() else { return }
         var existingNames = Set(packs.map { $0.name.lowercased() })
         existingNames.formUnion(UserDefaults.standard.stringArray(forKey: EraStore.dismissedKey) ?? [])
-        // Das dynamische "Favoriten"-Pack existiert immer - kein doppelter Vorschlag
-        let dynamicNames: Set<String> = ["favoriten", "favorite", "meistgespielt", "zuletzt hinzugefügt"]
+        // Das dynamische "Favorites"-Pack existiert immer - kein doppelter Vorschlag
+        let dynamicNames: Set<String> = ["favoriten", "favorite", "meistgespielt", "recently added"]
         for tag in tags {
             let count = songs.filter { $0.tags.contains { $0.id == tag.id } }.count
             guard count >= 2,

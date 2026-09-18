@@ -48,7 +48,7 @@ final class Song {
         return sortedVersions.first
     }
 
-    var displayArtist: String { artist.isEmpty ? String(localized: "Unbekannter Künstler") : artist }
+    var displayArtist: String { artist.isEmpty ? String(localized: "Unknown Artist") : artist }
     var statusTags: [Tag] { tags.filter { $0.isStatus }.sorted { $0.name < $1.name } }
     var personalTags: [Tag] { tags.filter { !$0.isStatus }.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending } }
     var duration: Double { primaryVersion?.duration ?? 0 }
@@ -207,6 +207,6 @@ enum TimeFormatting {
     }
     static func long(_ value: Double) -> String {
         let h = Int(value) / 3600, m = (Int(value) % 3600) / 60
-        return h > 0 ? "\(h) Std. \(m) Min." : "\(m) Min."
+        return h > 0 ? "\(h) hr \(m) min" : "\(m) min"
     }
 }

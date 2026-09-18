@@ -49,7 +49,7 @@ final class ImportManager: ObservableObject {
             let name = source.lastPathComponent
             let ext = source.pathExtension.lowercased()
             guard Self.supportedExtensions.contains(ext) else {
-                errors.append((name, String(localized: "Format nicht unterstützt")))
+                errors.append((name, String(localized: "Unsupported format")))
                 continue
             }
             do {
@@ -80,7 +80,7 @@ final class ImportManager: ObservableObject {
         try data.write(to: tmp, options: .atomic)
         defer { try? FileManager.default.removeItem(at: tmp) }
         guard let hashed = await AudioHasher.hash(url: tmp) else {
-            throw NSError(domain: "EraImport", code: 1, userInfo: [NSLocalizedDescriptionKey: String(localized: "Audiodatei nicht lesbar")])
+            throw NSError(domain: "EraImport", code: 1, userInfo: [NSLocalizedDescriptionKey: String(localized: "Audio file could not be read")])
         }
         if let existing = try store.version(matchingHash: hashed.hash, duration: hashed.duration) {
             _ = existing
@@ -144,7 +144,7 @@ final class ImportManager: ObservableObject {
             let ext = source.pathExtension.lowercased()
             guard Self.supportedExtensions.contains(ext) else {
                 var item = StagedImport(sourceURL: source, name: name, title: name, artist: "", album: "")
-                item.error = String(localized: "Format nicht unterstützt")
+                item.error = String(localized: "Unsupported format")
                 items.append(item)
                 continue
             }
@@ -240,38 +240,38 @@ final class ImportManager: ObservableObject {
             let name = source.lastPathComponent
             let ext = source.pathExtension.lowercased()
             guard Self.supportedExtensions.contains(ext) else {
-                lines.append("\(name): SKIP Format nicht unterstuetzt")
+                lines.append("\(name): SKIP Unsupported format")
                 continue
             }
             do {
                 let data = try Data(contentsOf: source)
-                lines.append("\(name): gelesen \(data.count) bytes")
+                lines.append("\(name): read \(data.count) bytes")
                 let tmp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + "." + ext)
                 try data.write(to: tmp)
                 let hashed = await AudioHasher.hash(url: tmp)
                 lines.append("\(name): hash=\(hashed == nil ? "NIL [\(AudioHasher.lastError)]" : "ok") duration=\(hashed?.duration ?? -1)")
                 try? FileManager.default.removeItem(at: tmp)
                 let outcome = try await storeOne(data: data, ext: ext, name: name, into: store, linkTo: nil, versionName: "OG")
-                lines.append("\(name): \(outcome == .imported ? "IMPORTIERT" : "DUPE")")
+                lines.append("\(name): \(outcome == .imported ? "IMPORTED" : "DUPE")")
             } catch {
-                lines.append("\(name): FEHLER \(error.localizedDescription)")
+                lines.append("\(name): ERROR \(error.localizedDescription)")
             }
         }
         let fileCount = (try? FileManager.default.contentsOfDirectory(atPath: LibraryFiles.root.path))?.count ?? -1
-        lines.append("EraLibrary-Dateien: \(fileCount)")
+        lines.append("EraLibrary files: \(fileCount)")
         return lines.joined(separator: "\n")
     }
 
     private func summary(imported: Int, dupes: Int, errors: [(String, String)]) -> String? {
         var parts: [String] = []
-        if imported > 0 { parts.append(imported == 1 ? "1 Song importiert" : "\(imported) Songs importiert") }
-        if dupes > 0 { parts.append(dupes == 1 ? "1 Datei schon in der Bibliothek" : "\(dupes) Dateien schon in der Bibliothek") }
+        if imported > 0 { parts.append(imported == 1 ? "1 song imported" : "\(imported) songs imported") }
+        if dupes > 0 { parts.append(dupes == 1 ? "1 file already in the library" : "\(dupes) files already in the library") }
         if !errors.isEmpty {
             if errors.count == 1 {
                 parts.append("\(errors[0].0): \(errors[0].1)")
             } else {
                 let reasons = Dictionary(grouping: errors, by: { $0.1 }).map { "\($0.value.count)x \($0.key)" }
-                parts.append("\(errors.count) Dateien nicht importiert (\(reasons.joined(separator: ", ")))")
+                parts.append("\(errors.count) files not imported (\(reasons.joined(separator: ", ")))")
             }
         }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")

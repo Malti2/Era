@@ -31,11 +31,11 @@ struct MetadataEditView: View {
         NavigationStack {
             Form {
                 Section("Song") {
-                    TextField("Titel", text: $title)
-                    TextField("Künstler", text: $artist)
+                    TextField("Title", text: $title)
+                    TextField("Artist", text: $artist)
                     TextField("Album", text: $album)
-                    TextField("Era / Projekt", text: $era)
-                    TextField("Jahr", text: $year).keyboardType(.numberPad)
+                    TextField("Era / Project", text: $era)
+                    TextField("Year", text: $year).keyboardType(.numberPad)
                 }
                 Section("Status") {
                     ForEach(statusTags) { tag in
@@ -62,7 +62,7 @@ struct MetadataEditView: View {
                         }
                     }
                     HStack {
-                        TextField("Neuer Tag", text: $newTag)
+                        TextField("New Tag", text: $newTag)
                         Button {
                             let name = newTag.trimmingCharacters(in: .whitespaces)
                             guard !name.isEmpty else { return }
@@ -77,7 +77,7 @@ struct MetadataEditView: View {
             .navigationTitle("Metadaten")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) { Button("Abbrechen") { dismiss() } }
+                ToolbarItem(placement: .topBarLeading) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Sichern") { save(); dismiss() }.fontWeight(.semibold)
                 }

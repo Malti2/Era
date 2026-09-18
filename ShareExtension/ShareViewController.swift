@@ -33,10 +33,10 @@ final class ShareViewController: UIViewController {
 
     private func handleSharedItems() {
         activity.startAnimating()
-        label.text = "Speichere in Era …"
+        label.text = "Saving to Era…"
         guard let items = extensionContext?.inputItems as? [NSExtensionItem] else { finish(); return }
         guard let group = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: groupID) else {
-            label.text = "Era öffnen und dort importieren.\n(Share Extension braucht eine signierte Installation mit App Groups.)"
+            label.text = "Open Era to import it.\n(The share extension requires a signed installation with App Groups.)"
             activity.stopAnimating()
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { self.cancel() }
             return
@@ -57,7 +57,7 @@ final class ShareViewController: UIViewController {
                     remaining -= 1
                     if remaining == 0 {
                         self.activity.stopAnimating()
-                        self.label.text = "In Era abgelegt"
+                        self.label.text = "Saved to Era"
                         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { self.finish() }
                     }
                 }

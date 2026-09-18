@@ -2,7 +2,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 // UIKit-Document-Picker statt SwiftUI .fileImporter:
-// .fileImporter schliesst auf echten iPhones den Picker nach "Öffnen" nicht und
+// .fileImporter schliesst auf echten iPhones den Picker nach "Open" nicht und
 // ruft den Completion-Handler nie auf (bekannter iOS-Bug, im Simulator unsichtbar).
 // UIDocumentPickerViewController funktioniert auf Geraeten nachweislich zuverlaessig.
 //

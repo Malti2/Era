@@ -41,7 +41,7 @@ struct OnboardingView: View {
                     finish()
                 }
             } label: {
-                Text(page < 2 ? "Weiter" : "Los geht's")
+                Text(page < 2 ? "Continue" : "Get Started")
                     .font(.headline)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
@@ -63,9 +63,9 @@ struct OnboardingView: View {
                 .frame(width: 110, height: 110)
                 .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
                 .shadow(radius: 12, y: 6)
-            Text("Willkommen bei Era")
+            Text("Welcome to Era")
                 .font(.largeTitle.bold())
-            Text("Deine eigene Musiksammlung - mit Versionen, Packs und allem, was dazugehört.")
+            Text("Your own music collection, with versions, packs, and everything that belongs together.")
                 .font(.body)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -82,12 +82,12 @@ struct OnboardingView: View {
                 .font(.system(size: 64))
                 .foregroundStyle(.tint)
                 .symbolRenderingMode(.hierarchical)
-            Text("Deine Musik bleibt bei dir")
+            Text("Your Music Stays With You")
                 .font(.title.bold())
             VStack(alignment: .leading, spacing: 16) {
-                privacyRow("iphone", "Lokal gespeichert", "Songs und Daten liegen nur auf diesem iPhone.")
-                privacyRow("hand.raised.fill", "Kein Tracking", "Era sammelt keine Nutzungsdaten und analysiert nichts.")
-                privacyRow("wifi.slash", "Komplett offline", "Kein Account, keine Cloud, kein Server.")
+                privacyRow("iphone", "Stored Locally", "Songs and data stay only on this iPhone.")
+                privacyRow("hand.raised.fill", "No Tracking", "Era does not collect usage data or analytics.")
+                privacyRow("wifi.slash", "Completely Offline", "No account, no cloud, no server.")
             }
             .padding(.horizontal, 32)
             Spacer()
@@ -110,41 +110,41 @@ struct OnboardingView: View {
 
     private var settingsPage: some View {
         VStack(spacing: 12) {
-            Text("Deine Einstellungen")
+            Text("Your Settings")
                 .font(.title.bold())
                 .padding(.top, 24)
-            Text("Alles lässt sich später in den Einstellungen ändern.")
+            Text("You can change everything later in Settings.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
             Form {
-                Section("Wiedergabe") {
+                Section("Playback") {
                     Picker(selection: $defaultRate) {
                         ForEach(AppSettings.rates, id: \.self) { r in
                             Text(r.formatted() + "×").tag(r)
                         }
                     } label: {
-                        Label("Standard-Tempo", systemImage: "metronome")
+                        Label("Default Speed", systemImage: "metronome")
                     }
                     Picker(selection: $skipInterval) {
                         ForEach(AppSettings.skipIntervals, id: \.self) { v in
-                            Text("\(v) s").tag(v)
+                            Text("\(v) sec").tag(v)
                         }
                     } label: {
-                        Label("Sprungweite", systemImage: "goforward.15")
+                        Label("Skip Distance", systemImage: "goforward.15")
                     }
                 }
                 Section {
                     Toggle(isOn: $pauseOnRouteChange) {
-                        Label("Bei Kopfhörerabzug pausieren", systemImage: "headphones")
+                        Label("Pause when headphones disconnect", systemImage: "headphones")
                     }
                     Toggle(isOn: $resumeAfterInterruption) {
-                        Label("Nach Anruf fortsetzen", systemImage: "phone.fill")
+                        Label("Resume after calls", systemImage: "phone.fill")
                     }
                     Toggle(isOn: $haptics) {
-                        Label("Haptisches Feedback", systemImage: "iphone.radiowaves.left.and.right")
+                        Label("Haptic Feedback", systemImage: "iphone.radiowaves.left.and.right")
                     }
                     Toggle(isOn: $spotlightEnabled) {
-                        Label("In Spotlight-Suche zeigen", systemImage: "magnifyingglass")
+                        Label("Show in Spotlight Search", systemImage: "magnifyingglass")
                     }
                 }
             }

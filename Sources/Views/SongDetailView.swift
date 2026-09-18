@@ -34,17 +34,17 @@ struct SongDetailView: View {
             Section {
                 Button {
                     if let v = song.primaryVersion { player.play(v, from: song.sortedVersions) }
-                } label: { Label("Abspielen", systemImage: "play.fill") }
+                } label: { Label("Play", systemImage: "play.fill") }
                 Button {
                     song.isFavorite.toggle(); store.save()
                 } label: {
-                    Label(song.isFavorite ? "Favorit entfernen" : "Zu Favoriten", systemImage: song.isFavorite ? "heart.slash" : "heart.fill")
+                    Label(song.isFavorite ? "Remove Favorite" : "Add to Favorites", systemImage: song.isFavorite ? "heart.slash" : "heart.fill")
                 }
-                Button { showMetadataEditor = true } label: { Label("Metadaten bearbeiten", systemImage: "pencil") }
-                Button { showVersionDrawer = true } label: { Label("Version hinzufügen", systemImage: "plus.rectangle.on.rectangle") }
+                Button { showMetadataEditor = true } label: { Label("Edit Metadata", systemImage: "pencil") }
+                Button { showVersionDrawer = true } label: { Label("Add Version", systemImage: "plus.rectangle.on.rectangle") }
             }
 
-            Section("Versionen (\(song.versions.count))") {
+            Section("Versions (\(song.versions.count))") {
                 ForEach(song.sortedVersions) { version in
                     VersionRow(song: song, version: version, isCurrent: player.current?.id == version.id)
                         .contentShape(Rectangle())
@@ -73,7 +73,7 @@ struct SongDetailView: View {
         let url = LibraryFiles.url(for: version)
         if FileManager.default.fileExists(atPath: url.path) {
             Button { shareItem = ShareItem(url: url) } label: {
-                Label("Version teilen", systemImage: "square.and.arrow.up")
+                Label("Share Version", systemImage: "square.and.arrow.up")
             }
         }
     }
@@ -83,7 +83,7 @@ struct SongDetailView: View {
         Button {
             song.primaryVersionID = version.id
             store.save()
-        } label: { Label("Als primäre Version", systemImage: "star") }
+        } label: { Label("Make Primary Version", systemImage: "star") }
         shareButton(version)
         Button {
             versionToRename = version
@@ -91,11 +91,11 @@ struct SongDetailView: View {
         if song.versions.count > 1 {
             Button {
                 separate(version)
-            } label: { Label("Vom Song trennen", systemImage: "scissors") }
+            } label: { Label("Detach from Song", systemImage: "scissors") }
             Divider()
             Button(role: .destructive) {
                 deleteVersion(version)
-            } label: { Label("Version löschen", systemImage: "trash") }
+            } label: { Label("Delete Version", systemImage: "trash") }
         }
     }
 
@@ -136,7 +136,7 @@ struct VersionRow: View {
                 HStack(spacing: 6) {
                     Text(version.name).font(.body.weight(.medium))
                     if song.primaryVersion?.id == version.id {
-                        Text("Primär")
+                        Text("Primary")
                             .font(.caption2.weight(.semibold))
                             .padding(.horizontal, 6).padding(.vertical, 2)
                             .background(Color.accentColor.opacity(0.15), in: .capsule)
@@ -182,7 +182,7 @@ struct FlowTags: View {
 }
 
 // Kontextmenue am Song (Drei-Punkte-Logik, Spec 4): Version aufklappbar,
-// oben "+ Hinzufuegen", darunter alle Versionen des Songs.
+// oben "+ Add", darunter alle Versionen des Songs.
 struct SongContextMenu: View {
     let song: Song
     @Binding var showNowPlaying: Bool
@@ -195,15 +195,15 @@ struct SongContextMenu: View {
         Group {
             Button {
                 if let v = song.primaryVersion { player.play(v, from: song.sortedVersions) }
-            } label: { Label("Abspielen", systemImage: "play.fill") }
+            } label: { Label("Play", systemImage: "play.fill") }
             Button {
                 if let v = song.primaryVersion { player.playNext(v) }
-            } label: { Label("Als Nächstes abspielen", systemImage: "text.line.first.and.arrowtriangle.forward") }
+            } label: { Label("Play Next", systemImage: "text.line.first.and.arrowtriangle.forward") }
             Button {
                 if let v = song.primaryVersion { player.playLater(v) }
-            } label: { Label("Zum Schluss hinzufügen", systemImage: "text.line.last.and.arrowtriangle.forward") }
+            } label: { Label("Add to End", systemImage: "text.line.last.and.arrowtriangle.forward") }
             Menu {
-                Button { showDrawer = true } label: { Label("Hinzufügen", systemImage: "plus") }
+                Button { showDrawer = true } label: { Label("Add", systemImage: "plus") }
                 Divider()
                 ForEach(song.sortedVersions) { version in
                     Button {
@@ -215,13 +215,13 @@ struct SongContextMenu: View {
             } label: { Label("Version", systemImage: "square.stack") }
             Divider()
             Button { song.isFavorite.toggle(); store.save() } label: {
-                Label(song.isFavorite ? "Favorit entfernen" : "Favorit", systemImage: song.isFavorite ? "heart.slash" : "heart")
+                Label(song.isFavorite ? "Remove Favorite" : "Favorite", systemImage: song.isFavorite ? "heart.slash" : "heart")
             }
             if let v = song.primaryVersion {
                 let url = LibraryFiles.url(for: v)
                 if FileManager.default.fileExists(atPath: url.path) {
                     Button { shareItem = ShareItem(url: url) } label: {
-                        Label("Teilen", systemImage: "square.and.arrow.up")
+                        Label("Share", systemImage: "square.and.arrow.up")
                     }
                 }
             }

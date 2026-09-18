@@ -47,36 +47,36 @@ struct SettingsView: View {
                     }
                     .padding(.vertical, 4)
                 }
-                Section("Wiedergabe") {
+                Section("Playback") {
                     Picker(selection: $defaultRate) {
                         ForEach(AppSettings.rates, id: \.self) { r in
                             Text(r.formatted() + "×").tag(r)
                         }
                     } label: {
-                        Label("Standard-Tempo", systemImage: "metronome")
+                        Label("Default Speed", systemImage: "metronome")
                     }
                     Picker(selection: $skipInterval) {
                         ForEach(AppSettings.skipIntervals, id: \.self) { v in
-                            Text("\(v) s").tag(v)
+                            Text("\(v) sec").tag(v)
                         }
                     } label: {
-                        Label("Sprungweite", systemImage: "goforward.15")
+                        Label("Skip Distance", systemImage: "goforward.15")
                     }
                     Toggle(isOn: $pauseOnRouteChange) {
-                        Label("Bei Kopfhörerabzug pausieren", systemImage: "headphones")
+                        Label("Pause when headphones disconnect", systemImage: "headphones")
                     }
                     Toggle(isOn: $resumeAfterInterruption) {
-                        Label("Nach Anruf fortsetzen", systemImage: "phone.fill")
+                        Label("Resume after calls", systemImage: "phone.fill")
                     }
                     Toggle(isOn: $haptics) {
-                        Label("Haptisches Feedback", systemImage: "iphone.radiowaves.left.and.right")
+                        Label("Haptic Feedback", systemImage: "iphone.radiowaves.left.and.right")
                     }
                 }
-                Section("Bibliothek") {
-                    LabeledContent("Speicherort", value: "Lokal auf diesem iPhone")
+                Section("Library") {
+                    LabeledContent("Storage Location", value: "Stored Locally on This iPhone")
                     LabeledContent("Songs", value: "\(songs.count)")
-                    LabeledContent("Versionen", value: "\(versions.count)")
-                    LabeledContent("Speicherbedarf", value: LibraryFiles.librarySizeText())
+                    LabeledContent("Versions", value: "\(versions.count)")
+                    LabeledContent("Storage Used", value: LibraryFiles.librarySizeText())
                 }
                 Section("Backup") {
                     Button {
@@ -86,12 +86,12 @@ struct SettingsView: View {
                             backupError = true
                         }
                     } label: {
-                        Label("Bibliothek exportieren (JSON)", systemImage: "square.and.arrow.up.on.square")
+                        Label("Export Library (JSON)", systemImage: "square.and.arrow.up.on.square")
                     }
                 }
-                Section("Suche & Siri") {
+                Section("Search & Siri") {
                     Toggle(isOn: $spotlightEnabled) {
-                        Label("In Spotlight-Suche zeigen", systemImage: "magnifyingglass")
+                        Label("Show in Spotlight Search", systemImage: "magnifyingglass")
                     }
                     .onChange(of: spotlightEnabled) { _, on in
                         if on {
@@ -104,46 +104,46 @@ struct SettingsView: View {
                         SpotlightIndexer.reindex(songs: songs)
                         spotlightRebuilt = true
                     } label: {
-                        Label("Spotlight-Index neu aufbauen", systemImage: spotlightRebuilt ? "checkmark.circle.fill" : "arrow.clockwise")
+                        Label("Rebuild Spotlight Index", systemImage: spotlightRebuilt ? "checkmark.circle.fill" : "arrow.clockwise")
                     }
                     .disabled(!spotlightEnabled)
-                    Label("Siri: „Mit Era abspielen“, „pausieren“, „weiter“", systemImage: "mic.fill")
+                    Label("Siri: “Play with Era”, “pause”, “next”", systemImage: "mic.fill")
                 }
                 updateSection
-                Section("Zurücksetzen") {
+                Section("Reset") {
                     Button(role: .destructive) { confirmReset = true } label: {
-                        Label("Alle Daten löschen", systemImage: "trash")
+                        Label("Delete All Data", systemImage: "trash")
                     }
                 }
-                Section("Über Era") {
+                Section("About Era") {
                     Button {
                         showOnboarding = true
                     } label: {
-                        Label("Einführung erneut ansehen", systemImage: "sparkles")
+                        Label("Show Introduction Again", systemImage: "sparkles")
                     }
-                    LabeledContent("Datenschutz", value: "Alles lokal, kein Tracking")
+                    LabeledContent("Privacy", value: "Everything local, no tracking")
                 }
             }
-            .navigationTitle("Einstellungen")
+            .navigationTitle("Settings")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Fertig") { dismiss() }
+                    Button("Done") { dismiss() }
                 }
             }
             .sheet(item: $backupItem) { item in ShareSheet(items: [item.url]) }
             .sheet(item: $updateShareItem) { item in ShareSheet(items: [item.url]) }
             .sheet(isPresented: $showOnboarding) { OnboardingView() }
-            .alert("Backup fehlgeschlagen", isPresented: $backupError) {
+            .alert("Backup Failed", isPresented: $backupError) {
                 Button("OK", role: .cancel) {}
             }
-            .confirmationDialog("Era vollständig zurücksetzen?", isPresented: $confirmReset, titleVisibility: .visible) {
-                Button("Alle Songs und Daten löschen", role: .destructive) {
+            .confirmationDialog("Reset Era Completely?", isPresented: $confirmReset, titleVisibility: .visible) {
+                Button("Delete All Songs and Data", role: .destructive) {
                     store.resetEverything()
                     showOnboarding = true
                 }
-                Button("Abbrechen", role: .cancel) {}
+                Button("Cancel", role: .cancel) {}
             } message: {
-                Text("Songs, Versionen, Playlists, Tags, Packs, Einstellungen und lokale Audiodateien werden dauerhaft gelöscht.")
+                Text("Songs, versions, playlists, tags, packs, settings, and local audio files will be permanently deleted.")
             }
         }
     }

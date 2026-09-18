@@ -31,10 +31,10 @@ struct ContentView: View {
             Tab(String(localized: "Packs"), systemImage: "square.stack.fill", value: .packs) {
                 PacksView(showNowPlaying: $showNowPlaying)
             }
-            Tab(String(localized: "Mediathek"), systemImage: "music.note.house.fill", value: .library) {
+            Tab(String(localized: "Library"), systemImage: "music.note.house.fill", value: .library) {
                 LibraryView(showNowPlaying: $showNowPlaying)
             }
-            Tab(String(localized: "Suche"), systemImage: "magnifyingglass", value: .search, role: .search) {
+            Tab(String(localized: "Search"), systemImage: "magnifyingglass", value: .search, role: .search) {
                 SearchView(showNowPlaying: $showNowPlaying)
             }
         }

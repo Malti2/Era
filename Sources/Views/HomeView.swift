@@ -20,9 +20,9 @@ struct HomeView: View {
             Group {
                 if songs.isEmpty {
                     ContentUnavailableView {
-                        Label("Noch keine Musik", systemImage: "music.note")
+                        Label("No Music Yet", systemImage: "music.note")
                     } description: {
-                        Text("Importiere Songs aus der Dateien-App und baue deine Bibliothek auf.")
+                        Text("Import songs from the Files app to build your library.")
                     }
                 } else {
                     ScrollView {
@@ -30,10 +30,10 @@ struct HomeView: View {
                             if let resume = lastPlayed.first {
                                 resumeCard(resume)
                             }
-                            if !lastPlayed.isEmpty { shelf(String(localized: "Zuletzt gehört"), songs: lastPlayed) }
-                            if !favorites.isEmpty { shelf(String(localized: "Favoriten"), songs: favorites) }
-                            if mostPlayed.count > 1 { shelf(String(localized: "Meist gespielt"), songs: mostPlayed) }
-                            shelf(String(localized: "Zuletzt importiert"), songs: Array(songs.prefix(10)))
+                            if !lastPlayed.isEmpty { shelf(String(localized: "Recently Played"), songs: lastPlayed) }
+                            if !favorites.isEmpty { shelf(String(localized: "Favorites"), songs: favorites) }
+                            if mostPlayed.count > 1 { shelf(String(localized: "Most Played"), songs: mostPlayed) }
+                            shelf(String(localized: "Recently Imported"), songs: Array(songs.prefix(10)))
                             if !suggestions.isEmpty { suggestionsRow }
                         }
                         .padding(.vertical)
@@ -97,7 +97,7 @@ struct HomeView: View {
 
     private var suggestionsRow: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Pack-Vorschläge").font(.title2.bold()).padding(.horizontal)
+            Text("Pack Suggestions").font(.title2.bold()).padding(.horizontal)
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 12) {
                     ForEach(suggestions) { pack in
