@@ -5,7 +5,7 @@ import SwiftUI
 struct EraWidgetsBundle: WidgetBundle {
     var body: some Widget {
         EraRecentWidget()
-        #if canImport(ActivityKit)
+        #if canImport(ActivityKit) && !targetEnvironment(macCatalyst)
         EraLiveActivity()
         #endif
     }

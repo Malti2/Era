@@ -1,6 +1,6 @@
 import WidgetKit
 import SwiftUI
-#if canImport(ActivityKit)
+#if canImport(ActivityKit) && !targetEnvironment(macCatalyst)
 import ActivityKit
 
 // Now Playing Live Activity: spinning vinyl on the Lock Screen and in the

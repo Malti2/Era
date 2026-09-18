@@ -1,7 +1,7 @@
 import Foundation
 import AVFoundation
 import MediaPlayer
-#if canImport(ActivityKit)
+#if canImport(ActivityKit) && !targetEnvironment(macCatalyst)
 import ActivityKit
 #endif
 #if canImport(WidgetKit)
@@ -37,7 +37,7 @@ final class PlayerEngine: NSObject, ObservableObject, AVAudioPlayerDelegate {
     private var interruptionObserver: NSObjectProtocol?
     private var routeObserver: NSObjectProtocol?
     private var activeObserver: NSObjectProtocol?
-    #if canImport(ActivityKit)
+    #if canImport(ActivityKit) && !targetEnvironment(macCatalyst)
     private var nowPlayingActivity: Activity<EraActivityAttributes>?
     #endif
 
@@ -534,7 +534,7 @@ final class PlayerEngine: NSObject, ObservableObject, AVAudioPlayerDelegate {
     private var activityLastSync: (id: UUID, playing: Bool, position: Double)?
 
     private func syncLiveActivity() {
-        #if canImport(ActivityKit)
+        #if canImport(ActivityKit) && !targetEnvironment(macCatalyst)
         guard let version = current else {
             activityLastSync = nil
             let activity = nowPlayingActivity
