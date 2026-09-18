@@ -1,9 +1,6 @@
 import Foundation
 import AVFoundation
 import MediaPlayer
-#if canImport(ActivityKit) && !targetEnvironment(macCatalyst)
-import ActivityKit
-#endif
 #if canImport(WidgetKit)
 import WidgetKit
 #endif
@@ -37,9 +34,6 @@ final class PlayerEngine: NSObject, ObservableObject, AVAudioPlayerDelegate {
     private var interruptionObserver: NSObjectProtocol?
     private var routeObserver: NSObjectProtocol?
     private var activeObserver: NSObjectProtocol?
-    #if canImport(ActivityKit) && !targetEnvironment(macCatalyst)
-    private var nowPlayingActivity: Activity<EraActivityAttributes>?
-    #endif
 
     override init() {
         super.init()
@@ -64,6 +58,7 @@ final class PlayerEngine: NSObject, ObservableObject, AVAudioPlayerDelegate {
 
     private func handleDidBecomeActive() {
         configureAudioSession()
+        consumeWidgetCommand()
         // Defensive: if the system paused us while backgrounded, resume cleanly.
         if isPlaying, let a = audio, !a.isPlaying {
             a.play()
@@ -400,6 +395,7 @@ final class PlayerEngine: NSObject, ObservableObject, AVAudioPlayerDelegate {
                     self.currentTime = min(self.currentTime + 0.25, self.duration)
                 }
                 self.syncCrackle()
+                self.consumeWidgetCommand()
                 self.updateNowPlaying()
             }
         }
@@ -505,7 +501,7 @@ final class PlayerEngine: NSObject, ObservableObject, AVAudioPlayerDelegate {
             MPNowPlayingInfoPropertyElapsedPlaybackTime: currentTime,
             MPNowPlayingInfoPropertyPlaybackRate: isPlaying ? rate : 0
         ]
-        syncLiveActivity()
+        publishSharedNowPlaying()
         guard let song = version.song else {
             MPNowPlayingInfoCenter.default().nowPlayingInfo = base
             return
@@ -529,52 +525,75 @@ final class PlayerEngine: NSObject, ObservableObject, AVAudioPlayerDelegate {
         }
     }
 
-    // MARK: - Live Activity
+    // MARK: - Home Screen widget now playing (App Group)
 
-    private var activityLastSync: (id: UUID, playing: Bool, position: Double)?
+    private var sharedLastSync: (id: UUID, playing: Bool, bucket: Double)?
 
-    private func syncLiveActivity() {
-        #if canImport(ActivityKit) && !targetEnvironment(macCatalyst)
+    // Throttled: publishes on track/play-state change and every ~5s of
+    // progress, not on every ticker step.
+    private func publishSharedNowPlaying() {
         guard let version = current else {
-            activityLastSync = nil
-            let activity = nowPlayingActivity
-            nowPlayingActivity = nil
-            if let activity {
-                Task { await activity.end(nil, dismissalPolicy: .immediate) }
+            if sharedLastSync != nil {
+                sharedLastSync = nil
+                EraShared.clearNowPlaying()
+                reloadWidgets()
             }
             return
         }
-        // Throttle: full updates on track/play-state change and on seeks,
-        // not every ticker step. Progress animates on-device via timerInterval.
-        let positionBucket = (currentTime / 2).rounded() * 2
-        let snapshot = (id: version.id, playing: isPlaying, position: positionBucket)
-        if let last = activityLastSync, last.id == snapshot.id,
-           last.playing == snapshot.playing, last.position == snapshot.position { return }
-        activityLastSync = snapshot
+        let bucket = (currentTime / 5).rounded() * 5
+        let snapshot = (id: version.id, playing: isPlaying, bucket: bucket)
+        if let last = sharedLastSync, last.id == snapshot.id,
+           last.playing == snapshot.playing, last.bucket == snapshot.bucket { return }
+        sharedLastSync = snapshot
         let songID = version.song?.id ?? version.id
-        let state = EraActivityAttributes.ContentState(
-            songID: songID,
+        let artName = "\(songID.uuidString).png"
+        let artExists = EraShared.artworkURL(artName).map { FileManager.default.fileExists(atPath: $0.path) } ?? false
+        if !artExists {
+            var data: Data?
+            if let file = version.artworkFile {
+                data = try? Data(contentsOf: LibraryFiles.artworkURL(file))
+            }
+            if data == nil {
+                data = DiscArtworkCache.png(for: songID, status: version.song?.statusTags.first?.name, size: 300).pngData()
+            }
+            if let data { EraShared.copyArtwork(data: data, name: artName) }
+        }
+        EraShared.writeNowPlaying(EraShared.NowPlaying(
+            trackID: songID,
             title: version.displayTitle,
             artist: version.displayArtist,
-            duration: duration,
+            artwork: artName,
+            isPlaying: isPlaying,
             position: currentTime,
-            referenceDate: Date(),
-            rate: rate,
-            isPlaying: isPlaying
-        )
-        Task {
-            if let activity = nowPlayingActivity {
-                await activity.update(ActivityContent(state: state, staleDate: nil))
-            } else {
-                guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
-                nowPlayingActivity = try? Activity.request(
-                    attributes: EraActivityAttributes(name: "Era"),
-                    content: ActivityContent(state: state, staleDate: nil),
-                    pushType: nil
-                )
-            }
-        }
+            duration: duration,
+            updatedAt: Date()))
+        reloadWidgets()
+    }
+
+    private func reloadWidgets() {
+        #if canImport(WidgetKit)
+        WidgetCenter.shared.reloadAllTimelines()
         #endif
+    }
+
+    // One-shot commands from the interactive widget buttons. Consumed here
+    // while the app is alive (the ticker always runs during playback) and on
+    // every foregrounding.
+    private func consumeWidgetCommand() {
+        guard let pending = EraShared.readCommand() else { return }
+        EraShared.clearCommand()
+        guard Date().timeIntervalSince(pending.at) < 120 else { return }
+        switch pending.command {
+        case .toggle:
+            if current != nil {
+                if !isPlaying { configureAudioSession() }
+                toggle()
+            } else {
+                resumeOrPlay()
+            }
+        case .next:
+            if current != nil { next() }
+        }
     }
 
     // MARK: - Home Screen widget data (App Group)

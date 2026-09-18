@@ -35,13 +35,13 @@ jobs:
           /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' build/Payload/Era.app/Info.plist
           /usr/libexec/PlistBuddy -c 'Print :MinimumOSVersion' build/Payload/Era.app/Info.plist
           ls build/Payload/Era.app/PlugIns/ 2>/dev/null || true
-          echo "--- background audio + live activity + widget checks ---"
+          echo "--- background audio + widget checks ---"
           /usr/libexec/PlistBuddy -c 'Print :UIBackgroundModes:0' build/Payload/Era.app/Info.plist | grep -x audio
-          /usr/libexec/PlistBuddy -c 'Print :NSSupportsLiveActivities' build/Payload/Era.app/Info.plist | grep -x true
+          if /usr/libexec/PlistBuddy -c 'Print :NSSupportsLiveActivities' build/Payload/Era.app/Info.plist 2>/dev/null; then echo "NSSupportsLiveActivities must be gone"; exit 1; fi
           test -d build/Payload/Era.app/PlugIns/EraWidgetsExtension.appex
           ls build/Payload/Era.app/vinyl-crackle.wav
       - name: Build simulator
-        run: xcodebuild -project Era.xcodeproj -scheme Era -configuration Debug -sdk iphonesimulator -derivedDataPath build/sim CODE_SIGNING_ALLOWED=NO CURRENT_PROJECT_VERSION=$GITHUB_RUN_NUMBER build
+        run: xcodebuild -project Era.xcodeproj -scheme Era -configuration Debug -sdk iphonesimulator -derivedDataPath build/sim CODE_SIGN_IDENTITY=- CURRENT_PROJECT_VERSION=$GITHUB_RUN_NUMBER build
       - name: Build Mac Catalyst app
         run: |
           xcodebuild -project Era.xcodeproj -scheme Era -configuration Release -destination 'platform=macOS,variant=Mac Catalyst' -derivedDataPath build/catalyst CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CURRENT_PROJECT_VERSION=$GITHUB_RUN_NUMBER build
@@ -116,6 +116,24 @@ jobs:
           xcrun simctl launch "$UDID" de.malte.era --era-demo --era-player
           sleep 5
           xcrun simctl io "$UDID" screenshot screenshots/07-player.png
+          xcrun simctl terminate "$UDID" de.malte.era || true
+      - name: Verify widget App Group data
+        run: |
+          set -e
+          UDID="${{ steps.sim.outputs.udid }}"
+          xcrun simctl launch "$UDID" de.malte.era --era-demo --era-player
+          sleep 6
+          GROUP=$(xcrun simctl get_app_container "$UDID" group.de.malte.era data)
+          echo "App Group container: $GROUP"
+          ls -la "$GROUP"
+          test -s "$GROUP/recent.json"
+          test -s "$GROUP/nowplaying.json"
+          python3 - "$GROUP/nowplaying.json" <<'PY'
+          import json, sys
+          d = json.load(open(sys.argv[1]))
+          assert d["isPlaying"] is True and d["title"] and d["artist"], d
+          print("widget now-playing OK:", d["title"], "-", d["artist"])
+          PY
           xcrun simctl terminate "$UDID" de.malte.era || true
       - name: Import pipeline test with real audio files
         run: |
