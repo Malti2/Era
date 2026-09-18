@@ -48,7 +48,7 @@ targets:
         INFOPLIST_FILE: ShareExtension/Info.plist
         CODE_SIGNING_ALLOWED: NO
   EraWidgetsExtension:
-    type: widget-extension
+    type: app-extension
     platform: iOS
     deploymentTarget: "18.0"
     sources: [EraWidgets, Shared, Sources/Resources]
