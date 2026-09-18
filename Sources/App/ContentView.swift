@@ -11,6 +11,7 @@ struct ContentView: View {
     @State private var selection: AppScreen = .home
     @State private var showNowPlaying = false
     @State private var showOnboarding = false
+    @State private var showStats = false
     @AppStorage(AppSettings.hasOnboardedKey) private var hasOnboarded = false
     @Environment(\.modelContext) private var modelContext
 
@@ -41,6 +42,24 @@ struct ContentView: View {
         .eraTabMinimize()
         .modifier(MiniPlayerAccessory(isVisible: player.current != nil && !showNowPlaying, open: { showNowPlaying = true }))
         .sheet(isPresented: $showNowPlaying) { NowPlayingView() }
+        .sheet(isPresented: $showStats) { NavigationStack { StatsView() } }
+        .onOpenURL { url in
+            guard url.scheme == "era" else { return }
+            switch url.host {
+            case "resume":
+                player.resumeOrPlay()
+            case "stats":
+                showStats = true
+            case "song":
+                let idString = url.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+                if let uuid = UUID(uuidString: idString), let song = findSong(uuid), let v = song.primaryVersion {
+                    player.play(v, from: song.sortedVersions)
+                    showNowPlaying = true
+                }
+            default:
+                break
+            }
+        }
         .sheet(isPresented: $showOnboarding) { OnboardingView() }
         .onContinueUserActivity(CSSearchableItemActionType) { activity in
             guard let idString = activity.userInfo?[CSSearchableItemActivityIdentifier] as? String,

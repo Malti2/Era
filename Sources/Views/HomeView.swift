@@ -7,6 +7,7 @@ struct HomeView: View {
     @EnvironmentObject private var store: EraStore
     @Query(sort: \Song.dateAdded, order: .reverse) private var songs: [Song]
     @Query private var packs: [Pack]
+    @State private var showStats = ProcessInfo.processInfo.arguments.contains("--era-stats")
 
     private var lastPlayed: [Song] {
         songs.filter { $0.lastPlayedAt != nil }.sorted { ($0.lastPlayedAt ?? .distantPast) > ($1.lastPlayedAt ?? .distantPast) }
@@ -41,6 +42,14 @@ struct HomeView: View {
                 }
             }
             .navigationTitle("Era")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { showStats = true } label: {
+                        Label("Listening Stats", systemImage: "chart.bar.fill")
+                    }
+                }
+            }
+            .sheet(isPresented: $showStats) { NavigationStack { StatsView() } }
         }
     }
 

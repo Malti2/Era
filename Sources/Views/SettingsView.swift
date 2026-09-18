@@ -14,6 +14,10 @@ struct SettingsView: View {
     @AppStorage(AppSettings.resumeAfterInterruptionKey) private var resumeAfterInterruption = true
     @AppStorage(AppSettings.hapticsEnabledKey) private var haptics = true
     @AppStorage(AppSettings.spotlightEnabledKey) private var spotlightEnabled = true
+    @AppStorage(AppSettings.crackleEnabledKey) private var crackleEnabled = false
+    @AppStorage(AppSettings.crackleVolumeKey) private var crackleVolume = 0.18
+    @AppStorage(AppSettings.transitionStyleKey) private var transitionStyle = "off"
+    @AppStorage(AppSettings.crossfadeSecondsKey) private var crossfadeSeconds = 6
 
     @State private var spotlightRebuilt = false
     @State private var backupItem: ShareItem?
@@ -68,8 +72,40 @@ struct SettingsView: View {
                     Toggle(isOn: $resumeAfterInterruption) {
                         Label("Resume after calls", systemImage: "phone.fill")
                     }
+                    Picker(selection: $transitionStyle) {
+                        ForEach(AppSettings.TransitionStyle.allCases) { style in
+                            Text(style.title).tag(style.rawValue)
+                        }
+                    } label: {
+                        Label("Transitions", systemImage: "arrow.triangle.swap")
+                    }
+                    if transitionStyle == "crossfade" {
+                        Picker(selection: $crossfadeSeconds) {
+                            ForEach(AppSettings.crossfadeOptions, id: \.self) { v in
+                                Text("\(v) sec").tag(v)
+                            }
+                        } label: {
+                            Label("Crossfade Duration", systemImage: "timer")
+                        }
+                    }
+                    Toggle(isOn: $crackleEnabled) {
+                        Label("Vinyl Crackle", systemImage: "opticaldisc")
+                    }
+                    if crackleEnabled {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Label("Crackle Volume", systemImage: "speaker.wave.2")
+                            Slider(value: $crackleVolume, in: 0.02...0.5)
+                        }
+                    }
                     Toggle(isOn: $haptics) {
                         Label("Haptic Feedback", systemImage: "iphone.radiowaves.left.and.right")
+                    }
+                }
+                Section("Stats") {
+                    NavigationLink {
+                        StatsView(showsDoneButton: false)
+                    } label: {
+                        Label("Listening Stats", systemImage: "chart.bar.fill")
                     }
                 }
                 Section("Library") {

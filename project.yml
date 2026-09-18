@@ -13,26 +13,24 @@ targets:
     type: application
     platform: iOS
     deploymentTarget: "18.0"
-    sources: [Sources]
+    sources: [Sources, Shared]
     dependencies:
       - target: EraShareExtension
+        embed: true
+      - target: EraWidgetsExtension
         embed: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: de.malte.era
         PRODUCT_NAME: Era
-        MARKETING_VERSION: "27.4.0"
+        MARKETING_VERSION: "27.5.0"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         TARGETED_DEVICE_FAMILY: "1,2"
         SUPPORTS_MACCATALYST: YES
         DERIVE_MACCATALYST_PRODUCT_BUNDLE_IDENTIFIER: NO
-        GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_CFBundleDisplayName: Era
-        INFOPLIST_KEY_UILaunchScreen_Generation: YES
-        INFOPLIST_KEY_UIFileSharingEnabled: YES
-        INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace: YES
-        INFOPLIST_KEY_UIBackgroundModes: audio
-        INFOPLIST_KEY_NSSupportsLiveActivities: NO
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: Sources/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Sources/Era.entitlements
         CODE_SIGNING_ALLOWED: NO
   EraShareExtension:
     type: app-extension
@@ -43,11 +41,27 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: de.malte.era.share
         PRODUCT_NAME: EraShareExtension
-        MARKETING_VERSION: "27.4.0"
+        MARKETING_VERSION: "27.5.0"
         SUPPORTS_MACCATALYST: YES
         DERIVE_MACCATALYST_PRODUCT_BUNDLE_IDENTIFIER: NO
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: ShareExtension/Info.plist
+        CODE_SIGNING_ALLOWED: NO
+  EraWidgetsExtension:
+    type: widget-extension
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources: [EraWidgets, Shared, Sources/Resources]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: de.malte.era.widgets
+        PRODUCT_NAME: EraWidgetsExtension
+        MARKETING_VERSION: "27.5.0"
+        SUPPORTS_MACCATALYST: YES
+        DERIVE_MACCATALYST_PRODUCT_BUNDLE_IDENTIFIER: NO
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: EraWidgets/Info.plist
+        CODE_SIGN_ENTITLEMENTS: EraWidgets/EraWidgetsExtension.entitlements
         CODE_SIGNING_ALLOWED: NO
 schemes:
   Era:
@@ -55,3 +69,4 @@ schemes:
       targets:
         Era: all
         EraShareExtension: all
+        EraWidgetsExtension: all

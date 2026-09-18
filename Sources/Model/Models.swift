@@ -210,3 +210,24 @@ enum TimeFormatting {
         return h > 0 ? "\(h) hr \(m) min" : "\(m) min"
     }
 }
+
+// MARK: - PlayEvent (local listening history for stats)
+
+@Model
+final class PlayEvent {
+    var id: UUID = UUID()
+    var date: Date = Date()
+    var seconds: Double = 0
+    var songID: UUID?
+    var title: String = ""
+    var artist: String = ""
+
+    init(date: Date, seconds: Double, songID: UUID?, title: String, artist: String) {
+        self.id = UUID()
+        self.date = date
+        self.seconds = seconds
+        self.songID = songID
+        self.title = title
+        self.artist = artist
+    }
+}

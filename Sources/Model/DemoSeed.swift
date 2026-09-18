@@ -59,6 +59,18 @@ enum DemoSeed {
         store.appendEntry(song: satellites, version: satellites.sortedVersions.last, to: favs)
         store.appendEntry(song: nightDrive, version: nightDrive.primaryVersion, to: favs)
         store.appendEntry(song: northernLights, version: northernLights.sortedVersions.first(where: { $0.name == "Album Version" }), to: favs)
+        // Listening history so stats/screenshots look real
+        let demoSongs = [openRoad, northernLights, satellites, nightDrive, cityLights, afterglow]
+        for (index, demoSong) in demoSongs.enumerated() {
+            let events = min(demoSong.playCount, 14)
+            for i in 0..<events {
+                let daysAgo = Double((i * 3 + index) % 45)
+                let event = PlayEvent(date: Date().addingTimeInterval(-daysAgo * 86_400 - Double(i) * 3_700),
+                                      seconds: demoSong.primaryVersion?.duration ?? 180,
+                                      songID: demoSong.id, title: demoSong.title, artist: demoSong.displayArtist)
+                store.context.insert(event)
+            }
+        }
         store.save()
         #endif
     }

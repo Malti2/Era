@@ -35,6 +35,11 @@ jobs:
           /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' build/Payload/Era.app/Info.plist
           /usr/libexec/PlistBuddy -c 'Print :MinimumOSVersion' build/Payload/Era.app/Info.plist
           ls build/Payload/Era.app/PlugIns/ 2>/dev/null || true
+          echo "--- background audio + live activity + widget checks ---"
+          /usr/libexec/PlistBuddy -c 'Print :UIBackgroundModes:0' build/Payload/Era.app/Info.plist | grep -x audio
+          /usr/libexec/PlistBuddy -c 'Print :NSSupportsLiveActivities' build/Payload/Era.app/Info.plist | grep -x true
+          test -d build/Payload/Era.app/PlugIns/EraWidgetsExtension.appex
+          ls build/Payload/Era.app/vinyl-crackle.wav
       - name: Build simulator
         run: xcodebuild -project Era.xcodeproj -scheme Era -configuration Debug -sdk iphonesimulator -derivedDataPath build/sim CODE_SIGNING_ALLOWED=NO CURRENT_PROJECT_VERSION=$GITHUB_RUN_NUMBER build
       - name: Build Mac Catalyst app
@@ -103,6 +108,7 @@ jobs:
           shot 09-queue --era-demo --era-player --era-queue
           shot 10-onboarding --era-demo --era-onboarding
           shot 11-onboarding-settings --era-demo --era-onboarding --era-onboarding-settings
+          shot 12-stats --era-demo --era-stats
       - name: Capture player screenshot
         run: |
           UDID="${{ steps.sim.outputs.udid }}"

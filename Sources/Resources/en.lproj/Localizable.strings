@@ -197,3 +197,25 @@
 "Your Settings" = "Your Settings";
 "×" = "×";
 "Continue Listening" = "Continue Listening";
+
+// v27.5.0: stats, transitions, crackle, widget
+"Listening Stats" = "Listening Stats";
+"Stats" = "Stats";
+"This Month" = "This Month";
+"Plays" = "Plays";
+"Time Listened" = "Time Listened";
+"Top Tracks This Month" = "Top Tracks This Month";
+"Top Artists This Month" = "Top Artists This Month";
+"By Month" = "By Month";
+"plays" = "plays";
+"No Plays Yet" = "No Plays Yet";
+"Play music to see your listening stats." = "Play music to see your listening stats.";
+"Transitions" = "Transitions";
+"Off" = "Off";
+"Gapless" = "Gapless";
+"Crossfade" = "Crossfade";
+"Crossfade Duration" = "Crossfade Duration";
+"Vinyl Crackle" = "Vinyl Crackle";
+"Crackle Volume" = "Crackle Volume";
+"Play something in Era" = "Play something in Era";
+"Jump back into your last tracks." = "Jump back into your last tracks.";

@@ -197,3 +197,25 @@
 "Your Settings" = "Deine Einstellungen";
 "×" = "×";
 "Continue Listening" = "Weiterhören";
+
+// v27.5.0: stats, transitions, crackle, widget
+"Listening Stats" = "Hörstatistik";
+"Stats" = "Statistik";
+"This Month" = "Dieser Monat";
+"Plays" = "Wiedergaben";
+"Time Listened" = "Hörzeit";
+"Top Tracks This Month" = "Top-Tracks diesen Monat";
+"Top Artists This Month" = "Top-Künstler diesen Monat";
+"By Month" = "Nach Monat";
+"plays" = "Wiedergaben";
+"No Plays Yet" = "Noch keine Wiedergaben";
+"Play music to see your listening stats." = "Spiele Musik ab, um deine Hörstatistik zu sehen.";
+"Transitions" = "Übergänge";
+"Off" = "Aus";
+"Gapless" = "Lückenlos";
+"Crossfade" = "Überblenden";
+"Crossfade Duration" = "Überblenddauer";
+"Vinyl Crackle" = "Vinyl-Knistern";
+"Crackle Volume" = "Knister-Lautstärke";
+"Play something in Era" = "Spiele etwas in Era ab";
+"Jump back into your last tracks." = "Springe zurück zu deinen letzten Tracks.";

@@ -11,9 +11,26 @@ enum AppSettings {
     static let hapticsEnabledKey = "settings.hapticsEnabled"
     static let spotlightEnabledKey = "settings.spotlightEnabled"
     static let hasOnboardedKey = "settings.hasCompletedOnboarding"
+    static let crackleEnabledKey = "settings.crackleEnabled"
+    static let crackleVolumeKey = "settings.crackleVolume"
+    static let transitionStyleKey = "settings.transitionStyle"
+    static let crossfadeSecondsKey = "settings.crossfadeSeconds"
 
     static let skipIntervals = [5, 10, 15, 30]
     static let rates: [Double] = [0.75, 1.0, 1.25, 1.5, 2.0]
+    static let crossfadeOptions = [2, 4, 6, 8, 12]
+
+    enum TransitionStyle: String, CaseIterable, Identifiable {
+        case off, gapless, crossfade
+        var id: String { rawValue }
+        var title: String {
+            switch self {
+            case .off: String(localized: "Off")
+            case .gapless: String(localized: "Gapless")
+            case .crossfade: String(localized: "Crossfade")
+            }
+        }
+    }
 
     static func bool(_ key: String, default def: Bool = true) -> Bool {
         UserDefaults.standard.object(forKey: key) == nil ? def : UserDefaults.standard.bool(forKey: key)
@@ -27,6 +44,20 @@ enum AppSettings {
     static var defaultRate: Float {
         let v = UserDefaults.standard.double(forKey: defaultRateKey)
         return v > 0 ? Float(v) : 1.0
+    }
+
+    static var crackleVolume: Double {
+        let v = UserDefaults.standard.double(forKey: crackleVolumeKey)
+        return v > 0 ? v : 0.18
+    }
+
+    static var transitionStyle: TransitionStyle {
+        TransitionStyle(rawValue: UserDefaults.standard.string(forKey: transitionStyleKey) ?? "off") ?? .off
+    }
+
+    static var crossfadeSeconds: Double {
+        let v = UserDefaults.standard.integer(forKey: crossfadeSecondsKey)
+        return Double(v > 0 ? v : 6)
     }
 }
 

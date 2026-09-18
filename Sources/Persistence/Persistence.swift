@@ -39,7 +39,7 @@ enum Persistence {
     static let shared: ModelContainer = makeContainer()
 
     static func makeContainer(inMemory: Bool = false) -> ModelContainer {
-        let schema = Schema([Song.self, SongVersion.self, Tag.self, Pack.self, Playlist.self, PlaylistEntry.self])
+        let schema = Schema([Song.self, SongVersion.self, Tag.self, Pack.self, Playlist.self, PlaylistEntry.self, PlayEvent.self])
         let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: inMemory)
         do {
             return try ModelContainer(for: schema, configurations: [config])
@@ -171,7 +171,9 @@ extension EraStore: PlaylistRepository {
         for pack in (try? allPacks()) ?? [] { context.delete(pack) }
         for song in (try? allSongs()) ?? [] { context.delete(song) }
         for tag in (try? allTags()) ?? [] { context.delete(tag) }
+        for event in (try? context.fetch(FetchDescriptor<PlayEvent>())) ?? [] { context.delete(event) }
         save()
+        EraShared.resetShared()
         UserDefaults.standard.removePersistentDomain(forName: Bundle.main.bundleIdentifier ?? "de.malte.era")
         SpotlightIndexer.clearAll()
     }
