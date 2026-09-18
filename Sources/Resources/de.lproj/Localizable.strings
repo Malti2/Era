@@ -219,3 +219,10 @@
 "Crackle Volume" = "Knister-Lautstärke";
 "Play something in Era" = "Spiele etwas in Era ab";
 "Jump back into your last tracks." = "Springe zurück zu deinen letzten Tracks.";
+
+// v27.5.0: update prompt
+"A new version of Era is available." = "Eine neue Version von Era ist verfügbar.";
+"Update" = "Aktualisieren";
+"Later" = "Später";
+"Downloading…" = "Laden…";
+"Downloaded - use the share sheet to open it in your sideloading app." = "Geladen - öffne die Datei über das Share Sheet in deiner Sideloading-App.";

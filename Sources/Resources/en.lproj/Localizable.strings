@@ -219,3 +219,10 @@
 "Crackle Volume" = "Crackle Volume";
 "Play something in Era" = "Play something in Era";
 "Jump back into your last tracks." = "Jump back into your last tracks.";
+
+// v27.5.0: update prompt
+"A new version of Era is available." = "A new version of Era is available.";
+"Update" = "Update";
+"Later" = "Later";
+"Downloading…" = "Downloading…";
+"Downloaded - use the share sheet to open it in your sideloading app." = "Downloaded - use the share sheet to open it in your sideloading app.";

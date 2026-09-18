@@ -12,6 +12,8 @@ struct ContentView: View {
     @State private var showNowPlaying = false
     @State private var showOnboarding = false
     @State private var showStats = false
+    @StateObject private var launchUpdater = UpdateService()
+    @State private var showUpdatePrompt = false
     @AppStorage(AppSettings.hasOnboardedKey) private var hasOnboarded = false
     @Environment(\.modelContext) private var modelContext
 
@@ -22,6 +24,7 @@ struct ContentView: View {
         else if args.contains("--era-search") { _selection = State(initialValue: .search) }
         if args.contains("--era-player") { _showNowPlaying = State(initialValue: true) }
         if args.contains("--era-onboarding") { _showOnboarding = State(initialValue: true) }
+        if args.contains("--era-update-demo") { _showUpdatePrompt = State(initialValue: true) }
     }
 
     var body: some View {
@@ -43,6 +46,23 @@ struct ContentView: View {
         .modifier(MiniPlayerAccessory(isVisible: player.current != nil && !showNowPlaying, open: { showNowPlaying = true }))
         .sheet(isPresented: $showNowPlaying) { NowPlayingView() }
         .sheet(isPresented: $showStats) { NavigationStack { StatsView() } }
+        .sheet(isPresented: $showUpdatePrompt) {
+            let demoRelease = UpdateService.Release(
+                version: "99.0.0", notes: "",
+                ipaURL: URL(string: "https://github.com/Malti2/Era/releases/latest")!,
+                ipaName: "Era-unsigned.ipa")
+            UpdatePromptView(
+                currentVersion: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?",
+                release: launchUpdater.availableRelease ?? demoRelease,
+                updater: launchUpdater)
+        }
+        .task {
+            let args = ProcessInfo.processInfo.arguments
+            guard !args.contains("--era-demo"), !args.contains("--era-update-demo"), hasOnboarded else { return }
+            let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0"
+            await launchUpdater.check(currentVersion: version)
+            if launchUpdater.availableRelease != nil { showUpdatePrompt = true }
+        }
         .onOpenURL { url in
             guard url.scheme == "era" else { return }
             switch url.host {

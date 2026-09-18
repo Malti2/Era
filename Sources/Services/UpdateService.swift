@@ -34,6 +34,13 @@ final class UpdateService: ObservableObject {
             }
         }
 
+        init(version: String, notes: String, ipaURL: URL, ipaName: String) {
+            self.version = version
+            self.notes = notes
+            self.ipaURL = ipaURL
+            self.ipaName = ipaName
+        }
+
         init(from decoder: Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
             let tag = try container.decode(String.self, forKey: .tagName)
@@ -63,6 +70,10 @@ final class UpdateService: ObservableObject {
     }
 
     @Published private(set) var state: State = .idle
+
+    var availableRelease: Release? {
+        if case .available(let release) = state { release } else { nil }
+    }
     private let latestReleaseURL = URL(string: "https://api.github.com/repos/Malti2/Era/releases/latest")!
 
     func check(currentVersion: String) async {

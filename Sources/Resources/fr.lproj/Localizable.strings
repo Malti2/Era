@@ -219,3 +219,10 @@
 "Crackle Volume" = "Volume du crépitement";
 "Play something in Era" = "Écoutez quelque chose dans Era";
 "Jump back into your last tracks." = "Revenez à vos derniers titres.";
+
+// v27.5.0: update prompt
+"A new version of Era is available." = "Une nouvelle version d'Era est disponible.";
+"Update" = "Mettre à jour";
+"Later" = "Plus tard";
+"Downloading…" = "Téléchargement…";
+"Downloaded - use the share sheet to open it in your sideloading app." = "Téléchargé - ouvrez le fichier via le menu de partage dans votre app de sideloading.";
