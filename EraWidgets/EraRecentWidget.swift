@@ -79,6 +79,13 @@ struct EraRecentWidgetEntryView: View {
 
     private var controlButtons: some View {
         HStack(spacing: 14) {
+            Button(intent: EraPreviousTrackIntent()) {
+                Image(systemName: "backward.fill")
+                    .font(.body.weight(.semibold))
+                    .frame(width: 34, height: 34)
+                    .background(.white.opacity(0.25), in: Circle())
+            }
+            .buttonStyle(.plain)
             Button(intent: EraTogglePlayIntent()) {
                 Image(systemName: isPlaying ? "pause.fill" : "play.fill")
                     .font(.body.weight(.semibold))

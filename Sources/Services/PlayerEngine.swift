@@ -593,6 +593,8 @@ final class PlayerEngine: NSObject, ObservableObject, AVAudioPlayerDelegate {
             }
         case .next:
             if current != nil { next() }
+        case .previous:
+            if current != nil { previous() }
         }
     }
 

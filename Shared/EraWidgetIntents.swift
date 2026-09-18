@@ -32,3 +32,13 @@ struct EraNextTrackIntent: AppIntent {
         return .result()
     }
 }
+
+struct EraPreviousTrackIntent: AppIntent {
+    static var title: LocalizedStringResource = "Previous Track"
+    static var description = IntentDescription("Goes back to the previous track in Era.")
+
+    func perform() async throws -> some IntentResult {
+        EraShared.writeCommand(.previous)
+        return .result()
+    }
+}

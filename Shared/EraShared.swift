@@ -32,6 +32,7 @@ enum EraShared {
     enum WidgetCommand: String, Codable {
         case toggle
         case next
+        case previous
     }
 
     struct PendingCommand: Codable {
