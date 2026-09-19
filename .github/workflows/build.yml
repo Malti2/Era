@@ -88,6 +88,7 @@ jobs:
           echo "udid=$UDID" >> "$GITHUB_OUTPUT"
           xcrun simctl boot "$UDID" || true
           xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl ui "$UDID" appearance dark
           xcrun simctl install "$UDID" build/sim/Build/Products/Debug-iphonesimulator/Era.app
       - name: Capture simulator screenshots
         run: |
