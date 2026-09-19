@@ -106,7 +106,7 @@ jobs:
           shot 03b-playlists --era-demo --era-library --era-playlists
           shot 03c-playlist --era-demo --era-library --era-playlists --era-playlist
           shot 04-packs --era-demo --era-packs
-          shot 05-search --era-demo --era-search-preview
+          shot 05-search --era-demo --era-search --era-search-preview
           shot 06-settings --era-demo --era-library --era-settings
           shot 09-queue --era-demo --era-player --era-queue
           shot 10-onboarding --era-demo --era-onboarding
