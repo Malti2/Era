@@ -1,0 +1,35 @@
+{
+  "name": "Era",
+  "subtitle": "Private-first offline music library",
+  "description": "Official AltStore source for Era, an offline music library for iPhone and iPad.",
+  "iconURL": "https://malti2.github.io/Era/icon.png",
+  "website": "https://github.com/Malti2/Era",
+  "tintColor": "#30D158",
+  "featuredApps": [
+    "de.malte.era"
+  ],
+  "apps": [
+    {
+      "name": "Era",
+      "bundleIdentifier": "de.malte.era",
+      "developerName": "Malte",
+      "subtitle": "Your music, organized your way.",
+      "localizedDescription": "A private-first offline library for released tracks, unreleased songs, demos, alternate versions, and personal audio files.",
+      "iconURL": "https://malti2.github.io/Era/icon.png",
+      "tintColor": "#30D158",
+      "category": "music",
+      "versions": [
+        {
+          "version": "27.0.0",
+          "date": "2026-09-19",
+          "localizedDescription": "Beta 1\n- Adds the official Era AltStore source with automatic release updates.\n- Keeps direct IPA downloads and adds an AltDirect source button in the update drawer.\n- Fixes the Collections header so the title, description, and sections stay correctly aligned on iPhone.\n- Resets the public beta line to 27.0.0.\nRequires iOS 18 or later. Builds are unsigned.",
+          "releaseNotes": "Beta 1\n- Adds the official Era AltStore source with automatic release updates.\n- Keeps direct IPA downloads and adds an AltDirect source button in the update drawer.\n- Fixes the Collections header so the title, description, and sections stay correctly aligned on iPhone.\n- Resets the public beta line to 27.0.0.\nRequires iOS 18 or later. Builds are unsigned.",
+          "downloadURL": "https://github.com/Malti2/Era/releases/download/v27.0.0-beta.1/Era-unsigned.ipa",
+          "size": 1973078,
+          "minOSVersion": "18.0"
+        }
+      ]
+    }
+  ],
+  "news": []
+}

@@ -1,0 +1,33 @@
+name: Validate AltStore Source
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/source.json'
+      - 'docs/icon.png'
+      - 'Scripts/update-altstore-source.py'
+      - 'Scripts/validate-altstore-source.py'
+      - '.github/workflows/*altstore-source.yml'
+  pull_request:
+    paths:
+      - 'docs/source.json'
+      - 'docs/icon.png'
+      - 'Scripts/update-altstore-source.py'
+      - 'Scripts/validate-altstore-source.py'
+      - '.github/workflows/*altstore-source.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - run: python3 Scripts/validate-altstore-source.py docs/source.json
+      - name: Check generated source is current
+        run: |
+          cp docs/source.json /tmp/source.json
+          python3 Scripts/update-altstore-source.py
+          diff -u /tmp/source.json docs/source.json
