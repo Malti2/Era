@@ -49,7 +49,7 @@ struct ContentView: View {
         .sheet(isPresented: $showStats) { NavigationStack { StatsView() } }
         .sheet(isPresented: $showUpdatePrompt) {
             let demoRelease = UpdateService.Release(
-                version: "27.0.2", notes: "Preview of the update drawer.",
+                version: "27.0.3", notes: "Preview of the update drawer.",
                 ipaURL: URL(string: "https://github.com/Malti2/Era/releases/latest")!,
                 ipaName: "Era-unsigned.ipa")
             UpdatePromptView(
