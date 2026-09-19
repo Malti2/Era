@@ -111,7 +111,7 @@ jobs:
           shot 11-onboarding-settings --era-demo --era-onboarding --era-onboarding-settings
           shot 12-stats --era-demo --era-stats
           shot 13-update --era-demo --era-update-demo
-          shot 14-smart-playlist --era-demo --era-smart-playlist
+          shot 14-smart-playlist --era-demo --era-library --era-smart-playlist
       - name: Capture player screenshot
         run: |
           UDID="${{ steps.sim.outputs.udid }}"
