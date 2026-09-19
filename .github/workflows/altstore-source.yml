@@ -40,4 +40,4 @@ jobs:
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add docs/source.json
           git commit -m "Update AltStore source for ${{ github.event.release.tag_name || 'manual run' }}"
-          git push
+          git push origin HEAD:main
