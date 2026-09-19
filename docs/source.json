@@ -20,12 +20,21 @@
       "category": "music",
       "versions": [
         {
+          "version": "27.0.1",
+          "date": "2026-09-19",
+          "localizedDescription": "Beta 1\n- Removes the description text that sat under the Collections title.\n- Store reset on schema conflicts no longer deletes the library silently: the database is backed up first, and the app tells you if a reset happened. Audio files stay in Files and can be re-imported.\nRequires iOS 18 or later. Builds are unsigned.",
+          "releaseNotes": "Beta 1\n- Removes the description text that sat under the Collections title.\n- Store reset on schema conflicts no longer deletes the library silently: the database is backed up first, and the app tells you if a reset happened. Audio files stay in Files and can be re-imported.\nRequires iOS 18 or later. Builds are unsigned.",
+          "downloadURL": "https://github.com/Malti2/Era/releases/download/v27.0.1-beta.1/Era-unsigned.ipa",
+          "size": 1975870,
+          "minOSVersion": "18.0"
+        },
+        {
           "version": "27.0.0",
           "date": "2026-09-19",
           "localizedDescription": "Beta 1\n- Adds the official Era AltStore source with automatic release updates.\n- Keeps direct IPA downloads and adds an AltDirect source button in the update drawer.\n- Fixes the Collections header so the title, description, and sections stay correctly aligned on iPhone.\n- Resets the public beta line to 27.0.0.\nRequires iOS 18 or later. Builds are unsigned.",
           "releaseNotes": "Beta 1\n- Adds the official Era AltStore source with automatic release updates.\n- Keeps direct IPA downloads and adds an AltDirect source button in the update drawer.\n- Fixes the Collections header so the title, description, and sections stay correctly aligned on iPhone.\n- Resets the public beta line to 27.0.0.\nRequires iOS 18 or later. Builds are unsigned.",
           "downloadURL": "https://github.com/Malti2/Era/releases/download/v27.0.0-beta.1/Era-unsigned.ipa",
-          "size": 1973078,
+          "size": 1973531,
           "minOSVersion": "18.0"
         }
       ]
