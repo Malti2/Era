@@ -106,7 +106,12 @@ jobs:
           shot 03b-playlists --era-demo --era-library --era-playlists
           shot 03c-playlist --era-demo --era-library --era-playlists --era-playlist
           shot 04-packs --era-demo --era-packs
+          # Empty-state shot: wipe the app container first so no seeded library survives.
+          xcrun simctl uninstall "$UDID" de.malte.era || true
+          xcrun simctl install "$UDID" build/sim/Build/Products/Debug-iphonesimulator/Era.app
           shot 04b-packs-empty --era-demo --era-no-seed --era-packs
+          xcrun simctl uninstall "$UDID" de.malte.era || true
+          xcrun simctl install "$UDID" build/sim/Build/Products/Debug-iphonesimulator/Era.app
           shot 05-search --era-demo --era-search --era-search-preview
           shot 06-settings --era-demo --era-library --era-settings
           shot 09-queue --era-demo --era-player --era-queue
