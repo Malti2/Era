@@ -13,13 +13,16 @@ struct VersionDrawer: View {
     @State private var showFilePicker = false
     @State private var versionName = "OG"
     @State private var customName = ""
+    @State private var pendingMerge: Song?
+    @AppStorage(AppSettings.hasSeenVersionsCoachKey) private var hasSeenCoach = false
+    @State private var showCoach = false
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 16) {
                 Picker("Quelle", selection: $mode) {
-                    Text("Import").tag(0)
-                    Text("From Library").tag(1)
+                    Text("Import File").tag(0)
+                    Text("Merge Existing Song").tag(1)
                 }
                 .pickerStyle(.segmented)
                 .padding(.horizontal)
@@ -33,6 +36,16 @@ struct VersionDrawer: View {
                 ToolbarItem(placement: .topBarLeading) { Button("Cancel") { dismiss() } }
             }
             .presentationDetents([.medium, .large])
+            .onAppear { if !hasSeenCoach { showCoach = true } }
+            .alert("How Versions Work", isPresented: $showCoach) {
+                Button("Got It") { hasSeenCoach = true }
+            } message: { Text("Versions keep alternate files under one song. Import a new file, or merge an existing song into this one.") }
+            .confirmationDialog("Merge “\(pendingMerge?.title ?? "")”?", isPresented: Binding(get: { pendingMerge != nil }, set: { if !$0 { pendingMerge = nil } }), titleVisibility: .visible) {
+                Button("Merge Song", role: .destructive) { if let other = pendingMerge { link(other) }; pendingMerge = nil }
+                Button("Cancel", role: .cancel) { pendingMerge = nil }
+            } message: {
+                if let other = pendingMerge { Text("“\(other.title)” disappears as a separate library item. Its versions, tags, and playlist references move to “\(song.title)”.") }
+            }
             .sheet(isPresented: $showFilePicker) {
                 DocumentPicker(contentTypes: ImportManager.importableTypes) { urls in
                     showFilePicker = false
@@ -93,7 +106,7 @@ struct VersionDrawer: View {
     private var libraryPane: some View {
         List(songs.filter { $0.id != song.id }) { other in
             Button {
-                link(other)
+                pendingMerge = other
             } label: {
                 HStack(spacing: 12) {
                     Artwork(song: other, radius: 7).frame(width: 40, height: 40)

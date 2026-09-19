@@ -1,7 +1,7 @@
 import SwiftUI
 import SwiftData
 
-// Packs = gespeicherte Queries ueber Tags/Status (Spec 7) + Vorschlagsliste (7.1).
+// Collections are saved and automatic filters across tags and status.
 struct PacksView: View {
     @Binding var showNowPlaying: Bool
     @EnvironmentObject private var store: EraStore
@@ -28,7 +28,7 @@ struct PacksView: View {
         NavigationStack {
             List {
                 if !dynamicPacks.isEmpty {
-                    Section("Dynamisch") {
+                    Section("Automatic") {
                         ForEach(dynamicPacks, id: \.0) { name, icon, packSongs in
                             NavigationLink {
                                 SongListView(title: name, songs: packSongs, showNowPlaying: $showNowPlaying)
@@ -40,7 +40,7 @@ struct PacksView: View {
                 }
 
                 if !confirmed.isEmpty {
-                    Section("Your Packs") {
+                    Section("My Collections") {
                         ForEach(confirmed) { pack in
                             NavigationLink {
                                 PackDetailView(pack: pack, showNowPlaying: $showNowPlaying)
@@ -55,7 +55,10 @@ struct PacksView: View {
                     Section("Suggestions") {
                         ForEach(suggested) { pack in
                             HStack {
-                                Label("\(pack.name) (\(matching(pack).count))", systemImage: "square.stack")
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Label("\(pack.name) (\(matching(pack).count))", systemImage: "square.stack")
+                                    Text(suggestionReason(pack)).font(.caption).foregroundStyle(.secondary)
+                                }
                                 Spacer()
                                 Button {
                                     pack.confirmed = true
@@ -76,11 +79,22 @@ struct PacksView: View {
                 }
 
                 if confirmed.isEmpty && suggested.isEmpty && dynamicPacks.isEmpty {
-                    ContentUnavailableView("No Packs Yet", systemImage: "square.stack", description: Text("Packs group songs across your library as saved searches using tags and status."))
+                    ContentUnavailableView("No Collections Yet", systemImage: "square.stack", description: Text("Collections are saved filters that update automatically when you edit tags or status."), actions: { Text("Add tags to songs to get suggestions here.").font(.footnote).foregroundStyle(.secondary) })
                 }
             }
-            .navigationTitle("Packs")
+            .safeAreaInset(edge: .top) {
+                Text("Saved filters that update automatically from tags and status.")
+                    .font(.footnote).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal).padding(.vertical, 8).background(.bar)
+            }
+            .navigationTitle("Collections")
         }
+    }
+
+    private func suggestionReason(_ pack: Pack) -> String {
+        if let status = pack.statusNames.first { return String(localized: "Suggested from status: \(status)") }
+        if let tagID = pack.tagIDs.first, let tag = tags.first(where: { $0.id == tagID }) { return String(localized: "Suggested from tag: \(tag.name)") }
+        return String(localized: "Suggested from your library")
     }
 
     func matching(_ pack: Pack) -> [Song] {

@@ -8,6 +8,11 @@ struct PlaylistDetailView: View {
     @EnvironmentObject private var store: EraStore
     @Query private var tags: [Tag]
     @State private var showAddSongs = false
+    @State private var showRename = false
+    @State private var renameText = ""
+    @State private var editOrder = false
+    @State private var confirmDelete = false
+    @Environment(\.dismiss) private var dismiss
 
     private var filteredEntries: [PlaylistEntry] {
         let active = playlist.filterTagIDs
@@ -31,14 +36,9 @@ struct PlaylistDetailView: View {
                 Divider().padding(.horizontal, 18)
                 ForEach(filteredEntries) { entry in
                     if let song = entry.song {
-                        PlaylistEntryRow(playlist: playlist, entry: entry, song: song)
+                        PlaylistEntryRow(playlist: playlist, entry: entry, song: song, editingOrder: editOrder)
                         Divider().padding(.leading, 82)
                     }
-                }
-                Button { showAddSongs = true } label: {
-                    Label("Add Songs", systemImage: "plus.circle.fill")
-                        .font(.headline).frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(20)
                 }
             }
         }
@@ -48,11 +48,24 @@ struct PlaylistDetailView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
+                    Button { renameText = playlist.name; showRename = true } label: { Label("Rename Playlist", systemImage: "pencil") }
+                    Button { editOrder.toggle() } label: { Label(editOrder ? "Done Editing" : "Edit Order", systemImage: "arrow.up.arrow.down") }
                     Button { showAddSongs = true } label: { Label("Add Songs", systemImage: "plus") }
+                    Divider()
+                    Button(role: .destructive) { confirmDelete = true } label: { Label("Delete Playlist", systemImage: "trash") }
                 } label: { Image(systemName: "ellipsis") }
             }
         }
         .sheet(isPresented: $showAddSongs) { AddToPlaylistSheet(playlist: playlist) }
+        .alert("Rename Playlist", isPresented: $showRename) {
+            TextField("Name", text: $renameText)
+            Button("Save") { let name = renameText.trimmingCharacters(in: .whitespaces); if !name.isEmpty { playlist.name = name; store.save() } }
+            Button("Cancel", role: .cancel) {}
+        }
+        .confirmationDialog("Delete Playlist?", isPresented: $confirmDelete, titleVisibility: .visible) {
+            Button("Delete Playlist", role: .destructive) { store.deletePlaylist(playlist); dismiss() }
+            Button("Cancel", role: .cancel) {}
+        } message: { Text("Songs stay in your library.") }
     }
 
     private var header: some View {
@@ -64,7 +77,7 @@ struct PlaylistDetailView: View {
             VStack(spacing: 4) {
                 Text(playlist.name).font(.title2.bold()).multilineTextAlignment(.center)
                 Text("Era").font(.title3).foregroundStyle(.tint)
-                Text("Recently Updated")
+                Text(playlist.dateAdded.formatted(date: .abbreviated, time: .omitted))
                     .font(.subheadline).foregroundStyle(.secondary)
             }
             HStack(spacing: 18) {
@@ -140,6 +153,7 @@ struct PlaylistEntryRow: View {
     let playlist: Playlist
     let entry: PlaylistEntry
     let song: Song
+    var editingOrder: Bool = false
     @EnvironmentObject private var player: PlayerEngine
     @EnvironmentObject private var store: EraStore
     @State private var showDrawer = false
@@ -160,6 +174,7 @@ struct PlaylistEntryRow: View {
             }
             Spacer(minLength: 4)
             if player.current?.id == version?.id { Image(systemName: "waveform").foregroundStyle(.tint) }
+            if editingOrder { Image(systemName: "line.3.horizontal").foregroundStyle(.secondary) }
             Menu {
                 Button { if let v = version { player.playNext(v) } } label: { Label("Play Next", systemImage: "text.line.first.and.arrowtriangle.forward") }
                 Button { if let v = version { player.playLater(v) } } label: { Label("Add to End", systemImage: "text.line.last.and.arrowtriangle.forward") }
@@ -183,26 +198,44 @@ struct AddToPlaylistSheet: View {
     @EnvironmentObject private var store: EraStore
     @Query(sort: \Song.title) private var songs: [Song]
     @State private var search = ""
-    private var filtered: [Song] { search.isEmpty ? songs : songs.filter { $0.title.localizedCaseInsensitiveContains(search) || $0.artist.localizedCaseInsensitiveContains(search) } }
+    @State private var selected: Set<UUID> = []
+    @State private var onlyMissing = true
     private var existingSongIDs: Set<UUID> { Set(playlist.entries.compactMap(\.song?.id)) }
+    private var filtered: [Song] {
+        songs.filter { song in
+            (!onlyMissing || !existingSongIDs.contains(song.id)) &&
+            (search.isEmpty || song.title.localizedCaseInsensitiveContains(search) || song.artist.localizedCaseInsensitiveContains(search))
+        }
+    }
     var body: some View {
         NavigationStack {
-            List(filtered) { song in
-                let alreadyAdded = existingSongIDs.contains(song.id)
-                Button {
-                    guard !alreadyAdded else { return }
-                    store.appendEntry(song: song, version: song.primaryVersion, to: playlist)
-                } label: {
-                    HStack {
-                        SongRow(song: song, version: nil)
-                        Image(systemName: alreadyAdded ? "checkmark.circle.fill" : "plus.circle")
-                            .foregroundStyle(alreadyAdded ? Color.green : Color.accentColor)
-                    }
+            List {
+                Section {
+                    Toggle("Not Yet Included", isOn: $onlyMissing)
                 }
-                .disabled(alreadyAdded)
-            }.listStyle(.plain).searchable(text: $search, prompt: "Search Songs")
-                .navigationTitle("Add").navigationBarTitleDisplayMode(.inline)
-                .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Done") { dismiss() } } }
+                ForEach(filtered) { song in
+                    Button {
+                        if selected.contains(song.id) { selected.remove(song.id) } else { selected.insert(song.id) }
+                    } label: {
+                        HStack {
+                            SongRow(song: song, version: nil)
+                            Image(systemName: selected.contains(song.id) ? "checkmark.circle.fill" : "circle")
+                                .foregroundStyle(selected.contains(song.id) ? Color.accentColor : .secondary)
+                        }
+                    }.buttonStyle(.plain)
+                }
+            }
+            .listStyle(.plain).searchable(text: $search, prompt: "Search Songs")
+            .navigationTitle("Add Songs").navigationBarTitleDisplayMode(.inline)
+            .safeAreaInset(edge: .bottom) {
+                Button("Add (\(selected.count))") {
+                    for song in songs where selected.contains(song.id) { store.appendEntry(song: song, version: song.primaryVersion, to: playlist) }
+                    dismiss()
+                }.eraProminentButton().disabled(selected.isEmpty).padding().background(.bar)
+            }
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) { Button("Cancel") { dismiss() } }
+            }
         }
     }
 }

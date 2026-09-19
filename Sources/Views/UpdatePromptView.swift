@@ -30,10 +30,17 @@ struct UpdatePromptView: View {
             }
             .font(.title2)
             Text("A new version of Era is available.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .font(.subheadline).foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 5) {
+                ForEach(release.notes.split(separator: "\n").filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }.prefix(3), id: \.self) { note in
+                    Label(String(note).trimmingCharacters(in: CharacterSet(charactersIn: "-• ")), systemImage: "checkmark")
+                }
+            }.font(.footnote).frame(maxWidth: .infinity, alignment: .leading)
             updateArea
-            Button("Later") { dismiss() }
+            Button("Later") {
+                UserDefaults.standard.set(release.version, forKey: "updates.snoozedVersion")
+                dismiss()
+            }
                 .foregroundStyle(.secondary)
             Spacer(minLength: 0)
         }
@@ -79,7 +86,7 @@ struct UpdatePromptView: View {
             Button {
                 Task { await updater.download(release) }
             } label: {
-                Label("Update", systemImage: "arrow.down.circle.fill")
+                Label("Download IPA", systemImage: "arrow.down.circle.fill")
                     .frame(maxWidth: .infinity)
             }
             .eraProminentButton()

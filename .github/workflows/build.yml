@@ -19,6 +19,8 @@ jobs:
         run: brew install xcodegen
       - name: Generate project
         run: xcodegen generate
+      - name: Verify localizations
+        run: python3 Scripts/check-localizations.py
       - name: Archive device app (unsigned)
         run: |
           xcodebuild -project Era.xcodeproj -scheme Era -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' -archivePath build/Era.xcarchive archive CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" CURRENT_PROJECT_VERSION=$GITHUB_RUN_NUMBER

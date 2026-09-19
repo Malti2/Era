@@ -32,7 +32,7 @@ struct ContentView: View {
             Tab(String(localized: "Home"), systemImage: "house.fill", value: .home) {
                 HomeView(showNowPlaying: $showNowPlaying)
             }
-            Tab(String(localized: "Packs"), systemImage: "square.stack.fill", value: .packs) {
+            Tab(String(localized: "Collections"), systemImage: "square.stack.fill", value: .packs) {
                 PacksView(showNowPlaying: $showNowPlaying)
             }
             Tab(String(localized: "Library"), systemImage: "music.note.house.fill", value: .library) {
@@ -61,7 +61,8 @@ struct ContentView: View {
             guard !args.contains("--era-demo"), !args.contains("--era-update-demo"), hasOnboarded else { return }
             let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0"
             await launchUpdater.check(currentVersion: version)
-            if launchUpdater.availableRelease != nil { showUpdatePrompt = true }
+            if let release = launchUpdater.availableRelease,
+               UserDefaults.standard.string(forKey: "updates.snoozedVersion") != release.version { showUpdatePrompt = true }
         }
         .onOpenURL { url in
             guard url.scheme == "era" else { return }

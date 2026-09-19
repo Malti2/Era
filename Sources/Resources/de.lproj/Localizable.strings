@@ -237,3 +237,17 @@
 "Playlist Name" = "Name der Playlist";
 "Smart Playlist" = "Smart Playlist";
 "Thinking…" = "Denkt nach…";
+
+"Collections" = "Sammlungen";
+"Automatic" = "Automatisch";
+"My Collections" = "Meine Sammlungen";
+"Import Music" = "Musik importieren";
+"Search Your Library" = "Mediathek durchsuchen";
+"Search by title, artist, album, tag, or version." = "Suche nach Titel, Künstler, Album, Tag oder Version.";
+"Not Yet Included" = "Noch nicht enthalten";
+"Generate Again" = "Neu generieren";
+"Edit Description" = "Beschreibung ändern";
+"Merge Existing Song" = "Vorhandenen Song zusammenführen";
+"Import File" = "Datei importieren";
+"Files with Review" = "Dateien mit Prüfung";
+"Version: %@" = "Version: %@";

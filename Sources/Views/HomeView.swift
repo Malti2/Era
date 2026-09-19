@@ -7,7 +7,9 @@ struct HomeView: View {
     @EnvironmentObject private var store: EraStore
     @Query(sort: \Song.dateAdded, order: .reverse) private var songs: [Song]
     @Query private var packs: [Pack]
+    @EnvironmentObject private var importer: ImportManager
     @State private var showStats = ProcessInfo.processInfo.arguments.contains("--era-stats")
+    @State private var showImporter = false
 
     private var lastPlayed: [Song] {
         songs.filter { $0.lastPlayedAt != nil }.sorted { ($0.lastPlayedAt ?? .distantPast) > ($1.lastPlayedAt ?? .distantPast) }
@@ -24,6 +26,8 @@ struct HomeView: View {
                         Label("No Music Yet", systemImage: "music.note")
                     } description: {
                         Text("Import songs from the Files app to build your library.")
+                    } actions: {
+                        Button { showImporter = true } label: { Label("Import Music", systemImage: "square.and.arrow.down") }.eraProminentButton()
                     }
                 } else {
                     ScrollView {
@@ -50,6 +54,13 @@ struct HomeView: View {
                 }
             }
             .sheet(isPresented: $showStats) { NavigationStack { StatsView() } }
+            .sheet(isPresented: $showImporter) {
+                DocumentPicker(contentTypes: ImportManager.importableTypes) { urls in
+                    showImporter = false
+                    guard !urls.isEmpty else { return }
+                    Task { await importer.importFiles(urls, into: store) }
+                } onCancel: { showImporter = false }
+            }
         }
     }
 
@@ -97,6 +108,7 @@ struct HomeView: View {
                             .frame(width: 150, alignment: .leading)
                         }
                         .buttonStyle(.plain)
+                        .contextMenu { SongContextMenu(song: song, showNowPlaying: $showNowPlaying) }
                     }
                 }
                 .padding(.horizontal)

@@ -72,31 +72,7 @@ struct SettingsView: View {
                     Toggle(isOn: $resumeAfterInterruption) {
                         Label("Resume after calls", systemImage: "phone.fill")
                     }
-                    Picker(selection: $transitionStyle) {
-                        ForEach(AppSettings.TransitionStyle.allCases) { style in
-                            Text(style.title).tag(style.rawValue)
-                        }
-                    } label: {
-                        Label("Transitions", systemImage: "arrow.triangle.swap")
-                    }
-                    if transitionStyle == "crossfade" {
-                        Picker(selection: $crossfadeSeconds) {
-                            ForEach(AppSettings.crossfadeOptions, id: \.self) { v in
-                                Text("\(v) sec").tag(v)
-                            }
-                        } label: {
-                            Label("Crossfade Duration", systemImage: "timer")
-                        }
-                    }
-                    Toggle(isOn: $crackleEnabled) {
-                        Label("Vinyl Crackle", systemImage: "opticaldisc")
-                    }
-                    if crackleEnabled {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Label("Crackle Volume", systemImage: "speaker.wave.2")
-                            Slider(value: $crackleVolume, in: 0.02...0.5)
-                        }
-                    }
+                    NavigationLink { AudioEffectsSettingsView() } label: { Label("Audio Effects", systemImage: "waveform") }
                     Toggle(isOn: $haptics) {
                         Label("Haptic Feedback", systemImage: "iphone.radiowaves.left.and.right")
                     }
@@ -114,7 +90,7 @@ struct SettingsView: View {
                     LabeledContent("Versions", value: "\(versions.count)")
                     LabeledContent("Storage Used", value: LibraryFiles.librarySizeText())
                 }
-                Section("Backup") {
+                Section("Library & Backup") {
                     Button {
                         do {
                             backupItem = ShareItem(url: try BackupService.exportURL(store: store))
@@ -143,21 +119,17 @@ struct SettingsView: View {
                         Label("Rebuild Spotlight Index", systemImage: spotlightRebuilt ? "checkmark.circle.fill" : "arrow.clockwise")
                     }
                     .disabled(!spotlightEnabled)
-                    Label("Siri: “Play with Era”, “pause”, “next”", systemImage: "mic.fill")
+                    Text("Siri: “Play with Era”, “pause”, “next”").font(.footnote).foregroundStyle(.secondary)
                 }
-                updateSection
+                Section("About & Updates") {
+                    NavigationLink { List { updateContent }.navigationTitle("Updates") } label: { Label("Updates", systemImage: "arrow.down.circle") }
+                    Button { showOnboarding = true } label: { Label("Show Introduction Again", systemImage: "sparkles") }
+                    LabeledContent("Privacy", value: "Everything local, no tracking")
+                }
                 Section("Reset") {
                     Button(role: .destructive) { confirmReset = true } label: {
                         Label("Delete All Data", systemImage: "trash")
                     }
-                }
-                Section("About Era") {
-                    Button {
-                        showOnboarding = true
-                    } label: {
-                        Label("Show Introduction Again", systemImage: "sparkles")
-                    }
-                    LabeledContent("Privacy", value: "Everything local, no tracking")
                 }
             }
             .navigationTitle("Settings")
@@ -246,5 +218,28 @@ struct SettingsView: View {
                 Task { await updater.check(currentVersion: appVersion) }
             }
         }
+    }
+}
+
+private struct AudioEffectsSettingsView: View {
+    @AppStorage(AppSettings.transitionStyleKey) private var transitionStyle = "off"
+    @AppStorage(AppSettings.crossfadeSecondsKey) private var crossfadeSeconds = 6
+    @AppStorage(AppSettings.crackleEnabledKey) private var crackleEnabled = false
+    @AppStorage(AppSettings.crackleVolumeKey) private var crackleVolume = 0.18
+    var body: some View {
+        Form {
+            Section("Transitions") {
+                Picker("Style", selection: $transitionStyle) {
+                    ForEach(AppSettings.TransitionStyle.allCases) { Text($0.title).tag($0.rawValue) }
+                }
+                if transitionStyle == "crossfade" {
+                    Picker("Duration", selection: $crossfadeSeconds) { ForEach(AppSettings.crossfadeOptions, id: \.self) { Text("\($0) sec").tag($0) } }
+                }
+            }
+            Section("Vinyl Crackle") {
+                Toggle("Enabled", isOn: $crackleEnabled)
+                if crackleEnabled { Slider(value: $crackleVolume, in: 0.02...0.5) }
+            }
+        }.navigationTitle("Audio Effects")
     }
 }

@@ -14,8 +14,12 @@ struct SmartPlaylistView: View {
     @State private var error: String?
     @State private var suggestionName = ""
     @State private var matched: [Song] = []
+    @State private var excluded: Set<UUID> = []
+    @State private var editingPrompt = false
 
     private var hasResult: Bool { !matched.isEmpty }
+    private var included: [Song] { matched.filter { !excluded.contains($0.id) } }
+    private let examples = ["Late night drive", "Unreleased favorites", "Calm acoustic demos"]
 
     var body: some View {
         NavigationStack {
@@ -24,6 +28,9 @@ struct SmartPlaylistView: View {
                     TextField("Late night drive, dark and slow…", text: $prompt, axis: .vertical)
                         .lineLimit(2...4)
                         .disabled(isWorking)
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack { ForEach(examples, id: \.self) { example in Button(example) { prompt = example }.buttonStyle(.bordered).controlSize(.small) } }
+                    }
                 } header: {
                     Text("Describe the playlist")
                 } footer: {
@@ -51,10 +58,21 @@ struct SmartPlaylistView: View {
                     Section {
                         TextField("Playlist Name", text: $suggestionName)
                         ForEach(matched) { song in
-                            SongRow(song: song, version: nil)
+                            Button {
+                                if excluded.contains(song.id) { excluded.remove(song.id) } else { excluded.insert(song.id) }
+                            } label: {
+                                HStack {
+                                    SongRow(song: song, version: nil)
+                                    Image(systemName: excluded.contains(song.id) ? "circle" : "checkmark.circle.fill")
+                                        .foregroundStyle(excluded.contains(song.id) ? .secondary : Color.accentColor)
+                                }
+                            }.buttonStyle(.plain)
                         }
+                        Button("Generate Again", systemImage: "arrow.clockwise") { generate() }
+                        Button("Edit Description", systemImage: "pencil") { matched = []; excluded = [] }
+
                     } header: {
-                        Text("\(matched.count) songs")
+                        Text("\(included.count) songs")
                     }
                 }
             }
@@ -71,7 +89,7 @@ struct SmartPlaylistView: View {
                             dismiss()
                         }
                         .fontWeight(.semibold)
-                        .disabled(suggestionName.trimmingCharacters(in: .whitespaces).isEmpty)
+                        .disabled(suggestionName.trimmingCharacters(in: .whitespaces).isEmpty || included.isEmpty)
                     } else {
                         Button("Generate") { generate() }
                             .fontWeight(.semibold)
@@ -88,6 +106,7 @@ struct SmartPlaylistView: View {
         guard !request.isEmpty else { return }
         error = nil
         matched = []
+        excluded = []
         guard IntelligenceService.isAvailable else {
             error = String(localized: "Apple Intelligence is not available on this device.")
             return
@@ -121,7 +140,7 @@ struct SmartPlaylistView: View {
         let name = suggestionName.trimmingCharacters(in: .whitespacesAndNewlines)
         let playlist = Playlist(name: name.isEmpty ? String(localized: "Smart Playlist") : name)
         store.insertPlaylist(playlist)
-        for song in matched {
+        for song in included {
             store.appendEntry(song: song, version: song.primaryVersion, to: playlist)
         }
     }

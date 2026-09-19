@@ -12,6 +12,7 @@ struct SongDetailView: View {
     @State private var showMetadataEditor = false
     @State private var versionToRename: SongVersion?
     @State private var shareItem: ShareItem?
+    @State private var menuVersion: SongVersion?
 
     var body: some View {
         List {
@@ -32,14 +33,14 @@ struct SongDetailView: View {
             }
 
             Section {
-                Button {
-                    if let v = song.primaryVersion { player.play(v, from: [v]) }
-                } label: { Label("Play", systemImage: "play.fill") }
-                Button {
-                    song.isFavorite.toggle(); store.save()
-                } label: {
-                    Label(song.isFavorite ? "Remove Favorite" : "Add to Favorites", systemImage: song.isFavorite ? "heart.slash" : "heart.fill")
+                HStack(spacing: 12) {
+                    Button { if let v = song.primaryVersion { player.play(v, from: [v]); showNowPlaying = true } } label: { Label("Play", systemImage: "play.fill").frame(maxWidth: .infinity) }.eraProminentButton()
+                    Button { song.isFavorite.toggle(); store.save() } label: { Image(systemName: song.isFavorite ? "heart.fill" : "heart").frame(width: 44, height: 44) }
+                        .buttonStyle(.bordered).accessibilityLabel(song.isFavorite ? "Remove Favorite" : "Add to Favorites")
                 }
+            }
+
+            Section("Manage") {
                 Button { showMetadataEditor = true } label: { Label("Edit Metadata", systemImage: "pencil") }
                 Button { showVersionDrawer = true } label: { Label("Add Version", systemImage: "plus.rectangle.on.rectangle") }
             }
@@ -52,6 +53,9 @@ struct SongDetailView: View {
                             player.play(version, from: [version])
                         }
                         .contextMenu { versionMenu(version) }
+                        .overlay(alignment: .trailing) {
+                            Menu { versionMenu(version) } label: { Image(systemName: "ellipsis").frame(width: 44, height: 44) }
+                        }
                 }
             }
 
@@ -190,6 +194,7 @@ struct SongContextMenu: View {
     @EnvironmentObject private var store: EraStore
     @State private var showDrawer = false
     @State private var shareItem: ShareItem?
+    @State private var menuVersion: SongVersion?
 
     var body: some View {
         Group {

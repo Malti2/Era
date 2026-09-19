@@ -30,7 +30,7 @@ struct LibraryView: View {
     @Query(sort: \Song.dateAdded, order: .reverse) private var songs: [Song]
     @Query private var playlists: [Playlist]
 
-    @State private var section: LibrarySection = .songs
+    @AppStorage(AppSettings.librarySectionKey) private var sectionRaw = LibrarySection.songs.rawValue
     @State private var sort: LibrarySort = .recent
     @State private var showImporter = false
     @State private var showFolderImporter = false
@@ -41,6 +41,8 @@ struct LibraryView: View {
     @State private var demoPlaylistSheet = false
     @State private var demoSectionOnly = false
     @State private var showSmartPlaylist = false
+    @State private var songToDelete: Song?
+    @State private var playlistToDelete: Playlist?
     private let demoForceSmartPlaylist: Bool
 
     init(showNowPlaying: Binding<Bool>) {
@@ -48,14 +50,14 @@ struct LibraryView: View {
         let args = ProcessInfo.processInfo.arguments
         if args.contains("--era-settings") { _showSettings = State(initialValue: true) }
         if args.contains("--era-picker-test") { _showImporter = State(initialValue: true) }
-        if args.contains("--era-playlists") { _section = State(initialValue: .playlists); _demoSectionOnly = State(initialValue: true) }
+        if args.contains("--era-playlists") { _sectionRaw = AppStorage(wrappedValue: LibrarySection.playlists.rawValue, AppSettings.librarySectionKey); _demoSectionOnly = State(initialValue: true) }
         if args.contains("--era-song") { _demoSongSheet = State(initialValue: true) }
         if args.contains("--era-playlist") { _demoPlaylistSheet = State(initialValue: true) }
         // Screenshot mode: the simulator has no Apple Intelligence, so the demo
         // flag force-shows the entry point and can open the sheet directly.
         demoForceSmartPlaylist = args.contains("--era-demo")
         if args.contains("--era-smart-playlist") {
-            _section = State(initialValue: .playlists)
+            _sectionRaw = AppStorage(wrappedValue: LibrarySection.playlists.rawValue, AppSettings.librarySectionKey)
             _demoSectionOnly = State(initialValue: true)
             _showSmartPlaylist = State(initialValue: true)
         }
@@ -70,14 +72,11 @@ struct LibraryView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
-                        Button { showImporter = true } label: { Label("Import Files", systemImage: "doc") }
-                        Button { showFolderImporter = true } label: { Label("Import Folder", systemImage: "folder") }
-                        Divider()
-                        Button { importer.showMassImport = true } label: { Label("Bulk Import", systemImage: "square.and.arrow.down.on.square") }
-                    } label: {
-                        Image(systemName: "square.and.arrow.down")
-                    }
-                    .accessibilityLabel("Import")
+                        Button { showImporter = true } label: { Label("Files", systemImage: "doc.on.doc") }
+                        Button { showFolderImporter = true } label: { Label("Folder", systemImage: "folder") }
+                        Button { importer.showMassImport = true } label: { Label("Files with Review", systemImage: "checklist") }
+                    } label: { Label("Import Music", systemImage: "square.and.arrow.down") }
+                    .accessibilityLabel("Import Music")
                 }
                 ToolbarItem(placement: .topBarLeading) {
                     Button { showSettings = true } label: { Image(systemName: "gearshape") }
@@ -127,6 +126,14 @@ struct LibraryView: View {
             .sheet(isPresented: $showSmartPlaylist) {
                 SmartPlaylistView()
             }
+.confirmationDialog("Delete Song?", isPresented: Binding(get: { songToDelete != nil }, set: { if !$0 { songToDelete = nil } }), titleVisibility: .visible) {
+                Button("Delete Song", role: .destructive) { if let song = songToDelete { store.deleteSong(song) }; songToDelete = nil }
+                Button("Cancel", role: .cancel) { songToDelete = nil }
+            } message: { if let song = songToDelete { Text("This removes \(song.versions.count) version(s) and their local audio files.") } }
+            .confirmationDialog("Delete Playlist?", isPresented: Binding(get: { playlistToDelete != nil }, set: { if !$0 { playlistToDelete = nil } }), titleVisibility: .visible) {
+                Button("Delete Playlist", role: .destructive) { if let playlist = playlistToDelete { store.deletePlaylist(playlist) }; playlistToDelete = nil }
+                Button("Cancel", role: .cancel) { playlistToDelete = nil }
+            } message: { Text("Songs stay in your library.") }
             .alert("Era", isPresented: Binding(get: { importer.message != nil }, set: { if !$0 { importer.message = nil } })) {
                 Button("OK") { importer.message = nil }
             } message: {
@@ -151,40 +158,24 @@ struct LibraryView: View {
         }
     }
 
+    private var selectedSection: LibrarySection { LibrarySection(rawValue: sectionRaw) ?? .songs }
+
     @ViewBuilder private var content: some View {
         if demoSectionOnly {
             List { playlistsSection }.listStyle(.plain)
         } else {
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 22) {
-                    VStack(spacing: 0) {
-                        libraryLink("Playlists", icon: "music.note.list", destination: AnyView(playlistList))
-                        Divider().padding(.leading, 54)
-                        libraryLink("Artists", icon: "music.mic", destination: AnyView(artistList))
-                        Divider().padding(.leading, 54)
-                        libraryLink("Albums", icon: "square.stack", destination: AnyView(albumList))
-                        Divider().padding(.leading, 54)
-                        libraryLink("Title", icon: "music.note", destination: AnyView(songList))
-                        Divider().padding(.leading, 54)
-                        libraryLink("Versions", icon: "opticaldisc", destination: AnyView(versionList))
-                    }
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Recently Added").font(.title2.bold()).padding(.horizontal, 18)
-                        LazyVGrid(columns: [.init(.flexible(), spacing: 14), .init(.flexible())], spacing: 20) {
-                            ForEach(Array(songs.prefix(8))) { song in
-                                NavigationLink {
-                                    SongDetailView(song: song, showNowPlaying: $showNowPlaying)
-                                } label: {
-                                    VStack(alignment: .leading, spacing: 6) {
-                                        Artwork(song: song, radius: 10).aspectRatio(1, contentMode: .fit)
-                                        Text(song.title).font(.subheadline.weight(.semibold)).lineLimit(1)
-                                        Text(song.displayArtist).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
-                                    }.frame(maxWidth: .infinity, alignment: .leading)
-                                }.buttonStyle(.plain)
-                            }
-                        }.padding(.horizontal, 18)
-                    }
-                }.padding(.vertical, 8)
+            VStack(spacing: 0) {
+                Picker("Library View", selection: $sectionRaw) {
+                    ForEach([LibrarySection.songs, .albums, .artists, .playlists]) { Text($0.rawValue).tag($0.rawValue) }
+                }
+                .pickerStyle(.segmented).padding(.horizontal).padding(.bottom, 8)
+                switch selectedSection {
+                case .songs: List { songsSection }.listStyle(.plain)
+                case .albums: albumList
+                case .artists: artistList
+                case .playlists: List { playlistsSection }.listStyle(.plain)
+                case .versions: List { versionsSection }.listStyle(.plain)
+                }
             }
         }
     }
@@ -251,10 +242,12 @@ struct LibraryView: View {
                 Label("Shuffle", systemImage: "shuffle")
             }
             ForEach(sortedSongs) { song in
-                NavigationLink {
-                    SongDetailView(song: song, showNowPlaying: $showNowPlaying)
-                } label: {
-                    SongRow(song: song, version: nil, isCurrent: player.current?.song?.id == song.id)
+                HStack(spacing: 8) {
+                    Button {
+                        if let version = song.primaryVersion { player.play(version, from: sortedSongs.compactMap(\.primaryVersion)); showNowPlaying = true }
+                    } label: { SongRow(song: song, version: nil, isCurrent: player.current?.song?.id == song.id) }
+                    .buttonStyle(.plain)
+                    NavigationLink { SongDetailView(song: song, showNowPlaying: $showNowPlaying) } label: { Image(systemName: "ellipsis").frame(width: 36, height: 44) }
                 }
                 .swipeActions(edge: .leading) {
                     Button { song.isFavorite.toggle(); store.save() } label: {
@@ -262,7 +255,7 @@ struct LibraryView: View {
                     }.tint(.pink)
                 }
                 .swipeActions {
-                    Button(role: .destructive) { store.deleteSong(song) } label: { Label("Delete", systemImage: "trash") }
+                    Button(role: .destructive) { songToDelete = song } label: { Label("Delete", systemImage: "trash") }
                 }
                 .contextMenu { SongContextMenu(song: song, showNowPlaying: $showNowPlaying) }
             }
@@ -315,10 +308,10 @@ struct LibraryView: View {
                     .padding(.vertical, 3)
                 }
                 .swipeActions {
-                    Button(role: .destructive) { store.deletePlaylist(playlist) } label: { Label("Delete", systemImage: "trash") }
+                    Button(role: .destructive) { playlistToDelete = playlist } label: { Label("Delete", systemImage: "trash") }
                 }
                 .contextMenu {
-                    Button("Delete Playlist", systemImage: "trash", role: .destructive) { store.deletePlaylist(playlist) }
+                    Button("Delete Playlist", systemImage: "trash", role: .destructive) { playlistToDelete = playlist }
                 }
             }
             Button { showNewPlaylist = true } label: { Label("New Playlist", systemImage: "plus") }

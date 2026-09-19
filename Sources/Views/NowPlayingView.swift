@@ -10,6 +10,7 @@ struct NowPlayingView: View {
     @State private var scrubValue: Double = 0
     @State private var showTimer = false
     @State private var confirmClearQueue = false
+    @State private var queueEditing = false
     @AppStorage(AppSettings.skipIntervalKey) private var skipInterval = 15
     @AppStorage(AppSettings.hapticsEnabledKey) private var haptics = true
 
@@ -86,6 +87,8 @@ struct NowPlayingView: View {
                             } label: { Label(v.name, systemImage: v.id == version.id ? "checkmark" : "opticaldisc") }
                             .disabled(v.id == version.id)
                         }
+                        Divider()
+                        Button { showTimer = true } label: { Label("Sleep Timer", systemImage: "moon.zzz") }
                     } label: { Image(systemName: "ellipsis").font(.title2).frame(width: 44, height: 44) }
                 }
                 .padding(.horizontal, 30)
@@ -116,10 +119,15 @@ struct NowPlayingView: View {
                             Spacer()
                             Text("-" + TimeFormatting.mmss(max(0, player.duration - (scrubbing ? scrubValue : player.currentTime))))
                         }
-                        Label(version.name, systemImage: "waveform")
-                            .font(.caption2.weight(.semibold))
-                            .padding(.horizontal, 9).padding(.vertical, 4)
-                            .background(.ultraThinMaterial, in: .capsule)
+                        Menu {
+                            ForEach(song.sortedVersions) { v in
+                                Button { player.switchVersion(v) } label: { Label(v.name, systemImage: v.id == version.id ? "checkmark" : "opticaldisc") }
+                            }
+                        } label: {
+                            Label("Version: \(version.name)", systemImage: "chevron.up.chevron.down")
+                                .font(.caption2.weight(.semibold)).padding(.horizontal, 9).padding(.vertical, 4)
+                                .background(.ultraThinMaterial, in: .capsule)
+                        }
                     }
                     .font(.caption.monospacedDigit()).foregroundStyle(.secondary)
                 }
@@ -207,8 +215,9 @@ struct NowPlayingView: View {
                 .onDelete { player.removeFromQueue(at: $0) }
             }
             .navigationTitle("Up Next")
+            .environment(\.editMode, .constant(queueEditing ? .active : .inactive))
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) { EditButton() }
+                ToolbarItem(placement: .topBarLeading) { Button(queueEditing ? "Done Editing" : "Edit") { queueEditing.toggle() } }
                 ToolbarItem(placement: .topBarTrailing) { Button("Done") { showQueue = false } }
                 ToolbarItem(placement: .topBarTrailing) {
                     if player.queue.count > 1 {

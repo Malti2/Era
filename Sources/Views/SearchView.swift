@@ -25,29 +25,32 @@ struct SearchView: View {
             Group {
                 if query.isEmpty {
                     ContentUnavailableView {
-                        Label("No Recent Searches", systemImage: "magnifyingglass")
+                        Label("Search Your Library", systemImage: "magnifyingglass")
                     } description: {
-                        Text("Your recent searches will appear here.")
+                        Text("Search by title, artist, album, tag, or version.")
+                    } actions: {
+                        Text("Try “Demo”, an artist, or a version name like “OG”.")
+                            .font(.footnote).foregroundStyle(.secondary)
                     }
                 } else if results.isEmpty {
                     ContentUnavailableView.search(text: query)
                 } else {
                     List(results) { song in
-                        NavigationLink { SongDetailView(song: song, showNowPlaying: $showNowPlaying) } label: {
-                            SongRow(song: song, version: nil, isCurrent: player.current?.song?.id == song.id)
+                        HStack(spacing: 10) {
+                            Button {
+                                if let version = song.primaryVersion { player.play(version, from: results.compactMap(\.primaryVersion)); showNowPlaying = true }
+                            } label: { SongRow(song: song, version: nil, isCurrent: player.current?.song?.id == song.id) }
+                            .buttonStyle(.plain)
+                            NavigationLink { SongDetailView(song: song, showNowPlaying: $showNowPlaying) } label: { Image(systemName: "ellipsis").frame(width: 36, height: 44) }
                         }
                         .contextMenu { SongContextMenu(song: song, showNowPlaying: $showNowPlaying) }
                     }.listStyle(.plain)
                 }
             }
             .navigationTitle("Search")
-            .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Artist, title, album, tag")
+            .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Title, artist, album, tag, version")
             .searchFocused($focused)
-            .onAppear {
-                if ProcessInfo.processInfo.arguments.contains("--era-search-preview") && false {
-                    Task { try? await Task.sleep(nanoseconds: 450_000_000); focused = true }
-                }
-            }
+            .onAppear { focused = true }
         }
     }
 }
