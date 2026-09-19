@@ -40,6 +40,8 @@ struct LibraryView: View {
     @State private var demoSongSheet = false
     @State private var demoPlaylistSheet = false
     @State private var demoSectionOnly = false
+    @State private var showSmartPlaylist = false
+    private let demoForceSmartPlaylist: Bool
 
     init(showNowPlaying: Binding<Bool>) {
         _showNowPlaying = showNowPlaying
@@ -49,6 +51,14 @@ struct LibraryView: View {
         if args.contains("--era-playlists") { _section = State(initialValue: .playlists); _demoSectionOnly = State(initialValue: true) }
         if args.contains("--era-song") { _demoSongSheet = State(initialValue: true) }
         if args.contains("--era-playlist") { _demoPlaylistSheet = State(initialValue: true) }
+        // Screenshot mode: the simulator has no Apple Intelligence, so the demo
+        // flag force-shows the entry point and can open the sheet directly.
+        demoForceSmartPlaylist = args.contains("--era-demo")
+        if args.contains("--era-smart-playlist") {
+            _section = State(initialValue: .playlists)
+            _demoSectionOnly = State(initialValue: true)
+            _showSmartPlaylist = State(initialValue: true)
+        }
     }
 
     var body: some View {
@@ -105,7 +115,7 @@ struct LibraryView: View {
                 } onCancel: { showImporter = false }
             }
             .sheet(isPresented: $showFolderImporter) {
-                DocumentPicker(contentTypes: [.folder]) { urls in
+                DocumentPicker(contentTypes: [.folder], asCopy: false) { urls in
                     showFolderImporter = false
                     guard !urls.isEmpty else { noFilesNotice(); return }
                     Task { await importer.stage(urls, existing: songs) }
@@ -113,6 +123,9 @@ struct LibraryView: View {
             }
             .sheet(isPresented: $importer.showMassImport) {
                 MassImportView()
+            }
+            .sheet(isPresented: $showSmartPlaylist) {
+                SmartPlaylistView()
             }
             .alert("Era", isPresented: Binding(get: { importer.message != nil }, set: { if !$0 { importer.message = nil } })) {
                 Button("OK") { importer.message = nil }
@@ -309,6 +322,11 @@ struct LibraryView: View {
                 }
             }
             Button { showNewPlaylist = true } label: { Label("New Playlist", systemImage: "plus") }
+            if IntelligenceService.isAvailable || demoForceSmartPlaylist {
+                Button { showSmartPlaylist = true } label: {
+                    Label("Smart Playlist", systemImage: "sparkles")
+                }
+            }
         }
         .alert("New Playlist", isPresented: $showNewPlaylist) {
             TextField("Name", text: $newPlaylistName)

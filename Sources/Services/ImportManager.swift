@@ -28,6 +28,27 @@ final class ImportManager: ObservableObject {
     @Published var staged: [StagedImport] = []
     @Published var showMassImport = false
 
+    // Security-scoped URLs (folder picks use asCopy: false). Access stays open
+    // from staging until the import is confirmed or cancelled, because the
+    // staged files live inside the picked folder.
+    private var heldScopes: [URL] = []
+
+    private func holdScopes(for urls: [URL]) {
+        for url in urls where url.startAccessingSecurityScopedResource() {
+            heldScopes.append(url)
+        }
+    }
+
+    func releaseScopes() {
+        for url in heldScopes { url.stopAccessingSecurityScopedResource() }
+        heldScopes.removeAll()
+    }
+
+    func cancelStaging() {
+        staged = []
+        releaseScopes()
+    }
+
     static let supportedExtensions: Set<String> = ["mp3", "m4a", "aac", "wav", "aif", "aiff", "caf", "flac"]
 
     static var importableTypes: [UTType] {
@@ -41,6 +62,9 @@ final class ImportManager: ObservableObject {
     // MARK: - Direkt-Import (einzeln/mehrere, Ordner-Inhalt)
 
     func importFiles(_ urls: [URL], into store: EraStore, linkTo song: Song? = nil, versionName: String = "OG") async {
+        releaseScopes()
+        holdScopes(for: urls)
+        defer { releaseScopes() }
         let targets = expandFolders(urls)
         isImporting = true
         var imported = 0, dupes = 0
@@ -137,6 +161,8 @@ final class ImportManager: ObservableObject {
     // MARK: - Massenimport (Staging + Vorschlaege, ein Durchgang - Spec 4)
 
     func stage(_ urls: [URL], existing songs: [Song]) async {
+        releaseScopes()
+        holdScopes(for: urls)
         let targets = expandFolders(urls)
         var items: [StagedImport] = []
         for source in targets {
@@ -179,6 +205,7 @@ final class ImportManager: ObservableObject {
     func confirmStaged(into store: EraStore, songs: [Song]) async {
         let items = staged
         staged = []
+        defer { releaseScopes() }
         isImporting = true
         var imported = 0, dupes = 0
         var errors: [(String, String)] = []
@@ -217,17 +244,18 @@ final class ImportManager: ObservableObject {
 
     func expandFolders(_ urls: [URL]) -> [URL] {
         var result: [URL] = []
-        for url in urls {
+        var queue = urls
+        while let url = queue.popLast() {
             var isDir: ObjCBool = false
             if FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir), isDir.boolValue {
                 if let contents = try? FileManager.default.contentsOfDirectory(at: url, includingPropertiesForKeys: nil) {
-                    result.append(contentsOf: contents.sorted { $0.lastPathComponent < $1.lastPathComponent })
+                    queue.append(contentsOf: contents.filter { !$0.lastPathComponent.hasPrefix(".") })
                 }
-            } else {
+            } else if !url.lastPathComponent.hasPrefix(".") {
                 result.append(url)
             }
         }
-        return result
+        return result.sorted { $0.lastPathComponent.localizedStandardCompare($1.lastPathComponent) == .orderedAscending }
     }
 
     func fallbackTitle(from fileName: String) -> String {

@@ -126,3 +126,32 @@ bleiben. Apple Music weiterhin komplett draussen.
   Seek (inkl. Transition-Neuaufbau) feuert einmal beim Loslassen. Der 0,25s-Ticker
   aktualisiert die Lock-Screen-Anzeige nur noch als In-Place-Elapsed-Update statt
   pro Tick das Now-Playing-Info inkl. Artwork neu zu laden.
+
+## 27.8.0 (2026-09-19): Playlist-Fixes, Ordner-Import, Update-Anzeige, Apple Intelligence
+
+- **Playlists loeschen**: EraStore schreibt ueber seinen eigenen ModelContext,
+  Views liefern Modelle aus dem SwiftUI-Environment-Context. `context.delete`
+  auf ein fremd registriertes Modell war ein stiller No-Op - die Playlist blieb.
+  Alle Schreibpfade (Song/Playlist/Pack/Tag loeschen, Playlist-Eintraege)
+  loesen das Modell jetzt per `resolve(_:)` (persistentModelID) im Store-Context
+  neu auf.
+- **Keine Duplikate in Playlists**: `appendEntry` verweigert Songs, die schon in
+  der Playlist sind; das Hinzufuegen-Sheet zeigt sie mit gruenem Haken und
+  deaktiviert die Zeile.
+- **Ordner-Import-Crash**: `UIDocumentPickerViewController(forOpeningContentTypes:
+  [.folder], asCopy: true)` wirft beim Oeffnen - Ordner koennen nicht als Kopie
+  geoeffnet werden. Der Ordner-Picker nutzt jetzt `asCopy: false`; ImportManager
+  haelt die Security-Scoped-URL vom Staging bis zum Bestaetigen/Abbrechen offen
+  (`holdScopes`/`releaseScopes`). Unterordner werden jetzt rekursiv eingelesen,
+  versteckte Dateien (`.DS_Store`) uebersprungen.
+- **Update-Drawer zeigte "99.0.0"**: das Launch-Sheet nutzte
+  `availableRelease ?? demoRelease`; sobald der State auf downloading/downloaded
+  wechselte, wurde `availableRelease` nil und die Demo-Version 99.0.0 erschien
+  mitten im Flow. Neues `presentedRelease` bleibt ueber den ganzen Download
+  stabil, die Demo-Version dient nur noch dem Screenshot-Flag.
+- **Apple Intelligence (Foundation Models, iOS 26+)**: "Smart Playlist" in den
+  Playlists - Playlist-Beschreibung in natuerlicher Sprache, das On-Device-Modell
+  waehlt passende Songs aus der Mediathek (Titel/Artist/Album/Tags) und schlaegt
+  einen Namen vor. Komplett hinter `SystemLanguageModel`-Verfuegbarkeit
+  (`canImport` + `#available` + availability-Check); Geraete ohne Apple
+  Intelligence sehen den Einstieg nicht, nichts crasht, nichts fehlt.

@@ -67,11 +67,20 @@ final class EraStore: ObservableObject {
     }
 
     func save() { try? context.save() }
+
+    // The store owns its own ModelContext, while views hand in models fetched
+    // through the SwiftUI environment context. Deleting a model that is not
+    // registered in this context is a silent no-op, so every write re-resolves
+    // the object here first.
+    func resolve<T: PersistentModel>(_ model: T) -> T {
+        context.model(for: model.persistentModelID) as? T ?? model
+    }
 }
 
 extension EraStore: SongRepository {
     func insertSong(_ song: Song) { context.insert(song); save() }
     func deleteSong(_ song: Song) {
+        let song = resolve(song)
         for playlist in (try? allPlaylists()) ?? [] {
             for entry in playlist.entries where entry.song?.id == song.id { context.delete(entry) }
         }
@@ -103,7 +112,7 @@ extension EraStore: TagRepository {
         context.insert(tag); save()
         return tag
     }
-    func deleteTag(_ tag: Tag) { context.delete(tag); save() }
+    func deleteTag(_ tag: Tag) { context.delete(resolve(tag)); save() }
 }
 
 extension EraStore {
@@ -132,7 +141,7 @@ extension EraStore {
 
 extension EraStore: PackRepository {
     func insertPack(_ pack: Pack) { context.insert(pack); save() }
-    func deletePack(_ pack: Pack) { context.delete(pack); save() }
+    func deletePack(_ pack: Pack) { context.delete(resolve(pack)); save() }
     /// Verwirft einen Pack-Vorschlag dauerhaft - erscheint beim naechsten Start nicht erneut.
     func dismissPackSuggestion(_ pack: Pack) {
         var dismissed = UserDefaults.standard.stringArray(forKey: EraStore.dismissedKey) ?? []
@@ -149,16 +158,20 @@ extension EraStore: PackRepository {
 
 extension EraStore: PlaylistRepository {
     func insertPlaylist(_ playlist: Playlist) { context.insert(playlist); save() }
-    func deletePlaylist(_ playlist: Playlist) { context.delete(playlist); save() }
+    func deletePlaylist(_ playlist: Playlist) { context.delete(resolve(playlist)); save() }
     func allPlaylists() throws -> [Playlist] { try context.fetch(FetchDescriptor<Playlist>(sortBy: [SortDescriptor(\.dateAdded, order: .reverse)])) }
     func appendEntry(song: Song, version: SongVersion?, to playlist: Playlist) {
-        let entry = PlaylistEntry(position: (playlist.entries.map(\.position).max() ?? -1) + 1, song: song, versionID: version?.id)
+        let playlist = resolve(playlist)
+        // One entry per song: duplicates are refused here and hidden in the UI.
+        guard !playlist.entries.contains(where: { $0.song?.id == song.id }) else { return }
+        let entry = PlaylistEntry(position: (playlist.entries.map(\.position).max() ?? -1) + 1, song: resolve(song), versionID: version?.id)
         entry.playlist = playlist
         context.insert(entry); save()
     }
     func removeEntry(_ entry: PlaylistEntry, from playlist: Playlist) {
+        let playlist = resolve(playlist)
         playlist.entries.removeAll { $0.id == entry.id }
-        context.delete(entry)
+        context.delete(resolve(entry))
         for (index, rest) in playlist.sortedEntries.enumerated() { rest.position = index }
         save()
     }

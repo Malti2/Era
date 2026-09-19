@@ -226,3 +226,14 @@
 "Later" = "Plus tard";
 "Downloading…" = "Téléchargement…";
 "Downloaded - use the share sheet to open it in your sideloading app." = "Téléchargé - ouvrez le fichier via le menu de partage dans votre app de sideloading.";
+"%lld songs" = "%lld morceaux";
+"Apple Intelligence is not available on this device." = "Apple Intelligence n'est pas disponible sur cet appareil.";
+"Apple Intelligence picks matching songs from your library. Everything stays on this iPhone." = "Apple Intelligence choisit des morceaux dans ta bibliothèque. Tout reste sur cet iPhone.";
+"Create" = "Créer";
+"Describe the playlist" = "Décris la playlist";
+"Generate" = "Générer";
+"Late night drive, dark and slow…" = "Virée nocturne, sombre et lente…";
+"No matching songs found. Try a different description." = "Aucun morceau trouvé. Essaie une autre description.";
+"Playlist Name" = "Nom de la playlist";
+"Smart Playlist" = "Smart Playlist";
+"Thinking…" = "Réflexion…";

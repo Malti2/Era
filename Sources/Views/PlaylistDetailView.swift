@@ -184,12 +184,22 @@ struct AddToPlaylistSheet: View {
     @Query(sort: \Song.title) private var songs: [Song]
     @State private var search = ""
     private var filtered: [Song] { search.isEmpty ? songs : songs.filter { $0.title.localizedCaseInsensitiveContains(search) || $0.artist.localizedCaseInsensitiveContains(search) } }
+    private var existingSongIDs: Set<UUID> { Set(playlist.entries.compactMap(\.song?.id)) }
     var body: some View {
         NavigationStack {
             List(filtered) { song in
-                Button { store.appendEntry(song: song, version: song.primaryVersion, to: playlist) } label: {
-                    HStack { SongRow(song: song, version: nil); Image(systemName: "plus.circle").foregroundStyle(.tint) }
+                let alreadyAdded = existingSongIDs.contains(song.id)
+                Button {
+                    guard !alreadyAdded else { return }
+                    store.appendEntry(song: song, version: song.primaryVersion, to: playlist)
+                } label: {
+                    HStack {
+                        SongRow(song: song, version: nil)
+                        Image(systemName: alreadyAdded ? "checkmark.circle.fill" : "plus.circle")
+                            .foregroundStyle(alreadyAdded ? .green : .tint)
+                    }
                 }
+                .disabled(alreadyAdded)
             }.listStyle(.plain).searchable(text: $search, prompt: "Search Songs")
                 .navigationTitle("Add").navigationBarTitleDisplayMode(.inline)
                 .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Done") { dismiss() } } }

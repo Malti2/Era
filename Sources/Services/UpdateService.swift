@@ -74,6 +74,18 @@ final class UpdateService: ObservableObject {
     var availableRelease: Release? {
         if case .available(let release) = state { release } else { nil }
     }
+
+    // The release the update UI is talking about, stable across the whole
+    // download flow. availableRelease turns nil the moment the state moves to
+    // downloading, which used to swap the drawer back to the demo version.
+    var presentedRelease: Release? {
+        switch state {
+        case .available(let release), .downloading(let release, _), .downloaded(let release, _):
+            release
+        default:
+            nil
+        }
+    }
     private let latestReleaseURL = URL(string: "https://api.github.com/repos/Malti2/Era/releases/latest")!
 
     func check(currentVersion: String) async {

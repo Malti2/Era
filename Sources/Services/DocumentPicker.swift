@@ -13,6 +13,10 @@ import UniformTypeIdentifiers
 // Lesen security-scoped URLs.
 struct DocumentPicker: UIViewControllerRepresentable {
     let contentTypes: [UTType]
+    // Folders cannot be opened as copies - the picker throws and the app crashes.
+    // Folder picking therefore passes asCopy: false and reads through the
+    // security-scoped URL instead (see ImportManager).
+    var asCopy: Bool = true
     let onPicked: ([URL]) -> Void
     let onCancel: () -> Void
 
@@ -21,7 +25,7 @@ struct DocumentPicker: UIViewControllerRepresentable {
     }
 
     func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
-        let picker = UIDocumentPickerViewController(forOpeningContentTypes: contentTypes, asCopy: true)
+        let picker = UIDocumentPickerViewController(forOpeningContentTypes: contentTypes, asCopy: asCopy)
         picker.allowsMultipleSelection = true
         picker.delegate = context.coordinator
         picker.shouldShowFileExtensions = true

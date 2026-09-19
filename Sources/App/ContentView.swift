@@ -53,7 +53,7 @@ struct ContentView: View {
                 ipaName: "Era-unsigned.ipa")
             UpdatePromptView(
                 currentVersion: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?",
-                release: launchUpdater.availableRelease ?? demoRelease,
+                release: launchUpdater.presentedRelease ?? demoRelease,
                 updater: launchUpdater)
         }
         .task {

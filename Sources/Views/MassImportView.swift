@@ -103,7 +103,7 @@ struct MassImportView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancel") { importer.staged = []; dismiss() }
+                    Button("Cancel") { importer.cancelStaging(); dismiss() }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Import (\(importer.staged.filter { $0.error == nil }.count))") {
