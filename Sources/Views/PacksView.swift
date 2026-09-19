@@ -79,7 +79,13 @@ struct PacksView: View {
                 }
 
                 if confirmed.isEmpty && suggested.isEmpty && dynamicPacks.isEmpty {
-                    ContentUnavailableView("No Collections Yet", systemImage: "square.stack", description: Text("Collections are saved filters that update automatically when you edit tags or status."), actions: { Text("Add tags to songs to get suggestions here.").font(.footnote).foregroundStyle(.secondary) })
+                    ContentUnavailableView {
+                        Label("No Collections Yet", systemImage: "square.stack")
+                    } description: {
+                        Text("Collections are saved filters that update automatically when you edit tags or status.")
+                    } actions: {
+                        Text("Add tags to songs to get suggestions here.").font(.footnote).foregroundStyle(.secondary)
+                    }
                 }
             }
             .safeAreaInset(edge: .top) {
