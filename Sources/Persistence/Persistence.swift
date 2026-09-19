@@ -90,6 +90,35 @@ extension EraStore: SongRepository {
     }
     func allSongs() throws -> [Song] { try context.fetch(FetchDescriptor<Song>(sortBy: [SortDescriptor(\.dateAdded, order: .reverse)])) }
     func allVersions() throws -> [SongVersion] { try context.fetch(FetchDescriptor<SongVersion>()) }
+
+    /// Moves every version from `source` under `target`, then removes the
+    /// source Song identity. Playlist entries keep pointing at the moved
+    /// version, but now resolve through the surviving target song.
+    func mergeSongAsVersions(_ source: Song, into target: Song) {
+        let source = resolve(source)
+        let target = resolve(target)
+        guard source.id != target.id else { return }
+
+        var nextSortIndex = (target.versions.map(\.sortIndex).max() ?? -1) + 1
+        for version in source.sortedVersions {
+            source.versions.removeAll { $0.id == version.id }
+            version.song = target
+            version.sortIndex = nextSortIndex
+            nextSortIndex += 1
+            target.versions.append(version)
+        }
+        for tag in source.tags where !target.tags.contains(where: { $0.id == tag.id }) {
+            target.tags.append(tag)
+        }
+        for playlist in (try? allPlaylists()) ?? [] {
+            for entry in playlist.entries where entry.song?.id == source.id {
+                entry.song = target
+            }
+        }
+        context.delete(source)
+        save()
+    }
+
     func version(matchingHash hash: String, duration: Double) throws -> SongVersion? {
         // Hash ist der Primaerabgleich, Dauer das zweite Kriterium (Spec 13.3)
         try allVersions().first { $0.pcmHash == hash && abs($0.duration - duration) < 0.5 }

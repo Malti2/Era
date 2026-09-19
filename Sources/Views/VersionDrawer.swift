@@ -109,20 +109,10 @@ struct VersionDrawer: View {
         .listStyle(.plain)
     }
 
-    // Song aus der Bibliothek einhaengen: seine primaere Version wandert als neue
-    // Version an diesen Song, der Rest des Songs folgt (Spec 4: nicht destruktiv).
+    // Song aus der Bibliothek einhaengen: Alle Versionen wandern unter den
+    // Ziel-Song; der Quell-Song ist danach kein eigener Library-Eintrag mehr.
     private func link(_ other: Song) {
-        for version in other.sortedVersions {
-            other.versions.removeAll { $0.id == version.id }
-            version.song = song
-            version.sortIndex = (song.versions.map(\.sortIndex).max() ?? -1) + 1
-            song.versions.append(version)
-        }
-        for tag in other.tags where !song.tags.contains(where: { $0.id == tag.id }) {
-            song.tags.append(tag)
-        }
-        store.context.delete(other)
-        store.save()
+        store.mergeSongAsVersions(other, into: song)
         dismiss()
     }
 }

@@ -166,3 +166,7 @@ bleiben. Apple Music weiterhin komplett draussen.
 - Das strukturierte Namensfeld verlangt dieselbe aktive Sprache. Weitere vom
   Modell erzeugte sichtbare Texte gibt es in diesem Flow nicht; Fehler- und
   Statusmeldungen bleiben über die String Catalogs lokalisiert.
+- Beim Zusammenführen eines Library-Songs als Version wird der Quell-Song jetzt
+  im Store-Context aufgelöst und nach dem Verschieben seiner Versionen gelöscht.
+  Er bleibt nicht als leerer Library-Eintrag stehen; Playlist-Verweise werden
+  auf den überlebenden Haupt-Song umgebogen und behalten ihre Version-ID.
