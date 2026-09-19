@@ -111,3 +111,18 @@ bleiben. Apple Music weiterhin komplett draussen.
 - Ein separates natives AppKit/macOS-Target waere wegen UIDocumentPicker, MediaPlayer, UIKit-Artwork und Share Extension eine zweite Plattformimplementierung ohne funktionalen Mehrwert fuer diese Runde.
 - CI baut deshalb zusaetzlich ein unsigniertes Mac-Catalyst-Era.app und verpackt es als ZIP. Das ist fuer Intel und Apple Silicon vorgesehen; Installation ausserhalb des App Stores braucht spaeter Signierung/Notarisierung.
 - Auslieferung zusaetzlich als DMG mit Era.app und Programme-Alias fuer klassische Drag-and-Drop-Installation. Ohne Developer-ID bleibt der Build unsigniert/unnotarisiert; macOS kann beim ersten Start eine Sicherheitsfreigabe verlangen.
+
+## 27.7.0 (2026-09-19): Widget entfernt, Versions-Queue, Scrubbing
+
+- **Home-Screen-Widget komplett entfernt** (Target `EraWidgetsExtension`, App Group
+  `group.de.malte.era`, `EraShared`-Kanal): unsigniert sideloaded zeigte es ohnehin
+  nur den Fallback, weil App Groups ohne Provisioning keinen geteilten Container
+  bekommen. Die Share Extension behandelt das weiterhin selbst mit Hinweis-Dialog.
+- **Ein Song = ein Queue-Slot**: Queues enthalten nur noch die eingestellte
+  (primäre) Version pro Song. Beim Versionenwechsel im Player ersetzt
+  `PlayerEngine.switchVersion` alle Versionen des Songs in der Queue durch die
+  gewählte, statt sie anzuhäufen.
+- **Scrubbing**: der Slider zieht auf lokalem State während des Drags; der echte
+  Seek (inkl. Transition-Neuaufbau) feuert einmal beim Loslassen. Der 0,25s-Ticker
+  aktualisiert die Lock-Screen-Anzeige nur noch als In-Place-Elapsed-Update statt
+  pro Tick das Now-Playing-Info inkl. Artwork neu zu laden.

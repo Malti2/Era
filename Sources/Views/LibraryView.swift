@@ -339,7 +339,7 @@ struct LibraryView: View {
                         Text(version.durationText).font(.caption.monospacedDigit()).foregroundStyle(.secondary)
                     }
                     .contentShape(Rectangle())
-                    .onTapGesture { player.play(version, from: song.sortedVersions) }
+                    .onTapGesture { player.play(version, from: [version]) }
                 }
             }
         }

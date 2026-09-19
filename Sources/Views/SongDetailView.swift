@@ -33,7 +33,7 @@ struct SongDetailView: View {
 
             Section {
                 Button {
-                    if let v = song.primaryVersion { player.play(v, from: song.sortedVersions) }
+                    if let v = song.primaryVersion { player.play(v, from: [v]) }
                 } label: { Label("Play", systemImage: "play.fill") }
                 Button {
                     song.isFavorite.toggle(); store.save()
@@ -49,7 +49,7 @@ struct SongDetailView: View {
                     VersionRow(song: song, version: version, isCurrent: player.current?.id == version.id)
                         .contentShape(Rectangle())
                         .onTapGesture {
-                            player.play(version, from: song.sortedVersions)
+                            player.play(version, from: [version])
                         }
                         .contextMenu { versionMenu(version) }
                 }
@@ -194,7 +194,7 @@ struct SongContextMenu: View {
     var body: some View {
         Group {
             Button {
-                if let v = song.primaryVersion { player.play(v, from: song.sortedVersions) }
+                if let v = song.primaryVersion { player.play(v, from: [v]) }
             } label: { Label("Play", systemImage: "play.fill") }
             Button {
                 if let v = song.primaryVersion { player.playNext(v) }
@@ -207,7 +207,7 @@ struct SongContextMenu: View {
                 Divider()
                 ForEach(song.sortedVersions) { version in
                     Button {
-                        player.play(version, from: song.sortedVersions)
+                        player.play(version, from: [version])
                     } label: {
                         Label(versionLabel(version), systemImage: version.id == song.primaryVersion?.id ? "star.fill" : "opticaldisc")
                     }

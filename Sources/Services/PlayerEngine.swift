@@ -1,9 +1,6 @@
 import Foundation
 import AVFoundation
 import MediaPlayer
-#if canImport(WidgetKit)
-import WidgetKit
-#endif
 
 @MainActor
 final class PlayerEngine: NSObject, ObservableObject, AVAudioPlayerDelegate {
@@ -58,7 +55,6 @@ final class PlayerEngine: NSObject, ObservableObject, AVAudioPlayerDelegate {
 
     private func handleDidBecomeActive() {
         configureAudioSession()
-        consumeWidgetCommand()
         // Defensive: if the system paused us while backgrounded, resume cleanly.
         if isPlaying, let a = audio, !a.isPlaying {
             a.play()
@@ -118,7 +114,7 @@ final class PlayerEngine: NSObject, ObservableObject, AVAudioPlayerDelegate {
         guard let store, let songs = try? store.allSongs(), !songs.isEmpty else { return }
         let recent = songs.sorted { ($0.lastPlayedAt ?? .distantPast) > ($1.lastPlayedAt ?? .distantPast) }
         if let song = recent.first, let v = song.primaryVersion {
-            play(v, from: song.sortedVersions)
+            play(v, from: [v])
             if song.resumePosition > 10 { seek(song.resumePosition) }
         }
     }
@@ -128,7 +124,6 @@ final class PlayerEngine: NSObject, ObservableObject, AVAudioPlayerDelegate {
         song.playCount += 1
         song.lastPlayedAt = Date()
         try? song.modelContext?.save()
-        updateSharedRecent()
     }
 
     private func recordPlayEvent(finished: Bool) {
@@ -298,6 +293,18 @@ final class PlayerEngine: NSObject, ObservableObject, AVAudioPlayerDelegate {
         play(mixed[0], from: mixed)
     }
 
+    // Version switch while playing: replaces every version of the same song
+    // in the queue with the chosen one, so a song never occupies more than
+    // one queue slot regardless of how many versions it has.
+    func switchVersion(_ version: SongVersion) {
+        guard let song = version.song else { play(version, from: [version]); return }
+        let ids = Set(song.versions.map(\.id))
+        let anchor = queue.firstIndex(where: { $0.id == current?.id }) ?? queue.count
+        var newQueue = queue.filter { !ids.contains($0.id) }
+        newQueue.insert(version, at: min(anchor, newQueue.count))
+        play(version, from: newQueue)
+    }
+
     func playNext(_ version: SongVersion) {
         if let current, let index = queue.firstIndex(where: { $0.id == current.id }) {
             queue.insert(version, at: index + 1)
@@ -395,8 +402,7 @@ final class PlayerEngine: NSObject, ObservableObject, AVAudioPlayerDelegate {
                     self.currentTime = min(self.currentTime + 0.25, self.duration)
                 }
                 self.syncCrackle()
-                self.consumeWidgetCommand()
-                self.updateNowPlaying()
+                self.updateElapsedPlaybackTime()
             }
         }
     }
@@ -501,7 +507,6 @@ final class PlayerEngine: NSObject, ObservableObject, AVAudioPlayerDelegate {
             MPNowPlayingInfoPropertyElapsedPlaybackTime: currentTime,
             MPNowPlayingInfoPropertyPlaybackRate: isPlaying ? rate : 0
         ]
-        publishSharedNowPlaying()
         guard let song = version.song else {
             MPNowPlayingInfoCenter.default().nowPlayingInfo = base
             return
@@ -525,108 +530,15 @@ final class PlayerEngine: NSObject, ObservableObject, AVAudioPlayerDelegate {
         }
     }
 
-    // MARK: - Home Screen widget now playing (App Group)
-
-    private var sharedLastSync: (id: UUID, playing: Bool, bucket: Double)?
-
-    // Throttled: publishes on track/play-state change and every ~5s of
-    // progress, not on every ticker step.
-    private func publishSharedNowPlaying() {
-        guard let version = current else {
-            if sharedLastSync != nil {
-                sharedLastSync = nil
-                EraShared.clearNowPlaying()
-                reloadWidgets()
-            }
-            return
-        }
-        let bucket = (currentTime / 5).rounded() * 5
-        let snapshot = (id: version.id, playing: isPlaying, bucket: bucket)
-        if let last = sharedLastSync, last.id == snapshot.id,
-           last.playing == snapshot.playing, last.bucket == snapshot.bucket { return }
-        sharedLastSync = snapshot
-        let songID = version.song?.id ?? version.id
-        let artName = "\(songID.uuidString).png"
-        let artExists = EraShared.artworkURL(artName).map { FileManager.default.fileExists(atPath: $0.path) } ?? false
-        if !artExists {
-            var data: Data?
-            if let file = version.artworkFile {
-                data = try? Data(contentsOf: LibraryFiles.artworkURL(file))
-            }
-            if data == nil {
-                data = DiscArtworkCache.png(for: songID, status: version.song?.statusTags.first?.name, size: 300).pngData()
-            }
-            if let data { EraShared.copyArtwork(data: data, name: artName) }
-        }
-        EraShared.writeNowPlaying(EraShared.NowPlaying(
-            trackID: songID,
-            title: version.displayTitle,
-            artist: version.displayArtist,
-            artwork: artName,
-            isPlaying: isPlaying,
-            position: currentTime,
-            duration: duration,
-            updatedAt: Date()))
-        reloadWidgets()
+    // Cheap lock-screen progress refresh for the 0.25s ticker: mutates the
+    // existing Now Playing entry in place instead of rebuilding it (artwork
+    // load included) four times a second. Full updateNowPlaying() runs on
+    // track, play-state, rate and seek changes only.
+    private func updateElapsedPlaybackTime() {
+        guard current != nil, var info = MPNowPlayingInfoCenter.default().nowPlayingInfo else { return }
+        info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = currentTime
+        info[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? rate : 0
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = info
     }
 
-    private func reloadWidgets() {
-        #if canImport(WidgetKit)
-        WidgetCenter.shared.reloadAllTimelines()
-        #endif
-    }
-
-    // One-shot commands from the interactive widget buttons. Consumed here
-    // while the app is alive (the ticker always runs during playback) and on
-    // every foregrounding.
-    private func consumeWidgetCommand() {
-        guard let pending = EraShared.readCommand() else { return }
-        EraShared.clearCommand()
-        guard Date().timeIntervalSince(pending.at) < 120 else { return }
-        switch pending.command {
-        case .toggle:
-            if current != nil {
-                if !isPlaying { configureAudioSession() }
-                toggle()
-            } else {
-                resumeOrPlay()
-            }
-        case .next:
-            if current != nil { next() }
-        case .previous:
-            if current != nil { previous() }
-        }
-    }
-
-    // MARK: - Home Screen widget data (App Group)
-
-    private func updateSharedRecent() {
-        guard let store, let songs = try? store.allSongs() else { return }
-        let recent = songs.filter { $0.lastPlayedAt != nil }
-            .sorted { ($0.lastPlayedAt ?? .distantPast) > ($1.lastPlayedAt ?? .distantPast) }
-            .prefix(5)
-        var tracks: [EraShared.RecentTrack] = []
-        for song in recent {
-            var artName: String?
-            if let version = song.primaryVersion {
-                var data: Data?
-                if let file = version.artworkFile {
-                    data = try? Data(contentsOf: LibraryFiles.artworkURL(file))
-                }
-                if data == nil {
-                    data = DiscArtworkCache.png(for: song.id, status: song.statusTags.first?.name, size: 300).pngData()
-                }
-                if let data {
-                    let name = "\(song.id.uuidString).png"
-                    EraShared.copyArtwork(data: data, name: name)
-                    artName = name
-                }
-            }
-            tracks.append(EraShared.RecentTrack(id: song.id, title: song.title, artist: song.displayArtist, artwork: artName))
-        }
-        EraShared.writeRecent(tracks)
-        #if canImport(WidgetKit)
-        WidgetCenter.shared.reloadAllTimelines()
-        #endif
-    }
 }

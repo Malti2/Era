@@ -56,7 +56,7 @@ struct HomeView: View {
     private func resumeCard(_ song: Song) -> some View {
         Button {
             if let v = song.primaryVersion {
-                player.play(v, from: song.sortedVersions)
+                player.play(v, from: [v])
                 if song.resumePosition > 10 && song.resumePosition < max(0, v.duration - 10) {
                     player.seek(song.resumePosition)
                 }
@@ -87,7 +87,7 @@ struct HomeView: View {
                 HStack(spacing: 14) {
                     ForEach(songs) { song in
                         Button {
-                            if let v = song.primaryVersion { player.play(v, from: song.sortedVersions) }
+                            if let v = song.primaryVersion { player.play(v, from: [v]) }
                         } label: {
                             VStack(alignment: .leading, spacing: 6) {
                                 Artwork(song: song, radius: 12).frame(width: 150, height: 150)

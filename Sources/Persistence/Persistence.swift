@@ -173,7 +173,6 @@ extension EraStore: PlaylistRepository {
         for tag in (try? allTags()) ?? [] { context.delete(tag) }
         for event in (try? context.fetch(FetchDescriptor<PlayEvent>())) ?? [] { context.delete(event) }
         save()
-        EraShared.resetShared()
         UserDefaults.standard.removePersistentDomain(forName: Bundle.main.bundleIdentifier ?? "de.malte.era")
         SpotlightIndexer.clearAll()
     }

@@ -73,7 +73,7 @@ struct ContentView: View {
             case "song":
                 let idString = url.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
                 if let uuid = UUID(uuidString: idString), let song = findSong(uuid), let v = song.primaryVersion {
-                    player.play(v, from: song.sortedVersions)
+                    player.play(v, from: [v])
                     showNowPlaying = true
                 }
             default:
@@ -85,7 +85,7 @@ struct ContentView: View {
             guard let idString = activity.userInfo?[CSSearchableItemActivityIdentifier] as? String,
                   let uuid = UUID(uuidString: idString),
                   let song = findSong(uuid) else { return }
-            if let v = song.primaryVersion { player.play(v, from: song.sortedVersions) }
+            if let v = song.primaryVersion { player.play(v, from: [v]) }
             showNowPlaying = true
         }
         .onAppear {
@@ -100,7 +100,7 @@ struct ContentView: View {
                         player.play(v, from: songs.compactMap(\.primaryVersion))
                     }
                 } else if let first = firstSong(), let v = first.primaryVersion {
-                    player.play(v, from: first.sortedVersions)
+                    player.play(v, from: [v])
                 }
             }
         }

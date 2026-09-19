@@ -6,6 +6,8 @@ struct NowPlayingView: View {
     @EnvironmentObject private var player: PlayerEngine
     @EnvironmentObject private var store: EraStore
     @State private var showQueue = false
+    @State private var scrubbing = false
+    @State private var scrubValue: Double = 0
     @State private var showTimer = false
     @State private var confirmClearQueue = false
     @AppStorage(AppSettings.skipIntervalKey) private var skipInterval = 15
@@ -80,8 +82,7 @@ struct NowPlayingView: View {
                     Menu {
                         ForEach(song.sortedVersions) { v in
                             Button {
-                                let queue = player.queue
-                                player.play(v, from: queue)
+                                player.switchVersion(v)
                             } label: { Label(v.name, systemImage: v.id == version.id ? "checkmark" : "opticaldisc") }
                             .disabled(v.id == version.id)
                         }
@@ -90,13 +91,30 @@ struct NowPlayingView: View {
                 .padding(.horizontal, 30)
 
                 VStack(spacing: 6) {
-                    Slider(value: Binding(get: { player.currentTime }, set: { player.seek($0) }), in: 0...max(1, player.duration))
-                        .tint(.primary)
+                    // Scrubbing runs on local state while dragging: the 0.25s
+                    // ticker keeps publishing currentTime and would otherwise
+                    // yank the knob back mid-drag, and every intermediate
+                    // value used to trigger a full seek (cancel + reprepare
+                    // the next track) dozens of times per second. The real
+                    // seek fires once, when the drag ends.
+                    Slider(value: Binding(
+                        get: { scrubbing ? scrubValue : player.currentTime },
+                        set: { scrubValue = $0 }
+                    ), in: 0...max(1, player.duration)) { editing in
+                        if editing {
+                            scrubValue = player.currentTime
+                            scrubbing = true
+                        } else {
+                            scrubbing = false
+                            player.seek(scrubValue)
+                        }
+                    }
+                    .tint(.primary)
                     ZStack {
                         HStack {
-                            Text(TimeFormatting.mmss(player.currentTime))
+                            Text(TimeFormatting.mmss(scrubbing ? scrubValue : player.currentTime))
                             Spacer()
-                            Text("-" + TimeFormatting.mmss(max(0, player.duration - player.currentTime)))
+                            Text("-" + TimeFormatting.mmss(max(0, player.duration - (scrubbing ? scrubValue : player.currentTime))))
                         }
                         Label(version.name, systemImage: "waveform")
                             .font(.caption2.weight(.semibold))
