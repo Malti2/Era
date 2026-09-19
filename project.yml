@@ -1,20 +1,22 @@
 name: Era
 options:
   bundleIdPrefix: de.malte
+  deploymentTarget: "18.0"
+  createIntermediateGroups: true
+  developmentLanguage: en
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    CURRENT_PROJECT_VERSION: "1"
 targets:
   Era:
     type: application
     platform: iOS
     deploymentTarget: "18.0"
-    sources:
-      - path: Sources
-        excludes:
-          - "Widget/**"
-          - "Resources/**/*.lproj/**"
-      - path: Sources/Resources
-        buildPhase: resources
-    info:
-      path: Sources/Info.plist
+    sources: [Sources]
+    dependencies:
+      - target: EraShareExtension
+        embed: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: de.malte.era
@@ -24,17 +26,14 @@ targets:
         TARGETED_DEVICE_FAMILY: "1,2"
         SUPPORTS_MACCATALYST: YES
         DERIVE_MACCATALYST_PRODUCT_BUNDLE_IDENTIFIER: NO
-        CODE_SIGN_STYLE: Automatic
-    entitlements:
-      path: Sources/Era.entitlements
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: Sources/Info.plist
+        CODE_SIGNING_ALLOWED: NO
   EraShareExtension:
     type: app-extension
     platform: iOS
     deploymentTarget: "18.0"
-    sources:
-      - path: ShareExtension
-    info:
-      path: ShareExtension/Info.plist
+    sources: [ShareExtension]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: de.malte.era.share
@@ -43,6 +42,11 @@ targets:
         SUPPORTS_MACCATALYST: YES
         DERIVE_MACCATALYST_PRODUCT_BUNDLE_IDENTIFIER: NO
         GENERATE_INFOPLIST_FILE: NO
-        CODE_SIGN_STYLE: Automatic
-    dependencies:
-      - target: Era
+        INFOPLIST_FILE: ShareExtension/Info.plist
+        CODE_SIGNING_ALLOWED: NO
+schemes:
+  Era:
+    build:
+      targets:
+        Era: all
+        EraShareExtension: all
