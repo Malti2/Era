@@ -39,7 +39,8 @@ enum DemoSeed {
         let openRoad = song("Open Road", "The Paper Suns", "Open Skies", 2024, versions: [("Released", 2024)], tags: [archive, released, favorite], plays: 44)
         let cityLights = song("City Lights", "Echo Harbor", "After Hours", 2025, versions: [("OG", 2024), ("Acoustic", 2025)], tags: [studio, unreleased], plays: 9)
         let satellites = song("Satellites", "Juniper Vale", "Nocturne", 2025, versions: [("V1", 2024), ("V2", 2025)], tags: [nocturne, leak], plays: 17)
-        let afterglow = song("Afterglow", "Silver Pines", "Daybreak", 2026, versions: [("OG", 2026)], tags: [released, favorite], plays: 5)
+        let playerTitle = "Afterglow Across the City After Midnight"
+        let afterglow = song(playerTitle, "Silver Pines", "Daybreak", 2026, versions: [("OG", 2026)], tags: [released, favorite], plays: 5)
 
         let vPack = Pack(name: "Nocturne", tagIDs: [nocturne.id], confirmed: true)
         store.insertPack(vPack)

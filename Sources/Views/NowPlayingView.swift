@@ -51,128 +51,164 @@ struct NowPlayingView: View {
     }
 
     private func content(_ version: SongVersion, _ song: Song) -> some View {
-        ZStack {
-            playerBackground(song: song, version: version)
-            VStack(spacing: 0) {
-                Capsule().fill(.secondary.opacity(0.55)).frame(width: 38, height: 5).padding(.top, 8)
-                Spacer(minLength: 20)
-                Artwork(song: song, version: version, radius: 14)
-                    .frame(maxWidth: 330).aspectRatio(1, contentMode: .fit)
-                    .scaleEffect(player.isPlaying ? 1 : 0.92)
-                    .animation(.spring(response: 0.45), value: player.isPlaying)
-                    .shadow(color: .black.opacity(0.32), radius: 30, y: 16)
+        GeometryReader { geometry in
+            let compact = geometry.size.height < 760
+            let artworkSize = min(geometry.size.width - 60, compact ? 250 : 310)
+
+            ZStack {
+                playerBackground(song: song, version: version)
+
+                VStack(spacing: 0) {
+                    Capsule()
+                        .fill(.secondary.opacity(0.55))
+                        .frame(width: 38, height: 5)
+                        .padding(.top, 8)
+
+                    Artwork(song: song, version: version, radius: 14)
+                        .frame(width: artworkSize, height: artworkSize)
+                        .scaleEffect(player.isPlaying ? 1 : 0.94)
+                        .animation(.spring(response: 0.45), value: player.isPlaying)
+                        .shadow(color: .black.opacity(0.28), radius: 24, y: 12)
+                        .padding(.top, compact ? 16 : 24)
+
+                    HStack(alignment: .center, spacing: 10) {
+                        VStack(alignment: .leading, spacing: 3) {
+                            HStack(spacing: 6) {
+                                Text(version.displayTitle)
+                                    .font(.title3.bold())
+                                    .lineLimit(1)
+                                    .truncationMode(.tail)
+                                    .minimumScaleFactor(0.82)
+                                    .layoutPriority(1)
+                                if song.tags.contains(where: { $0.name == "Explicit" }) {
+                                    Text("E")
+                                        .font(.caption2.bold())
+                                        .padding(.horizontal, 4)
+                                        .padding(.vertical, 1)
+                                        .background(.white.opacity(0.18), in: RoundedRectangle(cornerRadius: 3))
+                                        .fixedSize()
+                                }
+                            }
+                            Text(version.displayArtist)
+                                .font(.title3)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                                .truncationMode(.tail)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .clipped()
+
+                        Button { song.isFavorite.toggle(); store.save() } label: {
+                            Image(systemName: song.isFavorite ? "star.fill" : "star")
+                                .font(.title2)
+                                .contentTransition(.symbolEffect(.replace))
+                                .frame(width: 36, height: 44)
+                        }
+                        .sensoryFeedback(.impact(flexibility: .soft), trigger: song.isFavorite) { _, _ in haptics }
+
+                        Menu {
+                            ForEach(song.sortedVersions) { v in
+                                Button { player.switchVersion(v) } label: {
+                                    Label(v.name, systemImage: v.id == version.id ? "checkmark" : "opticaldisc")
+                                }
+                                .disabled(v.id == version.id)
+                            }
+                            Divider()
+                            Button { showTimer = true } label: { Label("Sleep Timer", systemImage: "moon.zzz") }
+                        } label: {
+                            Image(systemName: "ellipsis")
+                                .font(.title2)
+                                .frame(width: 36, height: 44)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
                     .padding(.horizontal, 30)
-                Spacer(minLength: 24)
-                HStack(alignment: .center) {
-                    VStack(alignment: .leading, spacing: 3) {
-                        HStack(spacing: 6) {
-                            Text(version.displayTitle).font(.title3.bold()).lineLimit(1)
-                            if song.tags.contains(where: { $0.name == "Explicit" }) {
-                                Text("E").font(.caption2.bold()).padding(.horizontal, 4).padding(.vertical, 1)
-                                    .background(.white.opacity(0.18), in: RoundedRectangle(cornerRadius: 3))
+                    .padding(.top, compact ? 16 : 22)
+
+                    VStack(spacing: 5) {
+                        Slider(value: Binding(
+                            get: { scrubbing ? scrubValue : player.currentTime },
+                            set: { scrubValue = $0 }
+                        ), in: 0...max(1, player.duration)) { editing in
+                            if editing {
+                                scrubValue = player.currentTime
+                                scrubbing = true
+                            } else {
+                                scrubbing = false
+                                player.seek(scrubValue)
                             }
                         }
-                        Text(version.displayArtist).font(.title3).foregroundStyle(.secondary).lineLimit(1)
-                    }
-                    Spacer()
-                    Button { song.isFavorite.toggle(); store.save() } label: {
-                        Image(systemName: song.isFavorite ? "star.fill" : "star")
-                            .font(.title2).contentTransition(.symbolEffect(.replace))
-                    }
-                    .sensoryFeedback(.impact(flexibility: .soft), trigger: song.isFavorite) { _, _ in haptics }
-                    Menu {
-                        ForEach(song.sortedVersions) { v in
-                            Button {
-                                player.switchVersion(v)
-                            } label: { Label(v.name, systemImage: v.id == version.id ? "checkmark" : "opticaldisc") }
-                            .disabled(v.id == version.id)
-                        }
-                        Divider()
-                        Button { showTimer = true } label: { Label("Sleep Timer", systemImage: "moon.zzz") }
-                    } label: { Image(systemName: "ellipsis").font(.title2).frame(width: 44, height: 44) }
-                }
-                .padding(.horizontal, 30)
+                        .tint(.primary)
 
-                VStack(spacing: 6) {
-                    // Scrubbing runs on local state while dragging: the 0.25s
-                    // ticker keeps publishing currentTime and would otherwise
-                    // yank the knob back mid-drag, and every intermediate
-                    // value used to trigger a full seek (cancel + reprepare
-                    // the next track) dozens of times per second. The real
-                    // seek fires once, when the drag ends.
-                    Slider(value: Binding(
-                        get: { scrubbing ? scrubValue : player.currentTime },
-                        set: { scrubValue = $0 }
-                    ), in: 0...max(1, player.duration)) { editing in
-                        if editing {
-                            scrubValue = player.currentTime
-                            scrubbing = true
-                        } else {
-                            scrubbing = false
-                            player.seek(scrubValue)
-                        }
-                    }
-                    .tint(.primary)
-                    ZStack {
                         HStack {
                             Text(TimeFormatting.mmss(scrubbing ? scrubValue : player.currentTime))
                             Spacer()
+                            Menu {
+                                ForEach(song.sortedVersions) { v in
+                                    Button { player.switchVersion(v) } label: {
+                                        Label(v.name, systemImage: v.id == version.id ? "checkmark" : "opticaldisc")
+                                    }
+                                }
+                            } label: {
+                                Label("Version: \(version.name)", systemImage: "chevron.up.chevron.down")
+                                    .font(.caption2.weight(.semibold))
+                                    .padding(.horizontal, 9)
+                                    .padding(.vertical, 4)
+                                    .background(.ultraThinMaterial, in: .capsule)
+                            }
+                            Spacer()
                             Text("-" + TimeFormatting.mmss(max(0, player.duration - (scrubbing ? scrubValue : player.currentTime))))
                         }
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                    }
+                    .padding(.horizontal, 30)
+                    .padding(.top, compact ? 12 : 18)
+
+                    HStack {
+                        Button { player.previous() } label: { Image(systemName: "backward.fill") }
+                        Spacer()
+                        Button { player.toggle() } label: {
+                            Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
+                                .contentTransition(.symbolEffect(.replace))
+                        }
+                        Spacer()
+                        Button { player.next() } label: { Image(systemName: "forward.fill") }
+                    }
+                    .font(.system(size: compact ? 32 : 36, weight: .semibold))
+                    .padding(.horizontal, 66)
+                    .padding(.top, compact ? 14 : 20)
+
+                    HStack(spacing: 10) {
+                        Image(systemName: "speaker.fill").font(.caption).foregroundStyle(.secondary)
+                        VolumeSlider().frame(height: 28)
+                        Image(systemName: "speaker.wave.3.fill").font(.body).foregroundStyle(.secondary)
+                    }
+                    .padding(.horizontal, 30)
+                    .padding(.top, compact ? 12 : 18)
+
+                    HStack {
                         Menu {
-                            ForEach(song.sortedVersions) { v in
-                                Button { player.switchVersion(v) } label: { Label(v.name, systemImage: v.id == version.id ? "checkmark" : "opticaldisc") }
+                            ForEach([0.75, 1.0, 1.25, 1.5, 2.0], id: \.self) { r in
+                                Button { player.setRate(Float(r)) } label: {
+                                    if Float(r) == player.rate { Label("\(String(format: "%g", r))x", systemImage: "checkmark") }
+                                    else { Text("\(String(format: "%g", r))x") }
+                                }
                             }
                         } label: {
-                            Label("Version: \(version.name)", systemImage: "chevron.up.chevron.down")
-                                .font(.caption2.weight(.semibold)).padding(.horizontal, 9).padding(.vertical, 4)
-                                .background(.ultraThinMaterial, in: .capsule)
+                            Text(player.rate == 1.0 ? "1x" : "\(String(format: "%g", player.rate))x")
+                                .font(.subheadline.bold()).frame(width: 40, height: 40)
                         }
+                        Spacer()
+                        AirPlayRouteButton().frame(width: 40, height: 40)
+                        Spacer()
+                        control("list.bullet", active: showQueue) { showQueue = true }
                     }
-                    .font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                    .padding(.horizontal, 75)
+                    .padding(.top, compact ? 6 : 10)
+                    .padding(.bottom, 8)
                 }
-                .padding(.horizontal, 30).padding(.top, 22)
-
-                HStack {
-                    Button { player.previous() } label: { Image(systemName: "backward.fill") }
-                    Spacer()
-                    Button { player.toggle() } label: {
-                        Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
-                            .contentTransition(.symbolEffect(.replace))
-                    }
-                    Spacer()
-                    Button { player.next() } label: { Image(systemName: "forward.fill") }
-                }
-                .font(.system(size: 38, weight: .semibold))
-                .padding(.horizontal, 65).padding(.top, 26)
-
-                HStack(spacing: 10) {
-                    Image(systemName: "speaker.fill").font(.caption).foregroundStyle(.secondary)
-                    VolumeSlider().frame(height: 28)
-                    Image(systemName: "speaker.wave.3.fill").font(.body).foregroundStyle(.secondary)
-                }
-                .padding(.horizontal, 30).padding(.top, 26)
-
-                HStack {
-                    Menu {
-                        ForEach([0.75, 1.0, 1.25, 1.5, 2.0], id: \.self) { r in
-                            Button {
-                                player.setRate(Float(r))
-                            } label: {
-                                if Float(r) == player.rate { Label("\(String(format: "%g", r))x", systemImage: "checkmark") }
-                                else { Text("\(String(format: "%g", r))x") }
-                            }
-                        }
-                    } label: {
-                        Text(player.rate == 1.0 ? "1x" : "\(String(format: "%g", player.rate))x")
-                            .font(.subheadline.bold()).frame(width: 40, height: 40)
-                    }
-                    Spacer()
-                    AirPlayRouteButton().frame(width: 40, height: 40)
-                    Spacer()
-                    control("list.bullet", active: showQueue) { showQueue = true }
-                }
-                .padding(.horizontal, 75).padding(.top, 22).padding(.bottom, 16)
+                .frame(width: geometry.size.width, height: geometry.size.height, alignment: .top)
             }
         }
         .foregroundStyle(.primary)
