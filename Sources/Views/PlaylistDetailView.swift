@@ -196,7 +196,7 @@ struct AddToPlaylistSheet: View {
                     HStack {
                         SongRow(song: song, version: nil)
                         Image(systemName: alreadyAdded ? "checkmark.circle.fill" : "plus.circle")
-                            .foregroundStyle(alreadyAdded ? .green : .tint)
+                            .foregroundStyle(alreadyAdded ? Color.green : Color.accentColor)
                     }
                 }
                 .disabled(alreadyAdded)
