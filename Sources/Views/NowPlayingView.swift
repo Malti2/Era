@@ -125,11 +125,17 @@ struct NowPlayingView: View {
                     .padding(.horizontal, 30)
                     .padding(.top, compact ? 16 : 22)
 
-                    VStack(spacing: 5) {
-                        Slider(value: Binding(
-                            get: { scrubbing ? scrubValue : player.currentTime },
-                            set: { scrubValue = $0 }
-                        ), in: 0...max(1, player.duration)) { editing in
+                    // Keep transport controls anchored to the bottom like Apple Music.
+                    // Any extra height becomes breathing room between metadata and controls,
+                    // instead of collecting as an empty block below the controls.
+                    Spacer(minLength: compact ? 10 : 20)
+
+                    VStack(spacing: 0) {
+                        VStack(spacing: 5) {
+                            Slider(value: Binding(
+                                get: { scrubbing ? scrubValue : player.currentTime },
+                                set: { scrubValue = $0 }
+                            ), in: 0...max(1, player.duration)) { editing in
                             if editing {
                                 scrubValue = player.currentTime
                                 scrubbing = true
@@ -162,11 +168,10 @@ struct NowPlayingView: View {
                         .font(.caption.monospacedDigit())
                         .foregroundStyle(.secondary)
                     }
-                    .padding(.horizontal, 30)
-                    .padding(.top, compact ? 12 : 18)
+                        .padding(.horizontal, 30)
 
-                    HStack {
-                        Button { player.previous() } label: { Image(systemName: "backward.fill") }
+                        HStack {
+                            Button { player.previous() } label: { Image(systemName: "backward.fill") }
                         Spacer()
                         Button { player.toggle() } label: {
                             Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
@@ -175,20 +180,20 @@ struct NowPlayingView: View {
                         Spacer()
                         Button { player.next() } label: { Image(systemName: "forward.fill") }
                     }
-                    .font(.system(size: compact ? 32 : 36, weight: .semibold))
-                    .padding(.horizontal, 66)
-                    .padding(.top, compact ? 14 : 20)
+                        .font(.system(size: compact ? 32 : 36, weight: .semibold))
+                        .padding(.horizontal, 66)
+                        .padding(.top, compact ? 14 : 20)
 
-                    HStack(spacing: 10) {
-                        Image(systemName: "speaker.fill").font(.caption).foregroundStyle(.secondary)
+                        HStack(spacing: 10) {
+                            Image(systemName: "speaker.fill").font(.caption).foregroundStyle(.secondary)
                         VolumeSlider().frame(height: 28)
                         Image(systemName: "speaker.wave.3.fill").font(.body).foregroundStyle(.secondary)
                     }
-                    .padding(.horizontal, 30)
-                    .padding(.top, compact ? 12 : 18)
+                        .padding(.horizontal, 30)
+                        .padding(.top, compact ? 12 : 18)
 
-                    HStack {
-                        Menu {
+                        HStack {
+                            Menu {
                             ForEach([0.75, 1.0, 1.25, 1.5, 2.0], id: \.self) { r in
                                 Button { player.setRate(Float(r)) } label: {
                                     if Float(r) == player.rate { Label("\(String(format: "%g", r))x", systemImage: "checkmark") }
@@ -204,9 +209,10 @@ struct NowPlayingView: View {
                         Spacer()
                         control("list.bullet", active: showQueue) { showQueue = true }
                     }
-                    .padding(.horizontal, 75)
-                    .padding(.top, compact ? 6 : 10)
-                    .padding(.bottom, 8)
+                        .padding(.horizontal, 75)
+                        .padding(.top, compact ? 6 : 10)
+                    }
+                    .padding(.bottom, max(8, geometry.safeAreaInsets.bottom + 4))
                 }
                 .frame(width: geometry.size.width, height: geometry.size.height, alignment: .top)
             }
