@@ -3,6 +3,8 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
+permissions:
+  contents: write
 jobs:
   build:
     runs-on: macos-15
@@ -151,3 +153,16 @@ jobs:
             build/mac/Era-macOS-Catalyst-unsigned.dmg
             build/mac/Era-macOS-Catalyst-unsigned.zip
             screenshots/*.png
+      - name: Publish 27.0.3 Beta 1
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create v27.0.3-beta.1 \
+            Era-unsigned.ipa \
+            build/mac/Era-macOS-Catalyst-unsigned.dmg \
+            build/mac/Era-macOS-Catalyst-unsigned.zip \
+            screenshots/07-player.png \
+            --title "27.0.3 Beta 1" \
+            --notes "Player controls now stay anchored to the bottom of the Now Playing screen, matching the Apple Music layout while keeping artwork and metadata at the top." \
+            --prerelease \
+            --target "$GITHUB_SHA"
