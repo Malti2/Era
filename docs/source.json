@@ -20,6 +20,15 @@
       "category": "music",
       "versions": [
         {
+          "version": "27.0.2",
+          "date": "2026-09-19",
+          "localizedDescription": "27.0.2 Beta 1\n- Fixes the Now Playing layout on current iPhone sizes: bounded artwork, stable title truncation, and compact grouped controls.\n- Makes Listening Stats rankings deterministic when tracks or artists have equal play counts.\n- Tested in the latest iPhone simulator with a long title and the import pipeline.",
+          "releaseNotes": "27.0.2 Beta 1\n- Fixes the Now Playing layout on current iPhone sizes: bounded artwork, stable title truncation, and compact grouped controls.\n- Makes Listening Stats rankings deterministic when tracks or artists have equal play counts.\n- Tested in the latest iPhone simulator with a long title and the import pipeline.",
+          "downloadURL": "https://github.com/Malti2/Era/releases/download/v27.0.2-beta.1/Era-unsigned.ipa",
+          "size": 1980916,
+          "minOSVersion": "18.0"
+        },
+        {
           "version": "27.0.1",
           "date": "2026-09-19",
           "localizedDescription": "Beta 1\n- Removes the description text that sat under the Collections title.\n- Store reset on schema conflicts no longer deletes the library silently: the database is backed up first, and the app tells you if a reset happened. Audio files stay in Files and can be re-imported.\nRequires iOS 18 or later. Builds are unsigned.",
