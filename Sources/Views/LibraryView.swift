@@ -247,6 +247,7 @@ struct LibraryView: View {
                         if let version = song.primaryVersion { player.play(version, from: sortedSongs.compactMap(\.primaryVersion)); showNowPlaying = true }
                     } label: { SongRow(song: song, version: nil, isCurrent: player.current?.song?.id == song.id) }
                     .buttonStyle(.plain)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     NavigationLink { SongDetailView(song: song, showNowPlaying: $showNowPlaying) } label: { Image(systemName: "ellipsis").frame(width: 36, height: 44) }
                 }
                 .swipeActions(edge: .leading) {
@@ -346,8 +347,12 @@ struct LibraryView: View {
                             }
                             .font(.caption).foregroundStyle(.secondary).lineLimit(1)
                         }
-                        Spacer()
-                        Text(version.durationText).font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .layoutPriority(1)
+                        Text(version.durationText)
+                            .font(.caption.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                            .frame(minWidth: 36, alignment: .trailing)
                     }
                     .contentShape(Rectangle())
                     .onTapGesture { player.play(version, from: [version]) }

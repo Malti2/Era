@@ -172,7 +172,8 @@ struct PlaylistEntryRow: View {
                 }
                 Text(version?.displayArtist ?? song.displayArtist).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
             }
-            Spacer(minLength: 4)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .layoutPriority(1)
             if player.current?.id == version?.id { Image(systemName: "waveform").foregroundStyle(.tint) }
             if editingOrder { Image(systemName: "line.3.horizontal").foregroundStyle(.secondary) }
             Menu {

@@ -52,15 +52,20 @@ struct SongRow: View {
                 }
                 .font(.caption).foregroundStyle(.secondary).lineLimit(1)
             }
-            Spacer(minLength: 8)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .layoutPriority(1)
             if isCurrent {
                 Image(systemName: "waveform")
                     .foregroundStyle(.tint)
                     .symbolEffect(.variableColor.iterative, isActive: true)
             } else {
-                Text(v?.durationText ?? "").font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                Text(v?.durationText ?? "")
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+                    .frame(minWidth: 36, alignment: .trailing)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
     }
 }

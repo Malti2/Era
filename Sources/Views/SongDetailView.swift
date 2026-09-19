@@ -47,15 +47,17 @@ struct SongDetailView: View {
 
             Section("Versions (\(song.versions.count))") {
                 ForEach(song.sortedVersions) { version in
-                    VersionRow(song: song, version: version, isCurrent: player.current?.id == version.id)
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            player.play(version, from: [version])
+                    HStack(spacing: 4) {
+                        VersionRow(song: song, version: version, isCurrent: player.current?.id == version.id)
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                player.play(version, from: [version])
+                            }
+                            .contextMenu { versionMenu(version) }
+                        Menu { versionMenu(version) } label: {
+                            Image(systemName: "ellipsis").frame(width: 44, height: 44)
                         }
-                        .contextMenu { versionMenu(version) }
-                        .overlay(alignment: .trailing) {
-                            Menu { versionMenu(version) } label: { Image(systemName: "ellipsis").frame(width: 44, height: 44) }
-                        }
+                    }
                 }
             }
 
@@ -153,13 +155,18 @@ struct VersionRow: View {
                 }
                 .font(.caption).foregroundStyle(.secondary).lineLimit(1)
             }
-            Spacer()
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .layoutPriority(1)
             if isCurrent {
                 Image(systemName: "waveform").foregroundStyle(.tint).symbolEffect(.variableColor.iterative, isActive: true)
             } else {
-                Text(version.durationText).font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                Text(version.durationText)
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+                    .frame(minWidth: 36, alignment: .trailing)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
