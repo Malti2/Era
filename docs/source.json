@@ -20,6 +20,15 @@
       "category": "music",
       "versions": [
         {
+          "version": "27.0.3",
+          "date": "2026-09-19",
+          "localizedDescription": "Player controls now stay anchored to the bottom of the Now Playing screen, matching the Apple Music layout while keeping artwork and metadata at the top.\nBuilt and visually verified on the newest available iPhone simulator with a long title. Includes the unsigned IPA, macOS Catalyst DMG/ZIP, and the verified player screenshot.",
+          "releaseNotes": "Player controls now stay anchored to the bottom of the Now Playing screen, matching the Apple Music layout while keeping artwork and metadata at the top.\nBuilt and visually verified on the newest available iPhone simulator with a long title. Includes the unsigned IPA, macOS Catalyst DMG/ZIP, and the verified player screenshot.",
+          "downloadURL": "https://github.com/Malti2/Era/releases/download/v27.0.3-beta.1/Era-unsigned.ipa",
+          "size": 1982073,
+          "minOSVersion": "18.0"
+        },
+        {
           "version": "27.0.2",
           "date": "2026-09-19",
           "localizedDescription": "27.0.2 Beta 1\n- Fixes the Now Playing layout on current iPhone sizes: bounded artwork, stable title truncation, and compact grouped controls.\n- Makes Listening Stats rankings deterministic when tracks or artists have equal play counts.\n- Tested in the latest iPhone simulator with a long title and the import pipeline.",
