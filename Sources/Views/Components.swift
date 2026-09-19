@@ -9,6 +9,7 @@ struct Artwork: View {
     let song: Song?
     var version: SongVersion?
     var radius: CGFloat = 10
+    var carded: Bool = true
 
     var body: some View {
         let v = version ?? song?.primaryVersion
@@ -20,7 +21,7 @@ struct Artwork: View {
                 .scaledToFill()
                 .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
         } else if let song {
-            DiscArtwork(songID: song.id, statusName: song.statusTags.first?.name, radius: radius)
+            DiscArtwork(songID: song.id, statusName: song.statusTags.first?.name, radius: radius, carded: carded)
         } else {
             RoundedRectangle(cornerRadius: radius, style: .continuous)
                 .fill(Color(.secondarySystemFill))

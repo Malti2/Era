@@ -53,7 +53,7 @@ struct NowPlayingView: View {
     private func content(_ version: SongVersion, _ song: Song) -> some View {
         GeometryReader { geometry in
             let compact = geometry.size.height < 760
-            let artworkSize = min(geometry.size.width - 60, compact ? 250 : 310)
+            let artworkSize = min(geometry.size.width - 60, compact ? 250 : 330)
 
             ZStack {
                 playerBackground(song: song, version: version)
@@ -64,7 +64,7 @@ struct NowPlayingView: View {
                         .frame(width: 38, height: 5)
                         .padding(.top, 8)
 
-                    Artwork(song: song, version: version, radius: 14)
+                    Artwork(song: song, version: version, radius: 14, carded: false)
                         .frame(width: artworkSize, height: artworkSize)
                         .scaleEffect(player.isPlaying ? 1 : 0.94)
                         .animation(.spring(response: 0.45), value: player.isPlaying)

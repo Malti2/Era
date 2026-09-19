@@ -7,6 +7,8 @@ struct DiscArtwork: View {
     let songID: UUID
     var statusName: String?
     var radius: CGFloat = 10
+    // carded: light card behind the disc (lists). Now Playing passes false for the classic borderless look.
+    var carded: Bool = true
     private var params: DiscParams { DiscParams(id: songID) }
 
     var body: some View {
@@ -17,7 +19,9 @@ struct DiscArtwork: View {
             let labelRadius = side * 0.105
             let hole = side * 0.018
 
-            context.fill(Path(CGRect(origin: .zero, size: size)), with: .color(Color(.systemGray6)))
+            if carded {
+                context.fill(Path(CGRect(origin: .zero, size: size)), with: .color(Color(.systemGray6)))
+            }
             let discRect = CGRect(x: center.x - outer, y: center.y - outer, width: outer * 2, height: outer * 2)
             let vinyl = Gradient(colors: [Color(white: 0.22), Color(white: 0.055), Color(white: 0.15), Color(white: 0.035)])
             context.fill(Circle().path(in: discRect), with: .radialGradient(vinyl, center: center, startRadius: 0, endRadius: outer))
@@ -42,7 +46,11 @@ struct DiscArtwork: View {
         }
         .aspectRatio(1, contentMode: .fit)
         .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: radius, style: .continuous).stroke(.black.opacity(0.08), lineWidth: 0.5))
+        .overlay {
+            if carded {
+                RoundedRectangle(cornerRadius: radius, style: .continuous).stroke(.black.opacity(0.08), lineWidth: 0.5)
+            }
+        }
     }
 }
 
