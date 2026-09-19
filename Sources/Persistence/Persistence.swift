@@ -44,16 +44,24 @@ enum Persistence {
         do {
             return try ModelContainer(for: schema, configurations: [config])
         } catch {
-            // Bei einem Schema-Konflikt (Beta-Installationen): lokalen Store zuruecksetzen statt Absturz.
+            // Schema conflict (beta installs): back the store up before resetting,
+            // never delete silently. The UI surfaces the reset once via the flag.
             let url = config.url
-            try? FileManager.default.removeItem(at: url)
+            let stamp = ISO8601DateFormatter().string(from: Date()).replacingOccurrences(of: ":", with: "-")
+            let backup = url.deletingLastPathComponent().appendingPathComponent("EraStore-backup-\(stamp).sqlite")
+            try? FileManager.default.moveItem(at: url, to: backup)
             try? FileManager.default.removeItem(at: url.deletingPathExtension().appendingPathExtension("sqlite-wal"))
             try? FileManager.default.removeItem(at: url.deletingPathExtension().appendingPathExtension("sqlite-shm"))
-            return (try? ModelContainer(for: schema, configurations: [config])) ?? {
-                // letzter Ausweg: In-Memory, App bleibt benutzbar
-                let fallback = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
-                return try! ModelContainer(for: schema, configurations: [fallback])
-            }()
+            let recovered = try? ModelContainer(for: schema, configurations: [config])
+            if recovered != nil {
+                UserDefaults.standard.set(true, forKey: "persistence.libraryWasReset")
+                UserDefaults.standard.set(backup.lastPathComponent, forKey: "persistence.libraryResetBackup")
+                return recovered!
+            }
+            // Restore failed too: put the backup back and stay in memory so the app keeps working.
+            try? FileManager.default.moveItem(at: backup, to: url)
+            let fallback = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+            return try! ModelContainer(for: schema, configurations: [fallback])
         }
     }
 }

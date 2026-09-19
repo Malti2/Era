@@ -15,6 +15,7 @@ struct ContentView: View {
     @StateObject private var launchUpdater = UpdateService()
     @State private var showUpdatePrompt = false
     @AppStorage(AppSettings.hasOnboardedKey) private var hasOnboarded = false
+    @State private var showResetNotice = false
     @Environment(\.modelContext) private var modelContext
 
     init() {
@@ -48,7 +49,7 @@ struct ContentView: View {
         .sheet(isPresented: $showStats) { NavigationStack { StatsView() } }
         .sheet(isPresented: $showUpdatePrompt) {
             let demoRelease = UpdateService.Release(
-                version: "27.0.1", notes: "Preview of the update drawer.",
+                version: "27.0.2", notes: "Preview of the update drawer.",
                 ipaURL: URL(string: "https://github.com/Malti2/Era/releases/latest")!,
                 ipaName: "Era-unsigned.ipa")
             UpdatePromptView(
@@ -82,6 +83,11 @@ struct ContentView: View {
             }
         }
         .sheet(isPresented: $showOnboarding) { OnboardingView() }
+        .alert(String(localized: "Library Was Reset"), isPresented: $showResetNotice) {
+            Button(String(localized: "OK")) { UserDefaults.standard.set(false, forKey: "persistence.libraryWasReset") }
+        } message: {
+            Text(String(localized: "Your library database could not be migrated and was reset. A backup of the old database was kept in the app container. Your audio files are still in Files and can be re-imported."))
+        }
         .onContinueUserActivity(CSSearchableItemActionType) { activity in
             guard let idString = activity.userInfo?[CSSearchableItemActivityIdentifier] as? String,
                   let uuid = UUID(uuidString: idString),
@@ -93,6 +99,7 @@ struct ContentView: View {
             let args = ProcessInfo.processInfo.arguments
             // Erste Start: Einfuehrung zeigen (Screenshot-Modus ausgenommen)
             if !hasOnboarded && !args.contains("--era-demo") { showOnboarding = true }
+            if !args.contains("--era-demo"), UserDefaults.standard.bool(forKey: "persistence.libraryWasReset") { showResetNotice = true }
             if args.contains("--era-player"), player.current == nil {
                 if args.contains("--era-queue") {
                     // Queue-Screenshot: alle Songs als Queue

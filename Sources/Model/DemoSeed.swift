@@ -7,7 +7,8 @@ enum DemoSeed {
     @MainActor
     static func seedIfNeeded(store: EraStore) {
         #if targetEnvironment(simulator)
-        guard ProcessInfo.processInfo.arguments.contains("--era-demo") else { return }
+        let args = ProcessInfo.processInfo.arguments
+        guard args.contains("--era-demo"), !args.contains("--era-no-seed") else { return }
         guard ((try? store.allSongs().isEmpty) ?? true) else { return }
 
         store.ensureStatusTags()

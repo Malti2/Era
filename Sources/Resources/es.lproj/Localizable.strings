@@ -251,3 +251,5 @@
 "Import File" = "Importar archivo";
 "Files with Review" = "Archivos con revisión";
 "Version: %@" = "Versión: %@";
+"Library Was Reset" = "Biblioteca restablecida";
+"Your library database could not be migrated and was reset. A backup of the old database was kept in the app container. Your audio files are still in Files and can be re-imported." = "La base de datos de tu biblioteca no pudo migrarse y se restableció. Se conservó una copia de seguridad en el contenedor de la app. Tus archivos de audio siguen en Archivos y pueden reimportarse.";

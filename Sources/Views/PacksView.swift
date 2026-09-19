@@ -27,13 +27,6 @@ struct PacksView: View {
     var body: some View {
         NavigationStack {
             List {
-                Text("Saved filters that update automatically from tags and status.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .listRowBackground(Color.clear)
-                    .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 8, trailing: 16))
-                    .accessibilityIdentifier("collections-description")
-
                 if !dynamicPacks.isEmpty {
                     Section("Automatic") {
                         ForEach(dynamicPacks, id: \.0) { name, icon, packSongs in
