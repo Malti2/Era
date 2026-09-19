@@ -42,6 +42,7 @@ struct SearchView: View {
                             } label: { SongRow(song: song, version: nil, isCurrent: player.current?.song?.id == song.id) }
                             .buttonStyle(.plain)
                             NavigationLink { SongDetailView(song: song, showNowPlaying: $showNowPlaying) } label: { Image(systemName: "ellipsis").frame(width: 36, height: 44) }
+                            .fixedSize(horizontal: true, vertical: false)
                         }
                         .contextMenu { SongContextMenu(song: song, showNowPlaying: $showNowPlaying) }
                     }.listStyle(.plain)

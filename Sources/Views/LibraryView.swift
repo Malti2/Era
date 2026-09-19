@@ -249,6 +249,7 @@ struct LibraryView: View {
                     .buttonStyle(.plain)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     NavigationLink { SongDetailView(song: song, showNowPlaying: $showNowPlaying) } label: { Image(systemName: "ellipsis").frame(width: 36, height: 44) }
+                    .fixedSize(horizontal: true, vertical: false)
                 }
                 .swipeActions(edge: .leading) {
                     Button { song.isFavorite.toggle(); store.save() } label: {
