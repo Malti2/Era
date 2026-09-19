@@ -155,3 +155,14 @@ bleiben. Apple Music weiterhin komplett draussen.
   einen Namen vor. Komplett hinter `SystemLanguageModel`-Verfuegbarkeit
   (`canImport` + `#available` + availability-Check); Geraete ohne Apple
   Intelligence sehen den Einstieg nicht, nichts crasht, nichts fehlt.
+
+
+## 27.8.1 (2026-09-19): Smart-Playlist-Sprache
+
+- Smart-Playlist-Namen folgen jetzt explizit der aktiven App-/Gerätesprache.
+  Locale und Sprachname werden sowohl in den Session-Instruktionen als auch in
+  der Anfrage mitgegeben; Song-Metadaten oder die Eingabesprache können die
+  Ausgabesprache nicht mehr versehentlich bestimmen.
+- Das strukturierte Namensfeld verlangt dieselbe aktive Sprache. Weitere vom
+  Modell erzeugte sichtbare Texte gibt es in diesem Flow nicht; Fehler- und
+  Statusmeldungen bleiben über die String Catalogs lokalisiert.

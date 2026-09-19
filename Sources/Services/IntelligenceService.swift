@@ -52,15 +52,20 @@ enum IntelligenceService {
             return line
         }.joined(separator: "\n")
 
+        let locale = Locale.current
+        let languageName = locale.localizedString(forLanguageCode: locale.language.languageCode?.identifier ?? "")
+            ?? locale.identifier
         let session = LanguageModelSession(instructions: """
             You are the playlist curator inside Era, a personal offline music app. \
             The user describes a mood, theme or idea. You receive a numbered list of \
             songs from their library with artist, album and tags. Pick the songs that \
             fit the request best and invent a short playlist name. Only use numbers \
-            from the list. Write the playlist name in the same language as the user's request.
+            from the list. The app's active language is \(languageName) (locale \(locale.identifier)). \
+            Always write every user-visible string, especially the playlist name, in \
+            that language, regardless of the language of song metadata or the request.
             """)
         let response = try await session.respond(
-            to: "Request: \(prompt)\n\nSongs:\n\(list)",
+            to: "App language: \(languageName) (\(locale.identifier))\nRequest: \(prompt)\n\nSongs:\n\(list)",
             generating: SmartPlaylistChoice.self)
         let choice = response.content
         let ids = choice.songNumbers.compactMap { number -> UUID? in
@@ -82,7 +87,7 @@ enum IntelligenceService {
 @available(iOS 26.0, macOS 26.0, *)
 @Generable
 struct SmartPlaylistChoice {
-    @Guide(description: "A short, fitting playlist name, at most 4 words")
+    @Guide(description: "A short, fitting playlist name, at most 4 words, written in the app language specified in the prompt")
     var name: String
     @Guide(description: "The numbers of the songs from the list that fit the request")
     var songNumbers: [Int]
