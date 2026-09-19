@@ -44,13 +44,21 @@ struct StatsView: View {
             let entry = map[key] ?? (event.title, event.artist, 0)
             map[key] = (entry.0, entry.1, entry.2 + 1)
         }
-        return Array(map.values.sorted { $0.2 > $1.2 }.prefix(limit))
+        return Array(map.values.sorted { lhs, rhs in
+            if lhs.2 != rhs.2 { return lhs.2 > rhs.2 }
+            let titleOrder = lhs.0.localizedCaseInsensitiveCompare(rhs.0)
+            if titleOrder != .orderedSame { return titleOrder == .orderedAscending }
+            return lhs.1.localizedCaseInsensitiveCompare(rhs.1) == .orderedAscending
+        }.prefix(limit))
     }
 
     private func topArtists(in scope: [PlayEvent], limit: Int) -> [(String, Int)] {
         var map: [String: Int] = [:]
         for event in scope { map[event.artist, default: 0] += 1 }
-        return map.sorted { $0.value > $1.value }.prefix(limit).map { ($0.key, $0.value) }
+        return map.sorted { lhs, rhs in
+            if lhs.value != rhs.value { return lhs.value > rhs.value }
+            return lhs.key.localizedCaseInsensitiveCompare(rhs.key) == .orderedAscending
+        }.prefix(limit).map { ($0.key, $0.value) }
     }
 
     private func durationText(_ seconds: Double) -> String {
@@ -81,7 +89,7 @@ struct StatsView: View {
                     let monthTracks = topTracks(in: thisMonth, limit: 5)
                     if !monthTracks.isEmpty {
                         Section("Top Tracks This Month") {
-                            ForEach(Array(monthTracks.enumerated()), id: \.offset) { index, track in
+                            ForEach(Array(monthTracks.enumerated()), id: \.element.0) { index, track in
                                 HStack {
                                     Text("\(index + 1)")
                                         .font(.headline)
