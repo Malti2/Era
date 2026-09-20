@@ -20,6 +20,15 @@
       "category": "music",
       "versions": [
         {
+          "version": "27.0.4",
+          "date": "2026-09-20",
+          "localizedDescription": "Restores the Now Playing artwork to a large, centered rounded cover box and keeps the controls anchored to the bottom.\nThe full player now gets a subtle, dark artwork-derived tint that updates smoothly when the track changes while keeping titles and controls clearly readable. The generated vinyl placeholder uses the same rounded artwork box without the old padded card.\nBuilt and visually verified in Dark Mode on the newest available iPhone simulator. Includes the unsigned IPA, macOS Catalyst DMG/ZIP, and the verified player screenshot.",
+          "releaseNotes": "Restores the Now Playing artwork to a large, centered rounded cover box and keeps the controls anchored to the bottom.\nThe full player now gets a subtle, dark artwork-derived tint that updates smoothly when the track changes while keeping titles and controls clearly readable. The generated vinyl placeholder uses the same rounded artwork box without the old padded card.\nBuilt and visually verified in Dark Mode on the newest available iPhone simulator. Includes the unsigned IPA, macOS Catalyst DMG/ZIP, and the verified player screenshot.",
+          "downloadURL": "https://github.com/Malti2/Era/releases/download/v27.0.4-beta.1/Era-unsigned.ipa",
+          "size": 1988139,
+          "minOSVersion": "18.0"
+        },
+        {
           "version": "27.0.3",
           "date": "2026-09-19",
           "localizedDescription": "Player controls now stay anchored to the bottom of the Now Playing screen, matching the Apple Music layout while keeping artwork and metadata at the top.\nBuilt and visually verified on the newest available iPhone simulator with a long title. Includes the unsigned IPA, macOS Catalyst DMG/ZIP, and the verified player screenshot.",
