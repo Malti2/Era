@@ -15,13 +15,16 @@ struct DiscArtwork: View {
         Canvas { context, size in
             let side = min(size.width, size.height)
             let center = CGPoint(x: size.width / 2, y: size.height / 2)
-            let outer = side * 0.43
+            // In Now Playing the vinyl lives in the same edge-to-edge rounded
+            // artwork box as a real cover. Lists retain their roomier light card.
+            let outer = side * (carded ? 0.43 : 0.485)
             let labelRadius = side * 0.105
             let hole = side * 0.018
 
-            if carded {
-                context.fill(Path(CGRect(origin: .zero, size: size)), with: .color(Color(.systemGray6)))
-            }
+            context.fill(
+                Path(CGRect(origin: .zero, size: size)),
+                with: .color(carded ? Color(.systemGray6) : Color(white: 0.075))
+            )
             let discRect = CGRect(x: center.x - outer, y: center.y - outer, width: outer * 2, height: outer * 2)
             let vinyl = Gradient(colors: [Color(white: 0.22), Color(white: 0.055), Color(white: 0.15), Color(white: 0.035)])
             context.fill(Circle().path(in: discRect), with: .radialGradient(vinyl, center: center, startRadius: 0, endRadius: outer))

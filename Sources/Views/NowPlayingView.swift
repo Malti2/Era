@@ -1,6 +1,73 @@
 import SwiftUI
 
 // Now Playing als Sheet (Apple-Music-Stil), kein eigener Tab (Spec 13.4).
+
+private enum ArtworkColor {
+    @MainActor
+    static func tint(for song: Song, version: SongVersion) -> Color {
+        let image: UIImage
+        if let file = version.artworkFile,
+           let data = try? Data(contentsOf: LibraryFiles.artworkURL(file)),
+           let stored = UIImage(data: data) {
+            image = stored
+        } else {
+            image = DiscArtworkCache.png(for: song.id, status: song.statusTags.first?.name, size: 96)
+        }
+        return Color(uiColor: mutedAverage(of: image))
+    }
+
+    private static func mutedAverage(of image: UIImage) -> UIColor {
+        let size = CGSize(width: 20, height: 20)
+        let renderer = UIGraphicsImageRenderer(size: size)
+        let sample = renderer.image { _ in
+            image.draw(in: CGRect(origin: .zero, size: size))
+        }
+        guard let cgImage = sample.cgImage,
+              let data = cgImage.dataProvider?.data,
+              let bytes = CFDataGetBytePtr(data) else {
+            return UIColor(white: 0.12, alpha: 1)
+        }
+
+        var red: CGFloat = 0
+        var green: CGFloat = 0
+        var blue: CGFloat = 0
+        var weight: CGFloat = 0
+        let count = cgImage.width * cgImage.height
+        for index in 0..<count {
+            // UIGraphicsImageRenderer uses BGRA byte order on iOS. Ignore nearly
+            // white highlights so a coloured cover does not wash out to grey.
+            let offset = index * 4
+            let b = CGFloat(bytes[offset]) / 255
+            let g = CGFloat(bytes[offset + 1]) / 255
+            let r = CGFloat(bytes[offset + 2]) / 255
+            let maximum = max(r, g, b)
+            let minimum = min(r, g, b)
+            let saturation = maximum > 0 ? (maximum - minimum) / maximum : 0
+            let pixelWeight = maximum > 0.92 && saturation < 0.10 ? 0.12 : 0.55 + saturation
+            red += r * pixelWeight
+            green += g * pixelWeight
+            blue += b * pixelWeight
+            weight += pixelWeight
+        }
+        guard weight > 0 else { return UIColor(white: 0.12, alpha: 1) }
+
+        let average = UIColor(red: red / weight, green: green / weight, blue: blue / weight, alpha: 1)
+        var hue: CGFloat = 0
+        var saturation: CGFloat = 0
+        var brightness: CGFloat = 0
+        average.getHue(&hue, saturation: &saturation, brightness: &brightness, alpha: nil)
+        if saturation < 0.07 {
+            return UIColor(white: min(0.26, max(0.12, brightness * 0.34)), alpha: 1)
+        }
+        return UIColor(
+            hue: hue,
+            saturation: min(0.58, max(0.22, saturation * 0.85)),
+            brightness: min(0.42, max(0.24, brightness * 0.52)),
+            alpha: 1
+        )
+    }
+}
+
 struct NowPlayingView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var player: PlayerEngine
@@ -11,6 +78,7 @@ struct NowPlayingView: View {
     @State private var showTimer = false
     @State private var confirmClearQueue = false
     @State private var queueEditing = false
+    @State private var artworkTint = Color(white: 0.10)
     @AppStorage(AppSettings.skipIntervalKey) private var skipInterval = 15
     @AppStorage(AppSettings.hapticsEnabledKey) private var haptics = true
 
@@ -58,7 +126,7 @@ struct NowPlayingView: View {
             let artworkSize = min(geometry.size.width - 60, compact ? 250 : 330)
 
             ZStack {
-                playerBackground(song: song, version: version)
+                playerBackground
 
                 VStack(spacing: 0) {
                     Capsule()
@@ -66,7 +134,7 @@ struct NowPlayingView: View {
                         .frame(width: 38, height: 5)
                         .padding(.top, 8)
 
-                    Artwork(song: song, version: version, radius: 14, carded: false)
+                    Artwork(song: song, version: version, radius: 18, carded: false)
                         .frame(width: artworkSize, height: artworkSize)
                         .scaleEffect(player.isPlaying ? 1 : 0.94)
                         .animation(.spring(response: 0.45), value: player.isPlaying)
@@ -219,18 +287,30 @@ struct NowPlayingView: View {
                 .frame(width: geometry.size.width, height: geometry.size.height, alignment: .top)
             }
         }
-        .foregroundStyle(.primary)
+        .foregroundStyle(.white)
         .toolbarBackground(.hidden, for: .navigationBar)
+        .task(id: version.id) {
+            let nextTint = ArtworkColor.tint(for: song, version: version)
+            withAnimation(.easeInOut(duration: 0.55)) {
+                artworkTint = nextTint
+            }
+        }
     }
 
-    @ViewBuilder
-    private func playerBackground(song: Song, version: SongVersion) -> some View {
+    private var playerBackground: some View {
         ZStack {
-            Color(.systemBackground)
-            Artwork(song: song, version: version, radius: 0)
-                .scaleEffect(1.9).blur(radius: 72).opacity(0.42)
-            LinearGradient(colors: [.clear, Color(.systemBackground).opacity(0.7)], startPoint: .top, endPoint: .bottom)
+            // Keep a dark neutral foundation and mix the cover colour in lightly.
+            // This gives the whole player Apple Music's calm artwork tint without
+            // sacrificing white-text contrast on unusually bright covers.
+            Color(white: 0.055)
+            artworkTint.opacity(0.34)
+            LinearGradient(
+                colors: [.black.opacity(0.05), .black.opacity(0.32)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
         }
+        .animation(.easeInOut(duration: 0.55), value: artworkTint)
         .ignoresSafeArea()
     }
 
