@@ -52,7 +52,9 @@ struct NowPlayingView: View {
 
     private func content(_ version: SongVersion, _ song: Song) -> some View {
         GeometryReader { geometry in
-            let compact = geometry.size.height < 760
+            // The sheet's safe area tops out near 740pt even on large iPhones, so the
+            // compact guard must only trigger on genuinely small screens (SE-class).
+            let compact = geometry.size.height < 700
             let artworkSize = min(geometry.size.width - 60, compact ? 250 : 330)
 
             ZStack {
