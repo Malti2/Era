@@ -2,7 +2,10 @@ name: Era
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: [main, beta]
+concurrency:
+  group: era-build-${{ github.ref }}
+  cancel-in-progress: false
 jobs:
   build:
     runs-on: macos-15
@@ -152,3 +155,33 @@ jobs:
             build/mac/Era-macOS-Catalyst-unsigned.dmg
             build/mac/Era-macOS-Catalyst-unsigned.zip
             screenshots/*.png
+
+  prerelease:
+    needs: build
+    if: github.ref == 'refs/heads/beta'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: Era
+          path: dist
+      - name: Create beta pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          VERSION=$(python3 -c "import re; print(re.search(r'MARKETING_VERSION:\s*"([\d.]+)"', open('project.yml').read()).group(1))")
+          LAST=$(gh release list --limit 100 --json tagName -q '.[].tagName' | grep -oP "^v${VERSION}-beta\.\K[0-9]+$" | sort -n | tail -1)
+          N=$(( ${LAST:-0} + 1 ))
+          TAG="v${VERSION}-beta.${N}"
+          echo "creating pre-release $TAG"
+          gh release create "$TAG" --prerelease \
+            --title "$VERSION Beta $N" \
+            --notes "Automatischer Beta-Build aus Branch beta." \
+            dist/Era-unsigned.ipa \
+            dist/build/mac/Era-macOS-Catalyst-unsigned.dmg \
+            dist/build/mac/Era-macOS-Catalyst-unsigned.zip \
+            dist/screenshots/07-player.png
