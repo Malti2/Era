@@ -6,8 +6,36 @@ on:
 jobs:
   build:
     runs-on: macos-15
+    outputs:
+      stable_version: ${{ steps.version.outputs.number }}
     steps:
       - uses: actions/checkout@v4
+      - name: Determine stable version
+        id: version
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BASE=$(python3 -c "import re; print(re.search(r'MARKETING_VERSION:\s*"([\d.]+)"', open('project.yml').read()).group(1))")
+          LAST=$(gh release list --limit 100 --json tagName,isPrerelease -q '.[] | select(.isPrerelease | not) | .tagName' \
+            | python3 -c "
+import re, sys
+vers = []
+for line in sys.stdin:
+    m = re.fullmatch(r'v(\d+)\.(\d+)\.(\d+)', line.strip())
+    if m:
+        vers.append(tuple(int(x) for x in m.groups()))
+if vers:
+    print('%d.%d.%d' % max(vers))
+")
+          if [ -n "$LAST" ]; then
+            NEXT=$(echo "$LAST" | awk -F. '{print $1"."$2"."$3+1}')
+          else
+            NEXT="$BASE"
+          fi
+          echo "stable version: $NEXT (base $BASE, last stable ${LAST:-none})"
+          sed -i '' "s/MARKETING_VERSION: \"$BASE\"/MARKETING_VERSION: \"$NEXT\"/" project.yml
+          grep -m1 'MARKETING_VERSION' project.yml
+          echo "number=$NEXT" >> "$GITHUB_OUTPUT"
       - name: Select Xcode 26
         run: |
           XC=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
@@ -152,3 +180,31 @@ jobs:
             build/mac/Era-macOS-Catalyst-unsigned.dmg
             build/mac/Era-macOS-Catalyst-unsigned.zip
             screenshots/*.png
+
+  release:
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: Era
+          path: dist
+      - name: Create stable release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          VERSION="${{ needs.build.outputs.stable_version }}"
+          TAG="v${VERSION}"
+          echo "creating stable release $TAG"
+          gh release create "$TAG" \
+            --title "$VERSION" \
+            --notes "Automatisches Stable-Release aus Branch main." \
+            dist/Era-unsigned.ipa \
+            dist/build/mac/Era-macOS-Catalyst-unsigned.dmg \
+            dist/build/mac/Era-macOS-Catalyst-unsigned.zip \
+            dist/screenshots/07-player.png
