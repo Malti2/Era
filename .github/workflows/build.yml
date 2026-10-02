@@ -16,17 +16,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           BASE=$(grep -m1 'MARKETING_VERSION' project.yml | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
-          LAST=$(gh release list --limit 100 --json tagName,isPrerelease -q '.[] | select(.isPrerelease | not) | .tagName' \
-            | python3 -c "
-import re, sys
-vers = []
-for line in sys.stdin:
-    m = re.fullmatch(r'v(\d+)\.(\d+)\.(\d+)', line.strip())
-    if m:
-        vers.append(tuple(int(x) for x in m.groups()))
-if vers:
-    print('%d.%d.%d' % max(vers))
-")
+          LAST=$(gh release list --limit 100 --json tagName,isPrerelease -q '.[] | select(.isPrerelease | not) | .tagName' | python3 -c "import re,sys; v=[tuple(map(int,m.groups())) for l in sys.stdin for m in [re.fullmatch(r'v(\d+)\.(\d+)\.(\d+)',l.strip())] if m]; print('%d.%d.%d'%max(v)) if v else ''")
           if [ -n "$LAST" ]; then
             NEXT=$(echo "$LAST" | awk -F. '{print $1"."$2"."$3+1}')
           else
