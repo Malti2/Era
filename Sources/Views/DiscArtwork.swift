@@ -73,7 +73,7 @@ enum DiscArtworkCache {
         return url
     }
     @MainActor static func png(for songID: UUID, status: String?, size: CGFloat = 1024) -> UIImage {
-        let file = cacheDir.appendingPathComponent("\\(songID.uuidString)-\\(Int(size)).png")
+        let file = cacheDir.appendingPathComponent("\(songID.uuidString)-\(Int(size)).png")
         if let data = try? Data(contentsOf: file), let image = UIImage(data: data) { return image }
         let renderer = ImageRenderer(content: DiscArtwork(songID: songID, statusName: status, radius: 0).frame(width: size, height: size))
         renderer.scale = 1
