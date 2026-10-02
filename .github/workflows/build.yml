@@ -23,8 +23,8 @@ jobs:
       - name: Beta bundle identifiers
         if: github.ref == 'refs/heads/beta'
         run: |
-          sed -i '' 's/^\(\s*\)PRODUCT_BUNDLE_IDENTIFIER: de\.malte\.era$/\1PRODUCT_BUNDLE_IDENTIFIER: de.malte.era.beta/' project.yml
-          sed -i '' 's/^\(\s*\)PRODUCT_BUNDLE_IDENTIFIER: de\.malte\.era\.share$/\1PRODUCT_BUNDLE_IDENTIFIER: de.malte.era.beta.share/' project.yml
+          sed -i '' 's/^\( *\)PRODUCT_BUNDLE_IDENTIFIER: de\.malte\.era$/\1PRODUCT_BUNDLE_IDENTIFIER: de.malte.era.beta/' project.yml
+          sed -i '' 's/^\( *\)PRODUCT_BUNDLE_IDENTIFIER: de\.malte\.era\.share$/\1PRODUCT_BUNDLE_IDENTIFIER: de.malte.era.beta.share/' project.yml
           grep -n PRODUCT_BUNDLE_IDENTIFIER project.yml
           echo "ERA_BUNDLE_ID=de.malte.era.beta" >> "$GITHUB_ENV"
       - name: Generate project
