@@ -28,10 +28,11 @@ jobs:
           python3 - <<'PY'
           import json, urllib.request
           with open('docs/source.json') as f: source = json.load(f)
-          for version in source['apps'][0]['versions']:
-              req = urllib.request.Request(version['downloadURL'], method='HEAD', headers={'User-Agent':'Era-AltStore-Source-CI'})
-              with urllib.request.urlopen(req) as response:
-                  assert response.status == 200, version['downloadURL']
+          for app in source['apps']:
+              for version in app['versions']:
+                  req = urllib.request.Request(version['downloadURL'], method='HEAD', headers={'User-Agent':'Era-AltStore-Source-CI'})
+                  with urllib.request.urlopen(req) as response:
+                      assert response.status == 200, version['downloadURL']
           PY
       - name: Commit updated source
         run: |
@@ -39,5 +40,5 @@ jobs:
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add docs/source.json
-          git commit -m "Update AltStore source for ${{ github.event.release.tag_name || 'manual run' }}"
+          git commit -m "Update AltStore source for ${{ github.event.release.tag_name || 'manual run' }} [skip ci]"
           git push origin HEAD:main
