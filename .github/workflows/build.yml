@@ -15,7 +15,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          BASE=$(python3 -c "import re; print(re.search(r'MARKETING_VERSION:\s*"([\d.]+)"', open('project.yml').read()).group(1))")
+          BASE=$(grep -m1 'MARKETING_VERSION' project.yml | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
           LAST=$(gh release list --limit 100 --json tagName,isPrerelease -q '.[] | select(.isPrerelease | not) | .tagName' \
             | python3 -c "
 import re, sys
