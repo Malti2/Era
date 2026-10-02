@@ -17,11 +17,13 @@ final class UpdateService: ObservableObject {
         let notes: String
         let ipaURL: URL
         let ipaName: String
+        let prerelease: Bool
 
         enum CodingKeys: String, CodingKey {
             case tagName = "tag_name"
             case body
             case assets
+            case prerelease
         }
 
         struct Asset: Decodable, Equatable {
@@ -34,11 +36,12 @@ final class UpdateService: ObservableObject {
             }
         }
 
-        init(version: String, notes: String, ipaURL: URL, ipaName: String) {
+        init(version: String, notes: String, ipaURL: URL, ipaName: String, prerelease: Bool = false) {
             self.version = version
             self.notes = notes
             self.ipaURL = ipaURL
             self.ipaName = ipaName
+            self.prerelease = prerelease
         }
 
         init(from decoder: Decoder) throws {
@@ -53,6 +56,7 @@ final class UpdateService: ObservableObject {
             notes = try container.decodeIfPresent(String.self, forKey: .body) ?? ""
             ipaURL = ipa.browserDownloadURL
             ipaName = ipa.name
+            prerelease = try container.decodeIfPresent(Bool.self, forKey: .prerelease) ?? false
         }
     }
 
@@ -101,7 +105,9 @@ final class UpdateService: ObservableObject {
                 throw UpdateError.invalidResponse
             }
             let releases = try JSONDecoder().decode([Release].self, from: data)
-            guard let release = releases.first else { throw UpdateError.noIPA }
+            // Pre-releases belong to the beta channel; stable users only
+            // ever see final releases.
+            guard let release = releases.first(where: { !$0.prerelease }) else { throw UpdateError.noIPA }
             state = release.version.compare(currentVersion, options: .numeric) == .orderedDescending
                 ? .available(release)
                 : .upToDate
