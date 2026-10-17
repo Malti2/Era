@@ -1,0 +1,30 @@
+name: PR check
+on:
+  pull_request:
+concurrency:
+  group: pr-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  check:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode 26
+        run: |
+          XC=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          if [ -z "$XC" ]; then XC=$(ls -d /Applications/Xcode*.app | sort -V | tail -1); fi
+          sudo xcode-select -s "$XC/Contents/Developer"
+      - name: Install tools
+        run: brew install xcodegen swiftlint
+      - name: Script sanity
+        run: |
+          python3 Scripts/check-localizations.py
+          printf 'v1.0.9\nv1.0.10\nv0.9.0-beta.1\n' | python3 Scripts/latest-stable.py | grep -x '1.0.10'
+      - name: Lint
+        run: swiftlint lint --lenient --reporter github-actions-logging
+      - name: Generate project
+        run: xcodegen generate
+      - name: Build and test
+        run: |
+          UDID=$(xcrun simctl list devices available -j | python3 Scripts/newest-iphone.py)
+          xcodebuild -project Era.xcodeproj -scheme Era -destination "id=$UDID" -derivedDataPath build/tests CODE_SIGNING_ALLOWED=NO test

@@ -253,3 +253,8 @@
 "Version: %@" = "Version: %@";
 "Library Was Reset" = "Mediathek wurde zurückgesetzt";
 "Your library database could not be migrated and was reset. A backup of the old database was kept in the app container. Your audio files are still in Files and can be re-imported." = "Die Datenbank deiner Mediathek konnte nicht migriert werden und wurde zurückgesetzt. Ein Backup der alten Datenbank liegt weiterhin im App-Container. Deine Audiodateien sind noch in Dateien vorhanden und können erneut importiert werden.";
+"Saving Failed" = "Speichern fehlgeschlagen";
+"Your last change could not be saved. Free up storage space and try again." = "Deine letzte Änderung konnte nicht gespeichert werden. Gib Speicherplatz frei und versuche es erneut.";
+"Previous" = "Zurück";
+"Next" = "Weiter";
+"Queue" = "Warteschlange";

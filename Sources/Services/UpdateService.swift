@@ -89,6 +89,10 @@ final class UpdateService: ObservableObject {
     }
     private let releasesURL = URL(string: "https://api.github.com/repos/Malti2/Era/releases?per_page=20")!
 
+    nonisolated static func isNewer(_ remote: String, than current: String) -> Bool {
+        remote.compare(current, options: .numeric) == .orderedDescending
+    }
+
     func check(currentVersion: String) async {
         state = .checking
         do {
@@ -102,7 +106,7 @@ final class UpdateService: ObservableObject {
             }
             let releases = try JSONDecoder().decode([Release].self, from: data)
             guard let release = releases.first else { throw UpdateError.noIPA }
-            state = release.version.compare(currentVersion, options: .numeric) == .orderedDescending
+            state = Self.isNewer(release.version, than: currentVersion)
                 ? .available(release)
                 : .upToDate
         } catch {

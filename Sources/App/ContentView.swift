@@ -8,6 +8,7 @@ enum AppScreen: String {
 
 struct ContentView: View {
     @EnvironmentObject private var player: PlayerEngine
+    @EnvironmentObject private var store: EraStore
     @State private var selection: AppScreen = .home
     @State private var showNowPlaying = false
     @State private var showOnboarding = false
@@ -87,6 +88,11 @@ struct ContentView: View {
             Button(String(localized: "OK")) { UserDefaults.standard.set(false, forKey: "persistence.libraryWasReset") }
         } message: {
             Text(String(localized: "Your library database could not be migrated and was reset. A backup of the old database was kept in the app container. Your audio files are still in Files and can be re-imported."))
+        }
+        .alert(String(localized: "Saving Failed"), isPresented: Binding(get: { store.saveError != nil }, set: { if !$0 { store.saveError = nil } })) {
+            Button(String(localized: "OK")) { store.saveError = nil }
+        } message: {
+            Text(String(localized: "Your last change could not be saved. Free up storage space and try again.") + "\n" + (store.saveError ?? ""))
         }
         .onContinueUserActivity(CSSearchableItemActionType) { activity in
             guard let idString = activity.userInfo?[CSSearchableItemActivityIdentifier] as? String,

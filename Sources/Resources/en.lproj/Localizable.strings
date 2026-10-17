@@ -253,3 +253,8 @@
 "Version: %@" = "Version: %@";
 "Library Was Reset" = "Library Was Reset";
 "Your library database could not be migrated and was reset. A backup of the old database was kept in the app container. Your audio files are still in Files and can be re-imported." = "Your library database could not be migrated and was reset. A backup of the old database was kept in the app container. Your audio files are still in Files and can be re-imported.";
+"Saving Failed" = "Saving Failed";
+"Your last change could not be saved. Free up storage space and try again." = "Your last change could not be saved. Free up storage space and try again.";
+"Previous" = "Previous";
+"Next" = "Next";
+"Queue" = "Queue";

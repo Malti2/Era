@@ -15,14 +15,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          BASE=$(grep -m1 'MARKETING_VERSION' project.yml | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
-          LAST=$(gh release list --limit 100 --json tagName,isPrerelease -q '.[] | select(.isPrerelease | not) | .tagName' | python3 -c "import re,sys; v=[tuple(map(int,m.groups())) for l in sys.stdin for m in [re.fullmatch(r'v(\d+)\.(\d+)\.(\d+)',l.strip())] if m]; print('%d.%d.%d'%max(v)) if v else ''")
-          if [ -n "$LAST" ]; then
-            NEXT=$(echo "$LAST" | awk -F. '{print $1"."$2"."$3+1}')
-          else
-            NEXT="$BASE"
-          fi
-          echo "stable version: $NEXT (base $BASE, last stable ${LAST:-none})"
+          read BASE NEXT < <(Scripts/next-version.sh)
           sed -i '' "s/MARKETING_VERSION: \"$BASE\"/MARKETING_VERSION: \"$NEXT\"/" project.yml
           grep -m1 'MARKETING_VERSION' project.yml
           echo "number=$NEXT" >> "$GITHUB_OUTPUT"
@@ -39,6 +32,10 @@ jobs:
         run: xcodegen generate
       - name: Verify localizations
         run: python3 Scripts/check-localizations.py
+      - name: Unit tests
+        run: |
+          UDID=$(xcrun simctl list devices available -j | python3 Scripts/newest-iphone.py)
+          xcodebuild -project Era.xcodeproj -scheme Era -destination "id=$UDID" -derivedDataPath build/tests CODE_SIGNING_ALLOWED=NO test
       - name: Archive device app (unsigned)
         run: |
           xcodebuild -project Era.xcodeproj -scheme Era -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' -archivePath build/Era.xcarchive archive CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" CURRENT_PROJECT_VERSION=$GITHUB_RUN_NUMBER
@@ -75,34 +72,12 @@ jobs:
           ditto -c -k --sequesterRsrc --keepParent "$MAC_APP" build/mac/Era-macOS-Catalyst-unsigned.zip
       - name: Prepare test audio files
         run: |
-          mkdir -p testaudio
-          python3 - <<'PY'
-          import wave, struct, math
-          for name, freq in [("Testton Alpha", 440), ("Testton Beta", 523)]:
-              w = wave.open(f"testaudio/{name}.wav", "w")
-              w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100)
-              frames = b"".join(struct.pack("<h", int(10000*math.sin(2*math.pi*freq*i/44100))) for i in range(44100*3))
-              w.writeframes(frames); w.close()
-          open("testaudio/Notiz.txt", "w").write("keine Audiodatei")
-          PY
+          python3 Scripts/make-test-audio.py
           ls -la testaudio
       - name: Boot newest iPhone simulator
         id: sim
         run: |
-          UDID=$(xcrun simctl list devices available -j | python3 -c '
-          import json, sys, re
-          d = json.load(sys.stdin)["devices"]
-          def rtkey(rt):
-              m = re.search(r"iOS-(\d+)-(\d+)", rt)
-              return (int(m.group(1)), int(m.group(2))) if m else (0, 0)
-          best = None
-          for rt, devs in d.items():
-              if "iOS" not in rt: continue
-              for x in devs:
-                  if "iPhone" in x["name"]:
-                      cand = (rtkey(rt), "Pro" in x["name"], x["udid"])
-                      if best is None or cand > best: best = cand
-          print(best[2])')
+          UDID=$(xcrun simctl list devices available -j | python3 Scripts/newest-iphone.py)
           echo "udid=$UDID" >> "$GITHUB_OUTPUT"
           xcrun simctl boot "$UDID" || true
           xcrun simctl bootstatus "$UDID" -b
