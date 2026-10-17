@@ -1,6 +1,7 @@
 import Foundation
 import SwiftData
 import Combine
+import os
 
 // Persistenz hinter Repository-Protokollen (Spec 13.1): die App spricht nur mit
 // den Protokollen, die SwiftData-Implementierung ist austauschbar (z.B. Sync spaeter).
@@ -36,6 +37,7 @@ protocol PlaylistRepository {
 }
 
 enum Persistence {
+    static let log = Logger(subsystem: "de.malte.era", category: "persistence")
     static let shared: ModelContainer = makeContainer()
 
     static func makeContainer(inMemory: Bool = false) -> ModelContainer {
@@ -61,7 +63,13 @@ enum Persistence {
             // Restore failed too: put the backup back and stay in memory so the app keeps working.
             try? FileManager.default.moveItem(at: backup, to: url)
             let fallback = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
-            return try! ModelContainer(for: schema, configurations: [fallback])
+            Persistence.log.error("store recovery failed, running in memory: \(error.localizedDescription)")
+            UserDefaults.standard.set(true, forKey: "persistence.runningInMemory")
+            do {
+                return try ModelContainer(for: schema, configurations: [fallback])
+            } catch {
+                fatalError("Era: not even an in-memory store could be created: \(error)")
+            }
         }
     }
 }
@@ -74,7 +82,17 @@ final class EraStore: ObservableObject {
         self.context = context
     }
 
-    func save() { try? context.save() }
+    /// Set when a save fails, so the UI can tell the user once instead of losing edits silently.
+    @Published var saveError: String?
+
+    func save() {
+        do {
+            try context.save()
+        } catch {
+            Persistence.log.error("save failed: \(error.localizedDescription)")
+            saveError = error.localizedDescription
+        }
+    }
 
     // The store owns its own ModelContext, while views hand in models fetched
     // through the SwiftUI environment context. Deleting a model that is not

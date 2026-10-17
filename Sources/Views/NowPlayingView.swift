@@ -174,6 +174,7 @@ struct NowPlayingView: View {
                                 .contentTransition(.symbolEffect(.replace))
                                 .frame(width: 36, height: 44)
                         }
+                        .accessibilityLabel(song.isFavorite ? String(localized: "Remove Favorite") : String(localized: "Add to Favorites"))
                         .sensoryFeedback(.impact(flexibility: .soft), trigger: song.isFavorite) { _, _ in haptics }
 
                         Menu {
@@ -242,13 +243,16 @@ struct NowPlayingView: View {
 
                         HStack {
                             Button { player.previous() } label: { Image(systemName: "backward.fill") }
+                            .accessibilityLabel(String(localized: "Previous"))
                         Spacer()
                         Button { player.toggle() } label: {
                             Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
                                 .contentTransition(.symbolEffect(.replace))
                         }
+                        .accessibilityLabel(player.isPlaying ? String(localized: "Pause") : String(localized: "Play"))
                         Spacer()
                         Button { player.next() } label: { Image(systemName: "forward.fill") }
+                            .accessibilityLabel(String(localized: "Next"))
                     }
                         .font(.system(size: compact ? 32 : 36, weight: .semibold))
                         .padding(.horizontal, 66)
@@ -277,7 +281,7 @@ struct NowPlayingView: View {
                         Spacer()
                         AirPlayRouteButton().frame(width: 40, height: 40)
                         Spacer()
-                        control("list.bullet", active: showQueue) { showQueue = true }
+                        control("list.bullet", active: showQueue, label: String(localized: "Queue")) { showQueue = true }
                     }
                         .padding(.horizontal, 75)
                         .padding(.top, compact ? 6 : 10)
@@ -314,7 +318,7 @@ struct NowPlayingView: View {
         .ignoresSafeArea()
     }
 
-    private func control(_ icon: String, active: Bool, action: @escaping () -> Void) -> some View {
+    private func control(_ icon: String, active: Bool, label: String = "", action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: icon)
                 .font(.body)
@@ -322,6 +326,7 @@ struct NowPlayingView: View {
                 .contentTransition(.symbolEffect(.replace))
                 .frame(width: 40, height: 40)
         }
+        .accessibilityLabel(label)
     }
 
     // "Up Next" mit nativem Bearbeiten: Verschieben, Entfernen, Leeren.
