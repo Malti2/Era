@@ -268,3 +268,10 @@
 "Quick Filters" = "Filtres rapides";
 "Tip: combine words, or use tag:, status:, year:2018-2020, version: and fav." = "Astuce : combinez des mots ou utilisez tag:, status:, year:2018-2020, version: et fav.";
 "Found in %@" = "Trouvé dans %@";
+"Add to Playlist" = "Ajouter à une playlist";
+"More" = "Plus";
+"Explicit" = "Explicite";
+"Edit Order" = "Modifier l’ordre";
+"Already in this playlist" = "Déjà dans cette playlist";
+"This playlist is empty." = "Cette playlist est vide.";
+"No songs match this filter." = "Aucun titre ne correspond à ce filtre.";

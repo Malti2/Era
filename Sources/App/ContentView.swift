@@ -9,6 +9,7 @@ enum AppScreen: String {
 struct ContentView: View {
     @EnvironmentObject private var player: PlayerEngine
     @EnvironmentObject private var store: EraStore
+    @EnvironmentObject private var playlistPicker: PlaylistPickerCoordinator
     @State private var selection: AppScreen = .home
     @State private var showNowPlaying = false
     @State private var showOnboarding = false
@@ -48,6 +49,7 @@ struct ContentView: View {
         .modifier(MiniPlayerAccessory(isVisible: player.current != nil && !showNowPlaying, open: { showNowPlaying = true }))
         .sheet(isPresented: $showNowPlaying) { NowPlayingView() }
         .sheet(isPresented: $showStats) { NavigationStack { StatsView() } }
+        .sheet(isPresented: $playlistPicker.isPresented) { PlaylistPickerSheet(songs: playlistPicker.songs) }
         .sheet(isPresented: $showUpdatePrompt) {
             let demoRelease = UpdateService.Release(
                 version: "27.0.3", notes: "Preview of the update drawer.",

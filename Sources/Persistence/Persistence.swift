@@ -281,6 +281,54 @@ extension EraStore: PlaylistRepository {
         save()
     }
 
+    /// Adds songs in the given order, skipping ones already in the playlist.
+    /// Returns how many were actually added.
+    @discardableResult
+    func addSongs(_ songs: [Song], to playlist: Playlist) -> Int {
+        let playlist = resolve(playlist)
+        var added = 0
+        for song in songs where !playlist.entries.contains(where: { $0.song?.id == song.id }) {
+            let song = resolve(song)
+            let entry = PlaylistEntry(position: (playlist.entries.map(\.position).max() ?? -1) + 1, song: song, versionID: song.primaryVersion?.id)
+            entry.playlist = playlist
+            context.insert(entry)
+            added += 1
+        }
+        if added > 0 { save() }
+        return added
+    }
+
+    /// Creates a playlist, optionally pre-filled. Blank names are refused.
+    @discardableResult
+    func createPlaylist(named name: String, songs: [Song] = []) -> Playlist? {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        let playlist = Playlist(name: trimmed)
+        context.insert(playlist)
+        addSongs(songs, to: playlist)
+        save()
+        return playlist
+    }
+
+    /// Renames a playlist; blank names are ignored. Returns whether anything changed.
+    @discardableResult
+    func renamePlaylist(_ playlist: Playlist, to name: String) -> Bool {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let playlist = resolve(playlist)
+        guard !trimmed.isEmpty, trimmed != playlist.name else { return false }
+        playlist.name = trimmed
+        save()
+        return true
+    }
+
+    /// Reorders the full, unfiltered entry list (offsets as shown in the list).
+    func moveEntries(in playlist: Playlist, from source: IndexSet, to destination: Int) {
+        let playlist = resolve(playlist)
+        let reordered = Reordering.move(playlist.sortedEntries, from: source, to: destination)
+        for (index, entry) in reordered.enumerated() where entry.position != index { entry.position = index }
+        save()
+    }
+
     func resetEverything() {
         for song in (try? allSongs()) ?? [] { for version in song.versions { VersionFiles.delete(version: version) } }
         try? FileManager.default.removeItem(at: LibraryFiles.root)

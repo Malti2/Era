@@ -172,6 +172,7 @@ final class Playlist {
     }
 
     var sortedEntries: [PlaylistEntry] { entries.sorted { $0.position < $1.position } }
+    var totalDuration: Double { entries.reduce(0) { $0 + ($1.resolvedVersion?.duration ?? 0) } }
 }
 
 @Model
@@ -204,6 +205,14 @@ enum TimeFormatting {
     static func mmss(_ value: Double) -> String {
         let total = max(0, Int(value))
         return String(format: "%d:%02d", total / 60, total % 60)
+    }
+    /// Locale-aware "1 hr, 5 min" / "42 min" for headers.
+    static func spoken(_ value: Double) -> String {
+        let formatter = DateComponentsFormatter()
+        formatter.unitsStyle = .abbreviated
+        formatter.allowedUnits = value >= 3600 ? [.hour, .minute] : [.minute]
+        formatter.zeroFormattingBehavior = .dropAll
+        return formatter.string(from: max(60, value.rounded())) ?? long(value)
     }
     static func long(_ value: Double) -> String {
         let h = Int(value) / 3600, m = (Int(value) % 3600) / 60

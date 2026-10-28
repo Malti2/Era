@@ -326,8 +326,7 @@ struct LibraryView: View {
         .alert("New Playlist", isPresented: $showNewPlaylist) {
             TextField("Name", text: $newPlaylistName)
             Button("Erstellen") {
-                let name = newPlaylistName.trimmingCharacters(in: .whitespaces)
-                if !name.isEmpty { store.insertPlaylist(Playlist(name: name)) }
+                store.createPlaylist(named: newPlaylistName)
                 newPlaylistName = ""
             }
             Button("Cancel", role: .cancel) { newPlaylistName = "" }

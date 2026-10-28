@@ -8,6 +8,7 @@ struct SongDetailView: View {
     @EnvironmentObject private var store: EraStore
     @EnvironmentObject private var player: PlayerEngine
     @EnvironmentObject private var importer: ImportManager
+    @EnvironmentObject private var playlistPicker: PlaylistPickerCoordinator
     @State private var showVersionDrawer = false
     @State private var showMetadataEditor = false
     @State private var versionToRename: SongVersion?
@@ -43,6 +44,7 @@ struct SongDetailView: View {
             Section("Manage") {
                 Button { showMetadataEditor = true } label: { Label("Edit Metadata", systemImage: "pencil") }
                 Button { showVersionDrawer = true } label: { Label("Add Version", systemImage: "plus.rectangle.on.rectangle") }
+                Button { playlistPicker.present([song]) } label: { Label("Add to Playlist", systemImage: "text.badge.plus") }
             }
 
             Section("Versions (\(song.versions.count))") {
@@ -184,6 +186,7 @@ struct SongContextMenu: View {
     @Binding var showNowPlaying: Bool
     @EnvironmentObject private var player: PlayerEngine
     @EnvironmentObject private var store: EraStore
+    @EnvironmentObject private var playlistPicker: PlaylistPickerCoordinator
     @State private var showDrawer = false
     @State private var shareItem: ShareItem?
     @State private var menuVersion: SongVersion?
@@ -199,6 +202,7 @@ struct SongContextMenu: View {
             Button {
                 if let v = song.primaryVersion { player.playLater(v) }
             } label: { Label("Add to End", systemImage: "text.line.last.and.arrowtriangle.forward") }
+            Button { playlistPicker.present([song]) } label: { Label("Add to Playlist", systemImage: "text.badge.plus") }
             Menu {
                 Button { showDrawer = true } label: { Label("Add", systemImage: "plus") }
                 Divider()

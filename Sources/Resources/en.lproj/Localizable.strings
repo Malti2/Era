@@ -268,3 +268,10 @@
 "Quick Filters" = "Quick Filters";
 "Tip: combine words, or use tag:, status:, year:2018-2020, version: and fav." = "Tip: combine words, or use tag:, status:, year:2018-2020, version: and fav.";
 "Found in %@" = "Found in %@";
+"Add to Playlist" = "Add to Playlist";
+"More" = "More";
+"Explicit" = "Explicit";
+"Edit Order" = "Edit Order";
+"Already in this playlist" = "Already in this playlist";
+"This playlist is empty." = "This playlist is empty.";
+"No songs match this filter." = "No songs match this filter.";

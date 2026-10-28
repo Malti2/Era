@@ -14,6 +14,8 @@ struct PlaylistDetailView: View {
     @State private var confirmDelete = false
     @Environment(\.dismiss) private var dismiss
 
+    private var isFiltered: Bool { !playlist.filterTagIDs.isEmpty }
+
     private var filteredEntries: [PlaylistEntry] {
         let active = playlist.filterTagIDs
         guard !active.isEmpty else { return playlist.sortedEntries }
@@ -29,20 +31,32 @@ struct PlaylistDetailView: View {
     }
 
     var body: some View {
-        ScrollView {
-            LazyVStack(spacing: 0) {
-                header
-                if !usedTags.isEmpty { filters.padding(.bottom, 10) }
-                Divider().padding(.horizontal, 18)
-                ForEach(filteredEntries) { entry in
-                    if let song = entry.song {
-                        PlaylistEntryRow(playlist: playlist, entry: entry, song: song, editingOrder: editOrder)
-                        Divider().padding(.leading, 82)
-                    }
+        let entries = filteredEntries
+        let queue = entries.compactMap(\.resolvedVersion)
+        List {
+            header(queue: queue)
+                .listRowInsets(EdgeInsets()).listRowSeparator(.hidden).listRowBackground(Color.clear)
+            if !usedTags.isEmpty {
+                filters
+                    .listRowInsets(EdgeInsets()).listRowSeparator(.hidden).listRowBackground(Color.clear)
+            }
+            if entries.isEmpty {
+                emptyHint.listRowSeparator(.hidden).listRowBackground(Color.clear)
+            }
+            ForEach(entries) { entry in
+                if let song = entry.song {
+                    PlaylistEntryRow(playlist: playlist, entry: entry, song: song, queue: queue)
                 }
             }
+            .onMove(perform: isFiltered ? nil : { source, destination in
+                store.moveEntries(in: playlist, from: source, to: destination)
+            })
+            .onDelete { offsets in
+                for index in offsets { store.removeEntry(entries[index], from: playlist) }
+            }
         }
-        .background(Color(.systemBackground))
+        .listStyle(.plain)
+        .environment(\.editMode, .constant(editOrder ? .active : .inactive))
         .navigationTitle(playlist.name)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -50,44 +64,58 @@ struct PlaylistDetailView: View {
                 Menu {
                     Button { renameText = playlist.name; showRename = true } label: { Label("Rename Playlist", systemImage: "pencil") }
                     Button { editOrder.toggle() } label: { Label(editOrder ? "Done Editing" : "Edit Order", systemImage: "arrow.up.arrow.down") }
+                        .disabled(isFiltered || playlist.entries.count < 2)
                     Button { showAddSongs = true } label: { Label("Add Songs", systemImage: "plus") }
                     Divider()
                     Button(role: .destructive) { confirmDelete = true } label: { Label("Delete Playlist", systemImage: "trash") }
                 } label: { Image(systemName: "ellipsis") }
+                .accessibilityLabel("More")
             }
         }
         .sheet(isPresented: $showAddSongs) { AddToPlaylistSheet(playlist: playlist) }
         .alert("Rename Playlist", isPresented: $showRename) {
             TextField("Name", text: $renameText)
-            Button("Save") { let name = renameText.trimmingCharacters(in: .whitespaces); if !name.isEmpty { playlist.name = name; store.save() } }
+            Button("Save") { store.renamePlaylist(playlist, to: renameText) }
             Button("Cancel", role: .cancel) {}
         }
         .confirmationDialog("Delete Playlist?", isPresented: $confirmDelete, titleVisibility: .visible) {
             Button("Delete Playlist", role: .destructive) { store.deletePlaylist(playlist); dismiss() }
             Button("Cancel", role: .cancel) {}
         } message: { Text("Songs stay in your library.") }
+        .onChange(of: playlist.filterTagIDs) { _, filter in if !filter.isEmpty { editOrder = false } }
     }
 
-    private var header: some View {
+    private var emptyHint: some View {
+        VStack(spacing: 10) {
+            Text(playlist.entries.isEmpty ? "This playlist is empty." : "No songs match this filter.")
+                .foregroundStyle(.secondary)
+            if playlist.entries.isEmpty {
+                Button { showAddSongs = true } label: { Label("Add Songs", systemImage: "plus") }
+                    .buttonStyle(.bordered)
+            }
+        }
+        .frame(maxWidth: .infinity).padding(.vertical, 24)
+    }
+
+    private func header(queue: [SongVersion]) -> some View {
         VStack(spacing: 14) {
             PlaylistMosaic(playlist: playlist)
                 .frame(width: 250, height: 250)
                 .shadow(color: .black.opacity(0.22), radius: 22, y: 12)
                 .padding(.top, 16)
+                .accessibilityHidden(true)
             VStack(spacing: 4) {
                 Text(playlist.name).font(.title2.bold()).multilineTextAlignment(.center)
-                Text("Era").font(.title3).foregroundStyle(.tint)
-                Text(playlist.dateAdded.formatted(date: .abbreviated, time: .omitted))
-                    .font(.subheadline).foregroundStyle(.secondary)
+                Text(summary).font(.subheadline).foregroundStyle(.secondary)
             }
             HStack(spacing: 18) {
-                Button { player.playShuffled(filteredEntries.compactMap(\.resolvedVersion)) } label: {
+                Button { player.playShuffled(queue) } label: {
                     Image(systemName: "shuffle").font(.title2).frame(width: 52, height: 52)
                         .background(.thinMaterial, in: .circle)
                 }
+                .accessibilityLabel("Shuffle")
                 Button {
-                    let versions = filteredEntries.compactMap(\.resolvedVersion)
-                    if let first = versions.first { player.play(first, from: versions); showNowPlaying = true }
+                    if let first = queue.first { player.play(first, from: queue); showNowPlaying = true }
                 } label: {
                     Label("Wiedergeben", systemImage: "play.fill")
                         .font(.headline).padding(.horizontal, 25).frame(height: 52)
@@ -95,8 +123,17 @@ struct PlaylistDetailView: View {
                 }
             }
             .buttonStyle(.plain)
+            .disabled(queue.isEmpty)
+            .opacity(queue.isEmpty ? 0.4 : 1)
         }
-        .padding(.horizontal, 18).padding(.bottom, 18)
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 18).padding(.bottom, 12)
+    }
+
+    private var summary: String {
+        let count = playlist.entries.count
+        guard count > 0 else { return String(localized: "\(count) tracks") }
+        return String(localized: "\(count) tracks") + " · " + TimeFormatting.spoken(playlist.totalDuration)
     }
 
     private var filters: some View {
@@ -120,7 +157,9 @@ struct PlaylistDetailView: View {
             Text(label).font(.subheadline.weight(.medium)).padding(.horizontal, 13).padding(.vertical, 7)
                 .background(active ? Color.accentColor : Color(.tertiarySystemFill), in: .capsule)
                 .foregroundStyle(active ? .white : .primary)
-        }.buttonStyle(.plain)
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(active ? .isSelected : [])
     }
 }
 
@@ -153,7 +192,8 @@ struct PlaylistEntryRow: View {
     let playlist: Playlist
     let entry: PlaylistEntry
     let song: Song
-    var editingOrder: Bool = false
+    /// Versions in the order currently shown (respects the active tag filter).
+    let queue: [SongVersion]
     @EnvironmentObject private var player: PlayerEngine
     @EnvironmentObject private var store: EraStore
     @State private var showDrawer = false
@@ -168,6 +208,7 @@ struct PlaylistEntryRow: View {
                     if song.tags.contains(where: { $0.name == "Explicit" }) {
                         Text("E").font(.caption2.bold()).padding(.horizontal, 4).padding(.vertical, 1)
                             .background(Color(.tertiarySystemFill), in: RoundedRectangle(cornerRadius: 3))
+                            .accessibilityLabel("Explicit")
                     }
                 }
                 Text(version?.displayArtist ?? song.displayArtist).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
@@ -175,7 +216,6 @@ struct PlaylistEntryRow: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .layoutPriority(1)
             if player.current?.id == version?.id { Image(systemName: "waveform").foregroundStyle(.tint) }
-            if editingOrder { Image(systemName: "line.3.horizontal").foregroundStyle(.secondary) }
             Menu {
                 Button { if let v = version { player.playNext(v) } } label: { Label("Play Next", systemImage: "text.line.first.and.arrowtriangle.forward") }
                 Button { if let v = version { player.playLater(v) } } label: { Label("Add to End", systemImage: "text.line.last.and.arrowtriangle.forward") }
@@ -183,11 +223,12 @@ struct PlaylistEntryRow: View {
                 Divider()
                 Button(role: .destructive) { store.removeEntry(entry, from: playlist) } label: { Label("Entfernen", systemImage: "minus.circle") }
             } label: { Image(systemName: "ellipsis").frame(width: 32, height: 44) }
+            .buttonStyle(.borderless)
+            .accessibilityLabel("More")
         }
-        .padding(.horizontal, 18).padding(.vertical, 8)
         .contentShape(Rectangle())
         .onTapGesture {
-            if let v = version { player.play(v, from: playlist.sortedEntries.compactMap(\.resolvedVersion)) }
+            if let v = version { player.play(v, from: queue) }
         }
         .sheet(isPresented: $showDrawer) { VersionDrawer(song: song) }
     }
@@ -205,7 +246,7 @@ struct AddToPlaylistSheet: View {
     private var filtered: [Song] {
         songs.filter { song in
             (!onlyMissing || !existingSongIDs.contains(song.id)) &&
-            (search.isEmpty || song.title.localizedCaseInsensitiveContains(search) || song.artist.localizedCaseInsensitiveContains(search))
+            (search.isEmpty || !SongSearch.search(search, in: [song.searchable]).isEmpty)
         }
     }
     var body: some View {
@@ -230,7 +271,7 @@ struct AddToPlaylistSheet: View {
             .navigationTitle("Add Songs").navigationBarTitleDisplayMode(.inline)
             .safeAreaInset(edge: .bottom) {
                 Button("Add (\(selected.count))") {
-                    for song in songs where selected.contains(song.id) { store.appendEntry(song: song, version: song.primaryVersion, to: playlist) }
+                    store.addSongs(songs.filter { selected.contains($0.id) }, to: playlist)
                     dismiss()
                 }.eraProminentButton().disabled(selected.isEmpty).padding().background(.bar)
             }

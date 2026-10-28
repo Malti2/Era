@@ -5,6 +5,7 @@ import SwiftData
 struct EraApp: App {
     let container = Persistence.shared
     @State private var store: EraStore
+    @StateObject private var playlistPicker = PlaylistPickerCoordinator()
 
     init() {
         let context = ModelContext(container)
@@ -42,6 +43,7 @@ struct EraApp: App {
                 .environmentObject(store)
                 .environmentObject(PlayerEngine.shared)
                 .environmentObject(ImportManager.shared)
+                .environmentObject(playlistPicker)
         }
         .modelContainer(container)
     }
