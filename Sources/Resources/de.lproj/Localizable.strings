@@ -262,3 +262,9 @@
 "Save" = "Speichern";
 "Rename Playlist" = "Playlist umbenennen";
 "Done Editing" = "Bearbeiten beenden";
+"Song Details" = "Song-Details";
+"Recent Searches" = "Zuletzt gesucht";
+"Clear" = "Löschen";
+"Quick Filters" = "Schnellfilter";
+"Tip: combine words, or use tag:, status:, year:2018-2020, version: and fav." = "Tipp: Mehrere Wörter kombinieren oder tag:, status:, year:2018-2020, version: und fav nutzen.";
+"Found in %@" = "Gefunden in %@";
