@@ -373,6 +373,9 @@ enum LibraryFiles {
 enum VersionFiles {
     static func delete(version: SongVersion) {
         try? FileManager.default.removeItem(at: LibraryFiles.url(for: version))
-        if let art = version.artworkFile { try? FileManager.default.removeItem(at: LibraryFiles.artworkURL(art)) }
+        if let art = version.artworkFile {
+            try? FileManager.default.removeItem(at: LibraryFiles.artworkURL(art))
+            ArtworkCache.evict(art)
+        }
     }
 }

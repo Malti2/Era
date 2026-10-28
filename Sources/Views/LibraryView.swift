@@ -16,11 +16,6 @@ enum LibrarySection: String, CaseIterable, Identifiable {
     }
 }
 
-enum LibrarySort: String, CaseIterable, Identifiable {
-    case recent = "Recently Added", title = "Title", artist = "Artist"
-    var id: String { rawValue }
-}
-
 struct LibraryView: View {
     @Binding var showNowPlaying: Bool
     @EnvironmentObject private var store: EraStore
@@ -31,7 +26,7 @@ struct LibraryView: View {
     @Query private var playlists: [Playlist]
 
     @AppStorage(AppSettings.librarySectionKey) private var sectionRaw = LibrarySection.songs.rawValue
-    @State private var sort: LibrarySort = .recent
+    @AppStorage(AppSettings.librarySortKey) private var sortRaw = LibrarySort.recent.rawValue
     @State private var showImporter = false
     @State private var showFolderImporter = false
     @State private var showSettings = false
@@ -84,8 +79,8 @@ struct LibraryView: View {
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
-                        Picker("Sort", selection: $sort) {
-                            ForEach(LibrarySort.allCases) { Text($0.rawValue).tag($0) }
+                        Picker("Sort", selection: Binding(get: { sort }, set: { sortRaw = $0.rawValue })) {
+                            ForEach(LibrarySort.allCases) { Text($0.title).tag($0) }
                         }
                     } label: {
                         Image(systemName: "arrow.up.arrow.down")
@@ -158,6 +153,9 @@ struct LibraryView: View {
         }
     }
 
+    private var sort: LibrarySort { LibrarySort(rawValue: sortRaw) ?? .recent }
+    private var songsByID: [UUID: Song] { Dictionary(songs.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first }) }
+
     private var selectedSection: LibrarySection { LibrarySection(rawValue: sectionRaw) ?? .songs }
 
     @ViewBuilder private var content: some View {
@@ -166,7 +164,7 @@ struct LibraryView: View {
         } else {
             VStack(spacing: 0) {
                 Picker("Library View", selection: $sectionRaw) {
-                    ForEach([LibrarySection.songs, .albums, .artists, .playlists]) { Text($0.rawValue).tag($0.rawValue) }
+                    ForEach([LibrarySection.songs, .albums, .artists, .playlists]) { Text(LocalizedStringKey($0.rawValue)).tag($0.rawValue) }
                 }
                 .pickerStyle(.segmented).padding(.horizontal).padding(.bottom, 8)
                 switch selectedSection {
@@ -180,52 +178,40 @@ struct LibraryView: View {
         }
     }
 
-    private func libraryLink(_ title: String, icon: String, destination: AnyView) -> some View {
-        NavigationLink { destination } label: {
-            HStack(spacing: 14) {
-                Image(systemName: icon).font(.title2).foregroundStyle(.tint).frame(width: 30)
-                Text(title).font(.title3)
-                Spacer()
-                Image(systemName: "chevron.right").font(.subheadline.bold()).foregroundStyle(.tertiary)
-            }.padding(.horizontal, 18).frame(height: 52)
-        }.buttonStyle(.plain)
+    private var artistList: some View {
+        let byID = songsByID
+        let groups = LibraryGrouping.groups(of: songs.map { ($0.id, $0.artist) })
+        return List(groups) { group in
+            let members = group.ids.compactMap { byID[$0] }
+            let name = group.name.isEmpty ? String(localized: "Unknown Artist") : group.name
+            NavigationLink { CollectionDetailView(title: name, songs: members, kind: .artist, showNowPlaying: $showNowPlaying) } label: {
+                HStack(spacing: 14) {
+                    Artwork(song: members.first, radius: 34).frame(width: 64, height: 64).clipShape(Circle())
+                    VStack(alignment: .leading) { Text(name); Text("\(members.count) tracks").font(.subheadline).foregroundStyle(.secondary) }
+                }
+            }
+        }.listStyle(.plain)
     }
 
-    private var playlistList: some View { List { playlistsSection }.listStyle(.plain).navigationTitle("Playlists") }
-    private var songList: some View { List { songsSection }.listStyle(.plain).navigationTitle("Title") }
-    private var versionList: some View { List { versionsSection }.listStyle(.plain).navigationTitle("Versions") }
-    private var artistList: some View {
-        let grouped = Dictionary(grouping: songs) { $0.displayArtist }
-        return List(grouped.keys.sorted(), id: \.self) { name in
-            NavigationLink { CollectionDetailView(title: name, songs: grouped[name] ?? [], kind: .artist, showNowPlaying: $showNowPlaying) } label: {
-                HStack(spacing: 14) {
-                    Artwork(song: grouped[name]?.first, radius: 34).frame(width: 64, height: 64).clipShape(Circle())
-                    VStack(alignment: .leading) { Text(name); Text("\(grouped[name]?.count ?? 0) tracks").font(.subheadline).foregroundStyle(.secondary) }
-                }
-            }
-        }.listStyle(.plain).navigationTitle("Artists")
-    }
     private var albumList: some View {
-        let grouped = Dictionary(grouping: songs) { $0.album.isEmpty ? "Unknown Album" : $0.album }
-        return List(grouped.keys.sorted(), id: \.self) { name in
-            NavigationLink { CollectionDetailView(title: name, songs: grouped[name] ?? [], kind: .album, showNowPlaying: $showNowPlaying) } label: {
+        let byID = songsByID
+        let groups = LibraryGrouping.groups(of: songs.map { ($0.id, $0.album) })
+        return List(groups) { group in
+            let members = group.ids.compactMap { byID[$0] }
+            let name = group.name.isEmpty ? String(localized: "Unknown Album") : group.name
+            NavigationLink { CollectionDetailView(title: name, songs: members, kind: .album, showNowPlaying: $showNowPlaying) } label: {
                 HStack(spacing: 14) {
-                    Artwork(song: grouped[name]?.first, radius: 8).frame(width: 64, height: 64)
-                    VStack(alignment: .leading) { Text(name); Text(grouped[name]?.first?.displayArtist ?? "").font(.subheadline).foregroundStyle(.secondary) }
+                    Artwork(song: members.first, radius: 8).frame(width: 64, height: 64)
+                    VStack(alignment: .leading) { Text(name); Text(members.first?.displayArtist ?? "").font(.subheadline).foregroundStyle(.secondary) }
                 }
             }
-        }.listStyle(.plain).navigationTitle("Albums")
+        }.listStyle(.plain)
     }
 
     private var sortedSongs: [Song] {
-        switch sort {
-        case .recent: return songs
-        case .title: return songs.sorted { $0.title.localizedStandardCompare($1.title) == .orderedAscending }
-        case .artist: return songs.sorted {
-            let a = $0.displayArtist.localizedStandardCompare($1.displayArtist)
-            return a == .orderedSame ? $0.title.localizedStandardCompare($1.title) == .orderedAscending : a == .orderedAscending
-        }
-        }
+        guard sort != .recent else { return songs }
+        let byID = songsByID
+        return sort.ordered(songs.map(\.sortRow)).compactMap { byID[$0] }
     }
 
     private var songsSection: some View {
@@ -250,6 +236,7 @@ struct LibraryView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     NavigationLink { SongDetailView(song: song, showNowPlaying: $showNowPlaying) } label: { Image(systemName: "ellipsis").frame(width: 36, height: 44) }
                     .fixedSize(horizontal: true, vertical: false)
+                    .accessibilityLabel("Song Details")
                 }
                 .swipeActions(edge: .leading) {
                     Button { song.isFavorite.toggle(); store.save() } label: {
@@ -260,34 +247,6 @@ struct LibraryView: View {
                     Button(role: .destructive) { songToDelete = song } label: { Label("Delete", systemImage: "trash") }
                 }
                 .contextMenu { SongContextMenu(song: song, showNowPlaying: $showNowPlaying) }
-            }
-        }
-    }
-
-    private var artistsSection: some View {
-        let grouped = Dictionary(grouping: songs) { $0.displayArtist }
-        let names = grouped.keys.sorted { $0.localizedStandardCompare($1) == .orderedAscending }
-        return Section {
-            ForEach(names, id: \.self) { name in
-                NavigationLink {
-                    CollectionDetailView(title: name, songs: grouped[name] ?? [], kind: .artist, showNowPlaying: $showNowPlaying)
-                } label: {
-                    Label("\(name) (\(grouped[name]?.count ?? 0))", systemImage: "person.fill")
-                }
-            }
-        }
-    }
-
-    private var albumsSection: some View {
-        let grouped = Dictionary(grouping: songs) { $0.album.isEmpty ? "Unknown Album" : $0.album }
-        let names = grouped.keys.sorted { $0.localizedStandardCompare($1) == .orderedAscending }
-        return Section {
-            ForEach(names, id: \.self) { name in
-                NavigationLink {
-                    CollectionDetailView(title: name, songs: grouped[name] ?? [], kind: .album, showNowPlaying: $showNowPlaying)
-                } label: {
-                    Label("\(name) (\(grouped[name]?.count ?? 0))", systemImage: "square.stack")
-                }
             }
         }
     }

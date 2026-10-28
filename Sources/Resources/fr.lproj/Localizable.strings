@@ -300,3 +300,4 @@
 "“%@” can’t be played: its audio file is missing or unreadable." = "Impossible de lire « %@ » : le fichier audio est manquant ou illisible.";
 "Stops after this track" = "S’arrête après ce titre";
 "End of Current Track" = "Fin du titre en cours";
+"Longest" = "Plus longs";

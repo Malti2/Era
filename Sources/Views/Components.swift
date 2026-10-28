@@ -13,9 +13,7 @@ struct Artwork: View {
 
     var body: some View {
         let v = version ?? song?.primaryVersion
-        if let file = v?.artworkFile,
-           let data = try? Data(contentsOf: LibraryFiles.artworkURL(file)),
-           let image = UIImage(data: data) {
+        if let file = v?.artworkFile, let image = ArtworkCache.image(for: file) {
             Image(uiImage: image)
                 .resizable()
                 .scaledToFill()
