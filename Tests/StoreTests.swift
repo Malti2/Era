@@ -90,3 +90,20 @@ final class StoreTests: XCTestCase {
         XCTAssertEqual(backup.versions.first?.songID, song.id)
     }
 }
+
+final class CSVExportTests: XCTestCase {
+    func testEscapeQuotesSpecialCharacters() {
+        XCTAssertEqual(CSVExport.escape("plain"), "plain")
+        XCTAssertEqual(CSVExport.escape("a,b"), "\"a,b\"")
+        XCTAssertEqual(CSVExport.escape("say \"hi\""), "\"say \"\"hi\"\"\"")
+        XCTAssertEqual(CSVExport.escape("two\nlines"), "\"two\nlines\"")
+    }
+
+    func testCSVHasHeaderAndOneRowPerSong() {
+        let song = Song(title: "Hello, World", artist: "Me", year: 2024)
+        let lines = CSVExport.csv(songs: [song]).components(separatedBy: "\r\n")
+        XCTAssertEqual(lines.count, 3) // Header, Zeile, leerer Rest nach letztem Umbruch
+        XCTAssertTrue(lines[0].hasPrefix("Title,Artist,Album"))
+        XCTAssertTrue(lines[1].hasPrefix("\"Hello, World\",Me,,,2024,"))
+    }
+}

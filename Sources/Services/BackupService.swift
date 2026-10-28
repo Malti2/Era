@@ -119,3 +119,44 @@ enum BackupService {
         return url
     }
 }
+
+// CSV-Export der Bibliothek (eine Zeile pro Song) fuer Tabellenkalkulationen.
+enum CSVExport {
+    static let header = ["Title", "Artist", "Album", "Era", "Year", "Duration", "Versions", "Status", "Tags", "Plays", "Favorite", "Date Added"]
+
+    /// RFC 4180: Felder mit Komma, Anfuehrungszeichen oder Zeilenumbruch werden gequotet.
+    static func escape(_ field: String) -> String {
+        guard field.contains(where: { $0 == "," || $0 == "\"" || $0 == "\n" || $0 == "\r" }) else { return field }
+        return "\"" + field.replacingOccurrences(of: "\"", with: "\"\"") + "\""
+    }
+
+    static func csv(songs: [Song]) -> String {
+        let dateFormatter = ISO8601DateFormatter()
+        var lines = [header.map(escape).joined(separator: ",")]
+        for song in songs {
+            let fields = [
+                song.title, song.artist, song.album, song.era,
+                song.year.map(String.init) ?? "",
+                song.durationText,
+                String(song.versions.count),
+                song.statusTags.map(\.name).joined(separator: "; "),
+                song.personalTags.map(\.name).joined(separator: "; "),
+                String(song.playCount),
+                song.isFavorite ? "yes" : "no",
+                dateFormatter.string(from: song.dateAdded)
+            ]
+            lines.append(fields.map(escape).joined(separator: ","))
+        }
+        return lines.joined(separator: "\r\n") + "\r\n"
+    }
+
+    @MainActor
+    static func exportURL(store: EraStore) throws -> URL {
+        // BOM, damit Excel UTF-8 (Umlaute) korrekt erkennt.
+        let data = Data("\u{FEFF}".utf8) + Data(csv(songs: try store.allSongs()).utf8)
+        let stamp = ISO8601DateFormatter().string(from: Date()).replacingOccurrences(of: ":", with: "-")
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("Era-Library-\(stamp).csv")
+        try data.write(to: url, options: .atomic)
+        return url
+    }
+}

@@ -100,6 +100,15 @@ struct SettingsView: View {
                     } label: {
                         Label("Export Library (JSON)", systemImage: "square.and.arrow.up.on.square")
                     }
+                    Button {
+                        do {
+                            backupItem = ShareItem(url: try CSVExport.exportURL(store: store))
+                        } catch {
+                            backupError = true
+                        }
+                    } label: {
+                        Label("Export Library (CSV)", systemImage: "tablecells")
+                    }
                 }
                 Section("Search & Siri") {
                     Toggle(isOn: $spotlightEnabled) {

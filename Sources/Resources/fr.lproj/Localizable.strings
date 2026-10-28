@@ -62,6 +62,7 @@
 "Everything local, no tracking" = "Everything local, no tracking";
 "exclamationmark.triangle.fill" = "exclamationmark.triangle.fill";
 "Export Library (JSON)" = "Export Library (JSON)";
+"Export Library (CSV)" = "Exporter la bibliothèque (CSV)";
 "Favorite" = "Favori";
 "Favorites" = "Favoris";
 "For All" = "For All";
