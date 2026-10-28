@@ -53,6 +53,7 @@ final class LibraryMaintenanceTests: XCTestCase {
         let backupURL = try BackupService.exportURL(store: store)
         defer { try? FileManager.default.removeItem(at: backupURL) }
         let songID = song.id, playlistID = playlist.id
+        let fileName = try XCTUnwrap(song.versions.first?.fileName)
         try dropRowsKeepingFiles()
         XCTAssertTrue(try store.allSongs().isEmpty)
 
@@ -65,7 +66,7 @@ final class LibraryMaintenanceTests: XCTestCase {
         XCTAssertTrue(restored.isFavorite)
         XCTAssertEqual(restored.playCount, 7)
         XCTAssertEqual(restored.personalTags.map(\.name), ["synth"])
-        XCTAssertEqual(restored.primaryVersion?.fileName, song.versions.first?.fileName)
+        XCTAssertEqual(restored.primaryVersion?.fileName, fileName)
         let list = try XCTUnwrap(try store.allPlaylists().first)
         XCTAssertEqual(list.id, playlistID)
         XCTAssertEqual(list.sortedEntries.compactMap { $0.song?.id }, [songID])
