@@ -297,3 +297,6 @@
 "This file could not be read as an Era backup." = "Ce fichier n’a pas pu être lu comme une sauvegarde Era.";
 "This file is not an Era backup." = "Ce fichier n’est pas une sauvegarde Era.";
 "This backup was made with a newer version of Era." = "Cette sauvegarde a été créée avec une version plus récente d’Era.";
+"“%@” can’t be played: its audio file is missing or unreadable." = "Impossible de lire « %@ » : le fichier audio est manquant ou illisible.";
+"Stops after this track" = "S’arrête après ce titre";
+"End of Current Track" = "Fin du titre en cours";

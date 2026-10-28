@@ -11,10 +11,16 @@ final class PlayerEngine: NSObject, ObservableObject, AVAudioPlayerDelegate {
     @Published var isPlaying = false
     @Published var currentTime: Double = 0
     @Published var duration: Double = 0
-    @Published var shuffle = false
+    @Published var shuffle = false {
+        didSet { if shuffle && !oldValue { shuffleBag.reset(startingWith: current?.id) } }
+    }
     @Published var repeatMode = 0 // 0 off, 1 all, 2 one
-    @Published var sleepRemaining: Int?
+    @Published private(set) var sleepTimer = SleepTimerState()
     @Published var rate: Float = 1.0
+    /// Set when a track could not be loaded (missing/unreadable file); the UI shows it briefly.
+    @Published var playbackError: String?
+
+    var sleepRemaining: Int? { sleepTimer.remaining }
 
     weak var store: EraStore?
 
@@ -26,7 +32,8 @@ final class PlayerEngine: NSObject, ObservableObject, AVAudioPlayerDelegate {
     private var fadeWindow: Double = 1
     private var crackle: AVAudioPlayer?
     private var ticker: Timer?
-    private var sleepTimer: Timer?
+    private var sleepTicker: Timer?
+    private var shuffleBag = ShuffleBag()
     private var wasPlayingBeforeInterruption = false
     private var interruptionObserver: NSObjectProtocol?
     private var routeObserver: NSObjectProtocol?
@@ -63,7 +70,10 @@ final class PlayerEngine: NSObject, ObservableObject, AVAudioPlayerDelegate {
 
     // MARK: - Playback
 
-    func play(_ version: SongVersion, from versions: [SongVersion]) {
+    /// Starts a version. Returns false when the audio file could not be loaded; the queue
+    /// then still points at it so `next()` can move on.
+    @discardableResult
+    func play(_ version: SongVersion, from versions: [SongVersion]) -> Bool {
         cancelTransition()
         recordPlayEvent(finished: false)
         saveResumePosition()
@@ -78,7 +88,7 @@ final class PlayerEngine: NSObject, ObservableObject, AVAudioPlayerDelegate {
             markPlayed(version)
             startTicker()
             updateNowPlaying()
-            return
+            return true
         }
         #endif
         do {
@@ -94,12 +104,58 @@ final class PlayerEngine: NSObject, ObservableObject, AVAudioPlayerDelegate {
             currentTime = 0
             isPlaying = true
             markPlayed(version)
+            playbackError = nil
             startTicker()
             updateNowPlaying()
             prepareNext()
+            persistSession()
+            return true
         } catch {
+            audio?.stop()
+            audio = nil
             isPlaying = false
+            currentTime = 0
+            duration = version.duration
+            playbackError = String(localized: "“\(version.displayTitle)” can’t be played: its audio file is missing or unreadable.")
+            updateNowPlaying()
+            persistSession()
+            return false
         }
+    }
+
+    // MARK: - Session (queue survives app restarts)
+
+    func persistSession() {
+        guard let current else { return }
+        PlaybackSnapshot(queue: queue.map(\.id), current: current.id, position: currentTime, shuffle: shuffle, repeatMode: repeatMode).save()
+    }
+
+    /// Puts the last queue back (paused) so the mini player is there after a relaunch.
+    func restoreSession() {
+        guard current == nil, let store, let snapshot = PlaybackSnapshot.load(),
+              let versions = try? store.allVersions() else { return }
+        let byID = Dictionary(versions.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        guard let restored = snapshot.restored(available: Set(byID.keys), durations: byID.mapValues(\.duration)),
+              let version = byID[restored.current] else { return }
+        queue = restored.queue.compactMap { byID[$0] }
+        current = version
+        repeatMode = snapshot.repeatMode
+        shuffle = snapshot.shuffle
+        if let loaded = try? AVAudioPlayer(contentsOf: LibraryFiles.url(for: version)) {
+            loaded.delegate = self
+            loaded.enableRate = true
+            loaded.rate = rate
+            loaded.prepareToPlay()
+            loaded.currentTime = restored.position
+            audio = loaded
+            duration = loaded.duration
+        } else {
+            duration = version.duration
+        }
+        currentTime = restored.position
+        isPlaying = false
+        startTicker()
+        updateNowPlaying()
     }
 
     // App Intents / Spotlight / widget deep link: resume without UI context.
@@ -149,12 +205,15 @@ final class PlayerEngine: NSObject, ObservableObject, AVAudioPlayerDelegate {
             audio?.pause()
             saveResumePosition()
         } else {
+            // Nothing loaded (failed load or file missing): start the track from scratch.
+            if audio == nil, let current { play(current, from: queue); return }
             configureAudioSession()
             audio?.play()
             prepareNext()
         }
         isPlaying.toggle()
         updateNowPlaying()
+        persistSession()
     }
 
     func seek(_ value: Double) {
@@ -190,7 +249,7 @@ final class PlayerEngine: NSObject, ObservableObject, AVAudioPlayerDelegate {
     }
 
     private func prepareNext() {
-        guard nextAudio == nil, AppSettings.transitionStyle != .off,
+        guard nextAudio == nil, AppSettings.transitionStyle != .off, !sleepTimer.stopsAtTrackEnd,
               let next = linearSuccessor(), next.id != current?.id || repeatMode == 2 else { return }
         let url = LibraryFiles.url(for: next)
         guard FileManager.default.fileExists(atPath: url.path),
@@ -213,7 +272,8 @@ final class PlayerEngine: NSObject, ObservableObject, AVAudioPlayerDelegate {
     }
 
     private func checkTransition() {
-        guard isPlaying, let a = audio else { return }
+        guard isPlaying, let a = audio, !sleepTimer.stopsAtTrackEnd else { return }
+        if let left = sleepTimer.remaining, left <= SleepTimerState.fadeSeconds + 1 { return }
         if !transitionArmed && nextAudio == nil { prepareNext() }
         guard let nextA = nextAudio, let next = nextVersion, a.duration > 1 else { return }
         let remaining = a.duration - a.currentTime
@@ -290,6 +350,7 @@ final class PlayerEngine: NSObject, ObservableObject, AVAudioPlayerDelegate {
         guard !versions.isEmpty else { return }
         shuffle = true
         let mixed = versions.shuffled()
+        shuffleBag.reset(startingWith: mixed[0].id)
         play(mixed[0], from: mixed)
     }
 
@@ -339,29 +400,40 @@ final class PlayerEngine: NSObject, ObservableObject, AVAudioPlayerDelegate {
     func next() { move(1) }
     func previous() { if currentTime > 4 { seek(0) } else { move(-1) } }
 
-    private func move(_ offset: Int) {
+    private func move(_ offset: Int, skipped: Int = 0) {
         cancelTransition()
         guard !queue.isEmpty, let current, let index = queue.firstIndex(where: { $0.id == current.id }) else { return }
         if repeatMode == 2 { play(current, from: queue); return }
+        var target: Int
         if shuffle {
-            var candidates = queue.indices.filter { $0 != index }
-            if candidates.isEmpty { candidates = Array(queue.indices) }
-            play(queue[candidates.randomElement()!], from: queue)
-            return
-        }
-        var target = index + offset
-        if target >= queue.count {
-            if repeatMode == 1 { target = 0 } else {
-                seek(0)
-                audio?.pause()
-                isPlaying = false
-                saveResumePosition()
-                updateNowPlaying()
+            if offset < 0 {
+                guard let previousID = shuffleBag.previous(current: current.id),
+                      let previous = queue.first(where: { $0.id == previousID }) else { seek(0); return }
+                play(previous, from: queue)
                 return
             }
+            guard let nextID = shuffleBag.next(in: queue.map(\.id), current: current.id, wrap: repeatMode == 1),
+                  let nextIndex = queue.firstIndex(where: { $0.id == nextID }) else { endOfQueue(); return }
+            target = nextIndex
+        } else {
+            target = index + offset
+            if target >= queue.count {
+                guard repeatMode == 1 else { endOfQueue(); return }
+                target = 0
+            }
+            if target < 0 { target = queue.count - 1 }
         }
-        if target < 0 { target = queue.count - 1 }
-        play(queue[target], from: queue)
+        // A track whose file is gone is skipped instead of stalling the queue.
+        if !play(queue[target], from: queue), skipped < queue.count - 1 { move(offset, skipped: skipped + 1) }
+    }
+
+    private func endOfQueue() {
+        seek(0)
+        audio?.pause()
+        isPlaying = false
+        saveResumePosition()
+        updateNowPlaying()
+        persistSession()
     }
 
     func toggleRepeat() { repeatMode = (repeatMode + 1) % 3 }
@@ -369,23 +441,44 @@ final class PlayerEngine: NSObject, ObservableObject, AVAudioPlayerDelegate {
     // MARK: - Sleep Timer
 
     func setSleep(minutes: Int) {
-        sleepTimer?.invalidate()
-        sleepRemaining = minutes * 60
-        sleepTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
-            Task { @MainActor in
-                guard let self else { return }
-                if let r = self.sleepRemaining, r > 1 { self.sleepRemaining = r - 1 }
-                else {
-                    self.cancelTransition()
-                    self.audio?.pause()
-                    self.isPlaying = false
-                    self.sleepRemaining = nil
-                    self.sleepTimer?.invalidate()
-                }
-            }
+        sleepTimer.start(minutes: minutes)
+        sleepTicker?.invalidate()
+        guard sleepTimer.isActive else { return }
+        sleepTicker = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.handleSleepTick() }
         }
     }
-    func cancelSleep() { sleepTimer?.invalidate(); sleepRemaining = nil }
+
+    /// Stops after the current track instead of after a fixed time.
+    func setSleepAtEndOfTrack() {
+        sleepTicker?.invalidate()
+        sleepTimer.startEndOfTrack()
+        cancelTransition()
+    }
+
+    func cancelSleep() {
+        sleepTicker?.invalidate()
+        sleepTimer.cancel()
+        audio?.volume = 1
+    }
+
+    private func handleSleepTick() {
+        switch sleepTimer.tick() {
+        case .none:
+            break
+        case .fade(let volume):
+            audio?.volume = volume
+        case .expired:
+            sleepTicker?.invalidate()
+            cancelTransition()
+            audio?.pause()
+            audio?.volume = 1
+            isPlaying = false
+            saveResumePosition()
+            updateNowPlaying()
+            persistSession()
+        }
+    }
 
     // MARK: - Ticker
 
@@ -414,7 +507,15 @@ final class PlayerEngine: NSObject, ObservableObject, AVAudioPlayerDelegate {
                     self.finishTransition(from: player)
                 } else {
                     self.recordPlayEvent(finished: true)
-                    self.next()
+                    if self.sleepTimer.trackFinished() {
+                        self.isPlaying = false
+                        self.currentTime = 0
+                        self.audio?.currentTime = 0
+                        self.updateNowPlaying()
+                        self.persistSession()
+                    } else {
+                        self.next()
+                    }
                 }
             }
         }

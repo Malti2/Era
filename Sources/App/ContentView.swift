@@ -19,6 +19,7 @@ struct ContentView: View {
     @AppStorage(AppSettings.hasOnboardedKey) private var hasOnboarded = false
     @State private var showResetNotice = false
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.scenePhase) private var scenePhase
 
     init() {
         let args = ProcessInfo.processInfo.arguments
@@ -86,6 +87,8 @@ struct ContentView: View {
             }
         }
         .sheet(isPresented: $showOnboarding) { OnboardingView() }
+        .overlay(alignment: .top) { playbackErrorToast.animation(.easeInOut(duration: 0.25), value: player.playbackError) }
+        .onChange(of: scenePhase) { _, phase in if phase != .active { player.persistSession() } }
         .alert(String(localized: "Library Was Reset"), isPresented: $showResetNotice) {
             Button(String(localized: "OK")) { UserDefaults.standard.set(false, forKey: "persistence.libraryWasReset") }
         } message: {
@@ -107,6 +110,7 @@ struct ContentView: View {
             let args = ProcessInfo.processInfo.arguments
             // Erste Start: Einfuehrung zeigen (Screenshot-Modus ausgenommen)
             if !hasOnboarded && !args.contains("--era-demo") { showOnboarding = true }
+            if !args.contains("--era-demo") && !args.contains("--era-player") { player.restoreSession() }
             if !args.contains("--era-demo"), UserDefaults.standard.bool(forKey: "persistence.libraryWasReset") { showResetNotice = true }
             if args.contains("--era-player"), player.current == nil {
                 if args.contains("--era-queue") {
@@ -119,6 +123,24 @@ struct ContentView: View {
                     player.play(v, from: [v])
                 }
             }
+        }
+    }
+
+    @ViewBuilder private var playbackErrorToast: some View {
+        if let message = player.playbackError {
+            Label(message, systemImage: "exclamationmark.triangle.fill")
+                .font(.footnote.weight(.medium))
+                .multilineTextAlignment(.leading)
+                .padding(.horizontal, 16).padding(.vertical, 10)
+                .eraGlassRect(16)
+                .padding(.horizontal, 16).padding(.top, 6)
+                .transition(.move(edge: .top).combined(with: .opacity))
+                .task(id: message) {
+                    try? await Task.sleep(for: .seconds(4))
+                    withAnimation { player.playbackError = nil }
+                }
+                .onTapGesture { withAnimation { player.playbackError = nil } }
+                .accessibilityAddTraits(.updatesFrequently)
         }
     }
 

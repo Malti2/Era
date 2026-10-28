@@ -376,8 +376,14 @@ struct NowPlayingView: View {
                         Text("Remaining \(r / 60):\(String(format: "%02d", r % 60))").font(.title.bold())
                         Button("Stop Timer", role: .destructive) { player.cancelSleep(); showTimer = false }
                     }
+                } else if player.sleepTimer.stopsAtTrackEnd {
+                    Section {
+                        Label("Stops after this track", systemImage: "moon.zzz.fill").font(.headline)
+                        Button("Stop Timer", role: .destructive) { player.cancelSleep(); showTimer = false }
+                    }
                 }
                 Section("Stop Playback After") {
+                    Button("End of Current Track") { player.setSleepAtEndOfTrack(); showTimer = false }
                     ForEach([5, 10, 15, 30, 45, 60], id: \.self) { m in
                         Button("\(m) Minutes") { player.setSleep(minutes: m); showTimer = false }
                     }
