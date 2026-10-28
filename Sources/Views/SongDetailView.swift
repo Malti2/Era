@@ -11,8 +11,8 @@ struct SongDetailView: View {
     @State private var showVersionDrawer = false
     @State private var showMetadataEditor = false
     @State private var versionToRename: SongVersion?
+    @State private var renameText = ""
     @State private var shareItem: ShareItem?
-    @State private var menuVersion: SongVersion?
 
     var body: some View {
         List {
@@ -72,6 +72,11 @@ struct SongDetailView: View {
         .sheet(isPresented: $showVersionDrawer) { VersionDrawer(song: song) }
         .sheet(isPresented: $showMetadataEditor) { MetadataEditView(song: song) }
         .sheet(item: $shareItem) { item in ShareSheet(items: [item.url]) }
+        .alert("Versionsname", isPresented: Binding(get: { versionToRename != nil }, set: { if !$0 { versionToRename = nil } })) {
+            TextField("Name", text: $renameText)
+            Button("Save") { if let version = versionToRename { store.renameVersion(version, to: renameText) }; versionToRename = nil }
+            Button("Cancel", role: .cancel) { versionToRename = nil }
+        }
     }
 
     @ViewBuilder
@@ -92,38 +97,18 @@ struct SongDetailView: View {
         } label: { Label("Make Primary Version", systemImage: "star") }
         shareButton(version)
         Button {
+            renameText = version.name
             versionToRename = version
         } label: { Label("Umbenennen", systemImage: "pencil") }
         if song.versions.count > 1 {
             Button {
-                separate(version)
+                store.separateVersion(version)
             } label: { Label("Detach from Song", systemImage: "scissors") }
             Divider()
             Button(role: .destructive) {
-                deleteVersion(version)
+                store.deleteVersion(version)
             } label: { Label("Delete Version", systemImage: "trash") }
         }
-    }
-
-    private func separate(_ version: SongVersion) {
-        // Trennen: Version wird wieder eigener Song (Spec 4), Datei/Metadaten bleiben
-        song.versions.removeAll { $0.id == version.id }
-        let newSong = Song(title: version.displayTitle, artist: version.displayArtist, album: version.displayAlbum, era: song.era, year: version.year)
-        newSong.versions.append(version)
-        version.song = newSong
-        newSong.primaryVersionID = version.id
-        newSong.tags = song.tags
-        store.insertSong(newSong)
-        if song.primaryVersionID == version.id { song.primaryVersionID = song.sortedVersions.first?.id }
-        store.save()
-    }
-
-    private func deleteVersion(_ version: SongVersion) {
-        VersionFiles.delete(version: version)
-        song.versions.removeAll { $0.id == version.id }
-        if song.primaryVersionID == version.id { song.primaryVersionID = song.sortedVersions.first?.id }
-        store.context.delete(version)
-        store.save()
     }
 }
 

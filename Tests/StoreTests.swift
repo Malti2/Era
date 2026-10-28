@@ -75,6 +75,55 @@ final class StoreTests: XCTestCase {
         XCTAssertEqual(try store.allTags().filter(\.isStatus).count, StatusTag.all.count)
     }
 
+    private func addVersion(_ name: String, to song: Song) -> SongVersion {
+        let version = SongVersion(name: name, fileName: "\(song.title)-\(name).m4a", pcmHash: UUID().uuidString, duration: 90)
+        version.song = song
+        song.versions.append(version)
+        return version
+    }
+
+    func testRenameVersionTrimsAndIgnoresBlank() throws {
+        let song = makeSong("R")
+        let version = try XCTUnwrap(song.primaryVersion)
+        XCTAssertFalse(store.renameVersion(version, to: "   "))
+        XCTAssertEqual(version.name, "OG")
+        XCTAssertTrue(store.renameVersion(version, to: "  V2  "))
+        XCTAssertEqual(version.name, "V2")
+    }
+
+    func testDeleteVersionKeepsLastAndFixesPrimaryAndEntries() throws {
+        let song = makeSong("D")
+        let first = try XCTUnwrap(song.primaryVersion)
+        let second = addVersion("Demo", to: song)
+        let playlist = Playlist(name: "P")
+        store.insertPlaylist(playlist)
+        store.appendEntry(song: song, version: first, to: playlist)
+
+        store.deleteVersion(first)
+        XCTAssertEqual(song.versions.map(\.id), [second.id])
+        XCTAssertEqual(song.primaryVersion?.id, second.id)
+        XCTAssertNil(playlist.entries.first?.versionID)
+
+        store.deleteVersion(second)
+        XCTAssertEqual(song.versions.count, 1, "the last version must survive")
+    }
+
+    func testSeparateVersionCreatesNewSongAndMovesEntries() throws {
+        let song = makeSong("S")
+        let first = try XCTUnwrap(song.primaryVersion)
+        let second = addVersion("Live", to: song)
+        let playlist = Playlist(name: "P")
+        store.insertPlaylist(playlist)
+        store.appendEntry(song: song, version: second, to: playlist)
+
+        let newSong = try XCTUnwrap(store.separateVersion(second))
+        XCTAssertEqual(try store.allSongs().count, 2)
+        XCTAssertEqual(song.versions.map(\.id), [first.id])
+        XCTAssertEqual(newSong.primaryVersion?.id, second.id)
+        XCTAssertEqual(playlist.entries.first?.song?.id, newSong.id)
+        XCTAssertNil(store.separateVersion(first), "a single version cannot be detached")
+    }
+
     func testBackupExportRoundtripsLibraryContent() throws {
         let song = makeSong("Backup Me")
         song.isFavorite = true

@@ -145,6 +145,56 @@ extension EraStore: SongRepository {
         save()
     }
 
+    /// Renames a version; blank names are ignored. Returns whether anything changed.
+    @discardableResult
+    func renameVersion(_ version: SongVersion, to name: String) -> Bool {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let version = resolve(version)
+        guard !trimmed.isEmpty, trimmed != version.name else { return false }
+        version.name = trimmed
+        save()
+        return true
+    }
+
+    /// Detaches a version from its song into a new song of its own. The last
+    /// remaining version stays put. Returns the new song.
+    @discardableResult
+    func separateVersion(_ version: SongVersion) -> Song? {
+        let version = resolve(version)
+        guard let song = version.song, song.versions.count > 1 else { return nil }
+        song.versions.removeAll { $0.id == version.id }
+        let newSong = Song(title: version.displayTitle, artist: version.displayArtist, album: version.displayAlbum, era: song.era, year: version.year)
+        newSong.versions.append(version)
+        version.song = newSong
+        newSong.primaryVersionID = version.id
+        newSong.tags = song.tags
+        context.insert(newSong)
+        if song.primaryVersionID == version.id { song.primaryVersionID = song.sortedVersions.first?.id }
+        // Entries that pointed at the moved version follow it to the new song.
+        for playlist in (try? allPlaylists()) ?? [] {
+            for entry in playlist.entries where entry.versionID == version.id && entry.song?.id == song.id {
+                entry.song = newSong
+            }
+        }
+        save()
+        return newSong
+    }
+
+    /// Deletes one version and its files; the last remaining version is kept
+    /// (delete the song instead). Playlist entries fall back to the primary version.
+    func deleteVersion(_ version: SongVersion) {
+        let version = resolve(version)
+        guard let song = version.song, song.versions.count > 1 else { return }
+        VersionFiles.delete(version: version)
+        song.versions.removeAll { $0.id == version.id }
+        if song.primaryVersionID == version.id { song.primaryVersionID = song.sortedVersions.first?.id }
+        for playlist in (try? allPlaylists()) ?? [] {
+            for entry in playlist.entries where entry.versionID == version.id { entry.versionID = nil }
+        }
+        context.delete(version)
+        save()
+    }
+
     func version(matchingHash hash: String, duration: Double) throws -> SongVersion? {
         // Hash ist der Primaerabgleich, Dauer das zweite Kriterium (Spec 13.3)
         try allVersions().first { $0.pcmHash == hash && abs($0.duration - duration) < 0.5 }

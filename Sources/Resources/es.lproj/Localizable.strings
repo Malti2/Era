@@ -134,7 +134,7 @@
 "Reset Era Completely?" = "Reset Era Completely?";
 "Resume after calls" = "Resume after calls";
 "Resumes the last music played in Era." = "Resumes the last music played in Era.";
-"Saved to Era" = "Saved to Era";
+"Saved to Era" = "Guardado en Era";
 "Saving to Era…" = "Saving to Era…";
 "scissors" = "scissors";
 "Search" = "Buscar";
@@ -259,3 +259,6 @@
 "Previous" = "Anterior";
 "Next" = "Siguiente";
 "Queue" = "Cola de reproducción";
+"Save" = "Guardar";
+"Rename Playlist" = "Renombrar lista";
+"Done Editing" = "Terminar de editar";
