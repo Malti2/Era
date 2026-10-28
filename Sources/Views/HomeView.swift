@@ -98,7 +98,8 @@ struct HomeView: View {
                 HStack(spacing: 14) {
                     ForEach(songs) { song in
                         Button {
-                            if let v = song.primaryVersion { player.play(v, from: [v]) }
+                            // The shelf becomes the queue, so playback continues with its next songs.
+                            if let v = song.primaryVersion { player.play(v, from: songs.compactMap(\.primaryVersion)) }
                         } label: {
                             VStack(alignment: .leading, spacing: 6) {
                                 Artwork(song: song, radius: 12).frame(width: 150, height: 150)

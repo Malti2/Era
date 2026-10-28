@@ -301,3 +301,6 @@
 "Stops after this track" = "Stoppt nach diesem Titel";
 "End of Current Track" = "Ende des aktuellen Titels";
 "Longest" = "Längste";
+"Add Tag" = "Tag hinzufügen";
+"Remove %@" = "%@ entfernen";
+"%lld files not imported (%@)" = "%lld Dateien nicht importiert (%@)";

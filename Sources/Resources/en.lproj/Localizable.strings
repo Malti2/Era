@@ -301,3 +301,6 @@
 "Stops after this track" = "Stops after this track";
 "End of Current Track" = "End of Current Track";
 "Longest" = "Longest";
+"Add Tag" = "Add Tag";
+"Remove %@" = "Remove %@";
+"%lld files not imported (%@)" = "%lld files not imported (%@)";

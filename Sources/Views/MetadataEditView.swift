@@ -15,6 +15,9 @@ struct MetadataEditView: View {
     @State private var era: String = ""
     @State private var year: String = ""
     @State private var newTag = ""
+    // Tag edits stay in a draft until "Sichern", so Cancel really discards them.
+    @State private var tagIDs: Set<UUID> = []
+    @State private var pendingTagNames: [String] = []
 
     init(song: Song) {
         self.song = song
@@ -23,9 +26,14 @@ struct MetadataEditView: View {
         _album = State(initialValue: song.album)
         _era = State(initialValue: song.era)
         _year = State(initialValue: song.year.map(String.init) ?? "")
+        _tagIDs = State(initialValue: Set(song.tags.map(\.id)))
     }
 
     private var statusTags: [Tag] { tags.filter { $0.isStatus } }
+    private var draftPersonalTags: [Tag] {
+        tags.filter { !$0.isStatus && tagIDs.contains($0.id) }.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+    }
+    private var trimmedNewTag: String { newTag.trimmingCharacters(in: .whitespacesAndNewlines) }
 
     var body: some View {
         NavigationStack {
@@ -43,7 +51,7 @@ struct MetadataEditView: View {
                             HStack {
                                 Text(tag.name).foregroundStyle(.primary)
                                 Spacer()
-                                if song.tags.contains(where: { $0.id == tag.id }) {
+                                if tagIDs.contains(tag.id) {
                                     Image(systemName: "checkmark").foregroundStyle(Color.accentColor)
                                 }
                             }
@@ -51,26 +59,17 @@ struct MetadataEditView: View {
                     }
                 }
                 Section("Tags") {
-                    ForEach(song.personalTags) { tag in
-                        HStack {
-                            Text(tag.name)
-                            Spacer()
-                            Button(role: .destructive) { song.tags.removeAll { $0.id == tag.id } } label: {
-                                Image(systemName: "minus.circle.fill").foregroundStyle(.red)
-                            }
-                            .buttonStyle(.plain)
-                        }
+                    ForEach(draftPersonalTags) { tag in
+                        tagRow(tag.name) { tagIDs.remove(tag.id) }
+                    }
+                    ForEach(pendingTagNames, id: \.self) { name in
+                        tagRow(name) { pendingTagNames.removeAll { $0 == name } }
                     }
                     HStack {
-                        TextField("New Tag", text: $newTag)
-                        Button {
-                            let name = newTag.trimmingCharacters(in: .whitespaces)
-                            guard !name.isEmpty else { return }
-                            let tag = store.makeTag(named: name)
-                            if !song.tags.contains(where: { $0.id == tag.id }) { song.tags.append(tag) }
-                            newTag = ""
-                        } label: { Image(systemName: "plus.circle.fill") }
-                        .disabled(newTag.trimmingCharacters(in: .whitespaces).isEmpty)
+                        TextField("New Tag", text: $newTag).onSubmit(addTag)
+                        Button(action: addTag) { Image(systemName: "plus.circle.fill") }
+                            .disabled(trimmedNewTag.isEmpty)
+                            .accessibilityLabel("Add Tag")
                     }
                 }
             }
@@ -85,12 +84,32 @@ struct MetadataEditView: View {
         }
     }
 
-    private func toggle(_ tag: Tag) {
-        if song.tags.contains(where: { $0.id == tag.id }) {
-            song.tags.removeAll { $0.id == tag.id }
-        } else {
-            song.tags.append(tag)
+    private func tagRow(_ name: String, remove: @escaping () -> Void) -> some View {
+        HStack {
+            Text(name)
+            Spacer()
+            Button(role: .destructive, action: remove) {
+                Image(systemName: "minus.circle.fill").foregroundStyle(.red)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text("Remove \(name)"))
         }
+    }
+
+    private func addTag() {
+        let name = trimmedNewTag
+        guard !name.isEmpty else { return }
+        defer { newTag = "" }
+        // Existing tag (any case) -> select it, otherwise it is created on save.
+        if let existing = tags.first(where: { !$0.isStatus && $0.name.localizedCaseInsensitiveCompare(name) == .orderedSame }) {
+            tagIDs.insert(existing.id)
+        } else if !pendingTagNames.contains(where: { $0.localizedCaseInsensitiveCompare(name) == .orderedSame }) {
+            pendingTagNames.append(name)
+        }
+    }
+
+    private func toggle(_ tag: Tag) {
+        if tagIDs.contains(tag.id) { tagIDs.remove(tag.id) } else { tagIDs.insert(tag.id) }
     }
 
     private func save() {
@@ -98,7 +117,13 @@ struct MetadataEditView: View {
         song.artist = artist.trimmingCharacters(in: .whitespaces)
         song.album = album.trimmingCharacters(in: .whitespaces)
         song.era = era.trimmingCharacters(in: .whitespaces)
-        song.year = Int(year)
+        song.year = Int(year.trimmingCharacters(in: .whitespaces))
+        var final = tags.filter { tagIDs.contains($0.id) }
+        for name in pendingTagNames {
+            let tag = store.makeTag(named: name)
+            if !final.contains(where: { $0.id == tag.id }) { final.append(tag) }
+        }
+        song.tags = final
         store.save()
     }
 }

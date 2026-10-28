@@ -162,5 +162,37 @@
 			<string>%lld versiones omitidas: no se encontró el audio en este dispositivo.</string>
 		</dict>
 	</dict>
+	<key>%lld songs imported</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld tema importado</string>
+			<key>other</key>
+			<string>%lld temas importados</string>
+		</dict>
+	</dict>
+	<key>%lld files already in the library</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld archivo ya está en la biblioteca</string>
+			<key>other</key>
+			<string>%lld archivos ya están en la biblioteca</string>
+		</dict>
+	</dict>
 </dict>
 </plist>

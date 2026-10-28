@@ -301,3 +301,6 @@
 "Stops after this track" = "Se detiene al terminar este tema";
 "End of Current Track" = "Al final del tema actual";
 "Longest" = "Más largas";
+"Add Tag" = "Añadir etiqueta";
+"Remove %@" = "Quitar %@";
+"%lld files not imported (%@)" = "%lld archivos no importados (%@)";

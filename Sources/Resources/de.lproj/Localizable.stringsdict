@@ -162,5 +162,37 @@
 			<string>%lld Versionen übersprungen: Audiodatei auf diesem Gerät nicht gefunden.</string>
 		</dict>
 	</dict>
+	<key>%lld songs imported</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld Song importiert</string>
+			<key>other</key>
+			<string>%lld Songs importiert</string>
+		</dict>
+	</dict>
+	<key>%lld files already in the library</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld Datei schon in der Bibliothek</string>
+			<key>other</key>
+			<string>%lld Dateien schon in der Bibliothek</string>
+		</dict>
+	</dict>
 </dict>
 </plist>

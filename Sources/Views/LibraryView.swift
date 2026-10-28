@@ -149,7 +149,7 @@ struct LibraryView: View {
     private func noFilesNotice() {
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 500_000_000)
-            importer.message = "No files were imported. Are the songs stored locally on this iPhone, not only in iCloud?"
+            importer.message = String(localized: "No files were imported. Are the songs stored locally on this iPhone, not only in iCloud?")
         }
     }
 

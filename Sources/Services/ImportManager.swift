@@ -292,14 +292,14 @@ final class ImportManager: ObservableObject {
 
     private func summary(imported: Int, dupes: Int, errors: [(String, String)]) -> String? {
         var parts: [String] = []
-        if imported > 0 { parts.append(imported == 1 ? "1 song imported" : "\(imported) songs imported") }
-        if dupes > 0 { parts.append(dupes == 1 ? "1 file already in the library" : "\(dupes) files already in the library") }
+        if imported > 0 { parts.append(String(localized: "\(imported) songs imported")) }
+        if dupes > 0 { parts.append(String(localized: "\(dupes) files already in the library")) }
         if !errors.isEmpty {
             if errors.count == 1 {
                 parts.append("\(errors[0].0): \(errors[0].1)")
             } else {
-                let reasons = Dictionary(grouping: errors, by: { $0.1 }).map { "\($0.value.count)x \($0.key)" }
-                parts.append("\(errors.count) files not imported (\(reasons.joined(separator: ", ")))")
+                let reasons = Dictionary(grouping: errors, by: { $0.1 }).map { "\($0.value.count)x \($0.key)" }.sorted()
+                parts.append(String(localized: "\(errors.count) files not imported (\(reasons.joined(separator: ", ")))"))
             }
         }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
