@@ -17,6 +17,10 @@ Era is a private-first music library for iPhone, iPad, and Mac. It keeps release
 - Switch on optional vinyl crackle, gapless playback, or crossfade transitions
 - Review local listening stats: monthly plays, time listened, top tracks, and top artists
 - Find songs through Core Spotlight and control playback with App Shortcuts and Siri
+- Search across title, artist, album, tags, and versions with filters such as `tag:demo`, `status:leak`, `year:2018-2020`, and `fav`
+- Add songs to playlists from any song menu and reorder playlists by dragging
+- Pick up where you left off: the queue and position survive app restarts, and the sleep timer can stop after the current track
+- Back up the library as JSON or CSV, restore it later, and run a library check for missing files, unused files, and duplicates
 - Keep the library and audio files on the device, with no server, account, tracking, or analytics
 - Use native Apple frameworks and system components throughout the app
 

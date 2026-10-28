@@ -80,7 +80,7 @@ struct LibraryView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
                         Picker("Sort", selection: Binding(get: { sort }, set: { sortRaw = $0.rawValue })) {
-                            ForEach(LibrarySort.allCases) { Text($0.title).tag($0) }
+                            ForEach(LibrarySort.allCases) { Text($0.label).tag($0) }
                         }
                     } label: {
                         Image(systemName: "arrow.up.arrow.down")

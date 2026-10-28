@@ -18,7 +18,7 @@ extension Song {
 }
 
 extension LibrarySort {
-    var title: LocalizedStringKey {
+    var label: LocalizedStringKey {
         switch self {
         case .recent: "Recently Added"
         case .title: "Title"

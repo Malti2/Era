@@ -9,10 +9,16 @@ struct SearchView: View {
     @State private var recents = UserDefaults.standard.stringArray(forKey: AppSettings.recentSearchesKey) ?? []
     @FocusState private var focused: Bool
 
-    private var results: [(song: Song, hit: SearchHit)] {
+    private struct Entry: Identifiable {
+        let song: Song
+        let hit: SearchHit
+        var id: UUID { song.id }
+    }
+
+    private var results: [Entry] {
         let hits = SongSearch.search(query, in: songs.map(\.searchable))
         let byID = Dictionary(songs.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
-        return hits.compactMap { hit in byID[hit.id].map { ($0, hit) } }
+        return hits.compactMap { hit in byID[hit.id].map { Entry(song: $0, hit: hit) } }
     }
 
     private var suggestions: [SearchSuggestion] { SearchSuggestions.make(from: songs.map(\.searchable)) }
@@ -39,9 +45,9 @@ struct SearchView: View {
         }
     }
 
-    private func resultList(_ found: [(song: Song, hit: SearchHit)]) -> some View {
+    private func resultList(_ found: [Entry]) -> some View {
         let queue = found.compactMap(\.song.primaryVersion)
-        return List(found, id: \.song.id) { entry in
+        return List(found) { entry in
             let song = entry.song
             HStack(spacing: 10) {
                 Button {
