@@ -2,7 +2,10 @@ name: Era
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: [main, claude/nightly]
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 jobs:
   build:
     runs-on: macos-15
