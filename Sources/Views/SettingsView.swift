@@ -20,8 +20,6 @@ struct SettingsView: View {
     @AppStorage(AppSettings.crossfadeSecondsKey) private var crossfadeSeconds = 6
 
     @State private var spotlightRebuilt = false
-    @State private var backupItem: ShareItem?
-    @State private var backupError = false
     @State private var showOnboarding = false
     @State private var confirmReset = false
     @State private var resetDone = false
@@ -89,26 +87,7 @@ struct SettingsView: View {
                     LabeledContent("Songs", value: "\(songs.count)")
                     LabeledContent("Versions", value: "\(versions.count)")
                     LabeledContent("Storage Used", value: LibraryFiles.librarySizeText())
-                }
-                Section("Library & Backup") {
-                    Button {
-                        do {
-                            backupItem = ShareItem(url: try BackupService.exportURL(store: store))
-                        } catch {
-                            backupError = true
-                        }
-                    } label: {
-                        Label("Export Library (JSON)", systemImage: "square.and.arrow.up.on.square")
-                    }
-                    Button {
-                        do {
-                            backupItem = ShareItem(url: try CSVExport.exportURL(store: store))
-                        } catch {
-                            backupError = true
-                        }
-                    } label: {
-                        Label("Export Library (CSV)", systemImage: "tablecells")
-                    }
+                    NavigationLink { LibraryToolsView() } label: { Label("Backup & Maintenance", systemImage: "externaldrive") }
                 }
                 Section("Search & Siri") {
                     Toggle(isOn: $spotlightEnabled) {
@@ -147,12 +126,8 @@ struct SettingsView: View {
                     Button("Done") { dismiss() }
                 }
             }
-            .sheet(item: $backupItem) { item in ShareSheet(items: [item.url]) }
             .sheet(item: $updateShareItem) { item in ShareSheet(items: [item.url]) }
             .sheet(isPresented: $showOnboarding) { OnboardingView() }
-            .alert("Backup Failed", isPresented: $backupError) {
-                Button("OK", role: .cancel) {}
-            }
             .confirmationDialog("Reset Era Completely?", isPresented: $confirmReset, titleVisibility: .visible) {
                 Button("Delete All Songs and Data", role: .destructive) {
                     store.resetEverything()

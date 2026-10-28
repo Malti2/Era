@@ -34,5 +34,133 @@
 			<string>%lld Songs</string>
 		</dict>
 	</dict>
+	<key>%lld missing audio files</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld fehlende Audiodatei</string>
+			<key>other</key>
+			<string>%lld fehlende Audiodateien</string>
+		</dict>
+	</dict>
+	<key>%lld songs without versions</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld Song ohne Versionen</string>
+			<key>other</key>
+			<string>%lld Songs ohne Versionen</string>
+		</dict>
+	</dict>
+	<key>%lld broken artwork links</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld defekte Cover-Verknüpfung</string>
+			<key>other</key>
+			<string>%lld defekte Cover-Verknüpfungen</string>
+		</dict>
+	</dict>
+	<key>%lld unused files</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld ungenutzte Datei</string>
+			<key>other</key>
+			<string>%lld ungenutzte Dateien</string>
+		</dict>
+	</dict>
+	<key>%lld copies</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld Kopie</string>
+			<key>other</key>
+			<string>%lld Kopien</string>
+		</dict>
+	</dict>
+	<key>%lld playlists</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld Playlist</string>
+			<key>other</key>
+			<string>%lld Playlists</string>
+		</dict>
+	</dict>
+	<key>%lld collections</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld Sammlung</string>
+			<key>other</key>
+			<string>%lld Sammlungen</string>
+		</dict>
+	</dict>
+	<key>%lld versions skipped: audio file not found on this device.</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld Version übersprungen: Audiodatei auf diesem Gerät nicht gefunden.</string>
+			<key>other</key>
+			<string>%lld Versionen übersprungen: Audiodatei auf diesem Gerät nicht gefunden.</string>
+		</dict>
+	</dict>
 </dict>
 </plist>
