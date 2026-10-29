@@ -21,6 +21,7 @@ struct LibraryView: View {
     @EnvironmentObject private var store: EraStore
     @EnvironmentObject private var player: PlayerEngine
     @EnvironmentObject private var importer: ImportManager
+    @EnvironmentObject private var playlistPicker: PlaylistPickerCoordinator
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Song.dateAdded, order: .reverse) private var songs: [Song]
     @Query private var playlists: [Playlist]
@@ -37,6 +38,10 @@ struct LibraryView: View {
     @State private var demoSectionOnly = false
     @State private var showSmartPlaylist = false
     @State private var songToDelete: Song?
+    @State private var selecting = false
+    @State private var selection = BulkSelection()
+    @State private var showBulkTags = false
+    @State private var confirmBulkDelete = false
     @State private var playlistToDelete: Playlist?
     private let demoForceSmartPlaylist: Bool
 
@@ -63,30 +68,59 @@ struct LibraryView: View {
             Group {
                 if songs.isEmpty { emptyState } else { content }
             }
-            .navigationTitle("Library")
+            .navigationTitle(selecting ? selectionTitle : String(localized: "Library"))
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Menu {
-                        Button { showImporter = true } label: { Label("Files", systemImage: "doc.on.doc") }
-                        Button { showFolderImporter = true } label: { Label("Folder", systemImage: "folder") }
-                        Button { importer.showMassImport = true } label: { Label("Files with Review", systemImage: "checklist") }
-                    } label: { Label("Import Music", systemImage: "square.and.arrow.down") }
-                    .accessibilityLabel("Import Music")
-                }
-                ToolbarItem(placement: .topBarLeading) {
-                    Button { showSettings = true } label: { Image(systemName: "gearshape") }
-                        .accessibilityLabel("Settings")
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Menu {
-                        Picker("Sort", selection: Binding(get: { sort }, set: { sortRaw = $0.rawValue })) {
-                            ForEach(LibrarySort.allCases) { Text($0.label).tag($0) }
+                if selecting {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button(LocalizedStringKey(selection.coversAll(of: sortedSongs.map(\.id)) ? "Deselect All" : "Select All")) {
+                            if selection.coversAll(of: sortedSongs.map(\.id)) { selection.clear() } else { selection.selectAll(sortedSongs.map(\.id)) }
                         }
-                    } label: {
-                        Image(systemName: "arrow.up.arrow.down")
                     }
-                    .accessibilityLabel("Sort")
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("Done") { endSelecting() }.fontWeight(.semibold)
+                    }
+                    ToolbarItemGroup(placement: .bottomBar) { selectionBar }
+                } else {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Menu {
+                            Button { showImporter = true } label: { Label("Files", systemImage: "doc.on.doc") }
+                            Button { showFolderImporter = true } label: { Label("Folder", systemImage: "folder") }
+                            Button { importer.showMassImport = true } label: { Label("Files with Review", systemImage: "checklist") }
+                        } label: { Label("Import Music", systemImage: "square.and.arrow.down") }
+                        .accessibilityLabel("Import Music")
+                    }
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button { showSettings = true } label: { Image(systemName: "gearshape") }
+                            .accessibilityLabel("Settings")
+                    }
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Menu {
+                            Picker("Sort", selection: Binding(get: { sort }, set: { sortRaw = $0.rawValue })) {
+                                ForEach(LibrarySort.allCases) { Text($0.label).tag($0) }
+                            }
+                            if selectedSection == .songs && !songs.isEmpty {
+                                Divider()
+                                Button { selecting = true } label: { Label("Select Songs", systemImage: "checkmark.circle") }
+                            }
+                        } label: {
+                            Image(systemName: "arrow.up.arrow.down")
+                        }
+                        .accessibilityLabel("Sort")
+                    }
                 }
+            }
+            .navigationBarTitleDisplayMode(selecting ? .inline : .automatic)
+            .toolbar(selecting ? .hidden : .automatic, for: .tabBar)
+            .onChange(of: songs.count) { _, _ in selection.prune(to: Set(songs.map(\.id))) }
+            .sheet(isPresented: $showBulkTags) { BulkTagSheet(songs: selectedSongs) }
+            .confirmationDialog("Delete Songs?", isPresented: $confirmBulkDelete, titleVisibility: .visible) {
+                Button("Delete \(selection.count) Songs", role: .destructive) {
+                    store.deleteSongs(selectedSongs)
+                    endSelecting()
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This removes the songs with all their versions and local audio files.")
             }
             .sheet(isPresented: $showSettings) { SettingsView() }
             .sheet(isPresented: $demoSongSheet) {
@@ -153,6 +187,34 @@ struct LibraryView: View {
         }
     }
 
+    private var selectedSongs: [Song] { songs.filter { selection.contains($0.id) } }
+    private var selectionTitle: String {
+        selection.isEmpty ? String(localized: "Select Songs") : String(format: String(localized: "%lld Selected"), selection.count)
+    }
+
+    private func endSelecting() {
+        selecting = false
+        selection.clear()
+    }
+
+    @ViewBuilder private var selectionBar: some View {
+        let chosen = selectedSongs
+        let allFavorites = !chosen.isEmpty && chosen.allSatisfy(\.isFavorite)
+        Button { playlistPicker.present(chosen) } label: { Label("Add to Playlist", systemImage: "text.badge.plus") }
+            .disabled(chosen.isEmpty)
+        Spacer()
+        Button { store.setFavorite(!allFavorites, for: chosen) } label: {
+            Label(LocalizedStringKey(allFavorites ? "Remove Favorite" : "Favorite"), systemImage: allFavorites ? "heart.slash" : "heart")
+        }
+        .disabled(chosen.isEmpty)
+        Spacer()
+        Button { showBulkTags = true } label: { Label("Tags", systemImage: "tag") }
+            .disabled(chosen.isEmpty)
+        Spacer()
+        Button(role: .destructive) { confirmBulkDelete = true } label: { Label("Delete", systemImage: "trash") }
+            .disabled(chosen.isEmpty)
+    }
+
     private var sort: LibrarySort { LibrarySort(rawValue: sortRaw) ?? .recent }
     private var songsByID: [UUID: Song] { Dictionary(songs.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first }) }
 
@@ -216,39 +278,68 @@ struct LibraryView: View {
 
     private var songsSection: some View {
         Section {
-            Button {
-                let versions = sortedSongs.compactMap(\.primaryVersion)
-                if let first = versions.first { player.play(first, from: versions) }
-            } label: {
-                Label("Play All (\(sortedSongs.count))", systemImage: "play.fill")
-            }
-            Button {
-                player.playShuffled(sortedSongs.compactMap(\.primaryVersion))
-            } label: {
-                Label("Shuffle", systemImage: "shuffle")
+            if !selecting {
+                playAllButtons
             }
             ForEach(sortedSongs) { song in
-                HStack(spacing: 8) {
-                    Button {
-                        if let version = song.primaryVersion { player.play(version, from: sortedSongs.compactMap(\.primaryVersion)); showNowPlaying = true }
-                    } label: { SongRow(song: song, version: nil, isCurrent: player.current?.song?.id == song.id) }
-                    .buttonStyle(.plain)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    NavigationLink { SongDetailView(song: song, showNowPlaying: $showNowPlaying) } label: { Image(systemName: "ellipsis").frame(width: 36, height: 44) }
-                    .fixedSize(horizontal: true, vertical: false)
-                    .accessibilityLabel("Song Details")
+                if selecting {
+                    selectableRow(song)
+                } else {
+                    songRow(song)
                 }
-                .swipeActions(edge: .leading) {
-                    Button { song.isFavorite.toggle(); store.save() } label: {
-                        Label("Favorite", systemImage: song.isFavorite ? "heart.slash" : "heart.fill")
-                    }.tint(.pink)
-                }
-                .swipeActions {
-                    Button(role: .destructive) { songToDelete = song } label: { Label("Delete", systemImage: "trash") }
-                }
-                .contextMenu { SongContextMenu(song: song, showNowPlaying: $showNowPlaying) }
             }
         }
+    }
+
+    @ViewBuilder private var playAllButtons: some View {
+        Button {
+            let versions = sortedSongs.compactMap(\.primaryVersion)
+            if let first = versions.first { player.play(first, from: versions) }
+        } label: {
+            Label("Play All (\(sortedSongs.count))", systemImage: "play.fill")
+        }
+        Button {
+            player.playShuffled(sortedSongs.compactMap(\.primaryVersion))
+        } label: {
+            Label("Shuffle", systemImage: "shuffle")
+        }
+    }
+
+    private func songRow(_ song: Song) -> some View {
+        HStack(spacing: 8) {
+            Button {
+                if let version = song.primaryVersion { player.play(version, from: sortedSongs.compactMap(\.primaryVersion)); showNowPlaying = true }
+            } label: { SongRow(song: song, version: nil, isCurrent: player.current?.song?.id == song.id) }
+            .buttonStyle(.plain)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            NavigationLink { SongDetailView(song: song, showNowPlaying: $showNowPlaying) } label: { Image(systemName: "ellipsis").frame(width: 36, height: 44) }
+            .fixedSize(horizontal: true, vertical: false)
+            .accessibilityLabel("Song Details")
+        }
+        .swipeActions(edge: .leading) {
+            Button { song.isFavorite.toggle(); store.save() } label: {
+                Label("Favorite", systemImage: song.isFavorite ? "heart.slash" : "heart.fill")
+            }.tint(.pink)
+        }
+        .swipeActions {
+            Button(role: .destructive) { songToDelete = song } label: { Label("Delete", systemImage: "trash") }
+        }
+        .contextMenu { SongContextMenu(song: song, showNowPlaying: $showNowPlaying) }
+    }
+
+    private func selectableRow(_ song: Song) -> some View {
+        let isSelected = selection.contains(song.id)
+        return Button { selection.toggle(song.id) } label: {
+            HStack(spacing: 12) {
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .font(.title3)
+                    .foregroundStyle(isSelected ? Color.accentColor : Color.secondary)
+                SongRow(song: song, version: nil, isCurrent: false)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     private var playlistsSection: some View {
