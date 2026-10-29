@@ -304,3 +304,9 @@
 "Add Tag" = "Tag hinzufügen";
 "Remove %@" = "%@ entfernen";
 "%lld files not imported (%@)" = "%lld Dateien nicht importiert (%@)";
+"All Time" = "Gesamt";
+"Listening Days" = "Hörtage";
+"Current Streak" = "Aktuelle Serie";
+"%lld days" = "%lld Tage";
+"Last 6 Months" = "Letzte 6 Monate";
+"Month" = "Monat";

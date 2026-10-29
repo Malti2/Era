@@ -1,0 +1,62 @@
+import XCTest
+@testable import Era
+
+final class StatsCalculatorTests: XCTestCase {
+    private var calendar = Calendar(identifier: .gregorian)
+    private var now: Date!
+
+    override func setUp() {
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        now = date(2026, 10, 29, 12)
+    }
+
+    private func date(_ year: Int, _ month: Int, _ day: Int, _ hour: Int = 10) -> Date {
+        calendar.date(from: DateComponents(year: year, month: month, day: day, hour: hour))!
+    }
+
+    private func play(_ title: String, _ artist: String = "A", on day: Date, seconds: Double = 60) -> PlayRecord {
+        PlayRecord(date: day, seconds: seconds, title: title, artist: artist)
+    }
+
+    func testMonthBucketsAreNewestFirstAndSumSeconds() {
+        let records = [play("x", on: date(2026, 9, 3), seconds: 30), play("y", on: date(2026, 10, 1)), play("z", on: date(2026, 9, 20), seconds: 70)]
+        let buckets = StatsCalculator.monthBuckets(records, calendar: calendar)
+        XCTAssertEqual(buckets.map(\.plays), [1, 2])
+        XCTAssertEqual(buckets.last?.seconds, 100)
+    }
+
+    func testMonthlySeriesFillsEmptyMonthsOldestFirst() {
+        let series = StatsCalculator.monthlySeries([play("x", on: date(2026, 8, 5))], months: 4, now: now, calendar: calendar)
+        XCTAssertEqual(series.map(\.plays), [0, 1, 0, 0])
+        XCTAssertEqual(series.first?.month, date(2026, 7, 1, 0))
+        XCTAssertEqual(series.last?.month, date(2026, 10, 1, 0))
+    }
+
+    func testRecordsInMonthExcludesNeighbours() {
+        let records = [play("a", on: date(2026, 9, 30, 23)), play("b", on: date(2026, 10, 1, 0)), play("c", on: date(2026, 11, 1, 0))]
+        XCTAssertEqual(StatsCalculator.records(records, inMonthOf: now, calendar: calendar).map(\.title), ["b"])
+    }
+
+    func testTopTracksSeparatesSameTitleByArtistAndBreaksTiesAlphabetically() {
+        let day = date(2026, 10, 2)
+        let records = [play("Intro", "A", on: day), play("Intro", "B", on: day), play("Intro", "B", on: day), play("Zed", "A", on: day), play("Alpha", "A", on: day)]
+        let top = StatsCalculator.topTracks(records, limit: 3)
+        XCTAssertEqual(top.map(\.artist), ["B", "A", "A"])
+        XCTAssertEqual(top.map(\.title), ["Intro", "Alpha", "Intro"])
+        XCTAssertEqual(Set(top.map(\.id)).count, 3, "Same title by different artists must have distinct ids")
+    }
+
+    func testTopArtistsRespectsLimit() {
+        let day = date(2026, 10, 2)
+        let records = [play("1", "B", on: day), play("2", "B", on: day), play("3", "A", on: day), play("4", "C", on: day)]
+        XCTAssertEqual(StatsCalculator.topArtists(records, limit: 2).map(\.name), ["B", "A"])
+    }
+
+    func testStreakCountsConsecutiveDaysAndSurvivesUntilTomorrow() {
+        let records = [play("a", on: date(2026, 10, 29)), play("b", on: date(2026, 10, 28)), play("c", on: date(2026, 10, 28, 20)), play("d", on: date(2026, 10, 26))]
+        XCTAssertEqual(StatsCalculator.currentStreak(records, now: now, calendar: calendar), 2)
+        XCTAssertEqual(StatsCalculator.currentStreak(records, now: date(2026, 10, 30), calendar: calendar), 2, "Yesterday's play keeps the streak alive")
+        XCTAssertEqual(StatsCalculator.currentStreak(records, now: date(2026, 11, 2), calendar: calendar), 0)
+        XCTAssertEqual(StatsCalculator.activeDays(records, calendar: calendar), 3)
+    }
+}

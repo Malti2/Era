@@ -304,3 +304,9 @@
 "Add Tag" = "Add Tag";
 "Remove %@" = "Remove %@";
 "%lld files not imported (%@)" = "%lld files not imported (%@)";
+"All Time" = "All Time";
+"Listening Days" = "Listening Days";
+"Current Streak" = "Current Streak";
+"%lld days" = "%lld days";
+"Last 6 Months" = "Last 6 Months";
+"Month" = "Month";
