@@ -342,3 +342,8 @@
 "Loop %@–%@" = "Bucle %@–%@";
 "Loop from %@" = "Bucle desde %@";
 "Clears the loop" = "Quita el bucle";
+"Edit Details" = "Editar detalles";
+"Edit Version" = "Editar versión";
+"Different from the Song" = "Distinto de la canción";
+"Leave a field empty to use the song’s value. Handy for demos with a working title." = "Deja un campo vacío para usar el valor de la canción. Útil para demos con título provisional.";
+"Enter a four-digit year or leave it empty." = "Introduce un año de cuatro cifras o deja el campo vacío.";

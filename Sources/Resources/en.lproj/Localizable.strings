@@ -342,3 +342,8 @@
 "Loop %@–%@" = "Loop %@–%@";
 "Loop from %@" = "Loop from %@";
 "Clears the loop" = "Clears the loop";
+"Edit Details" = "Edit Details";
+"Edit Version" = "Edit Version";
+"Different from the Song" = "Different from the Song";
+"Leave a field empty to use the song’s value. Handy for demos with a working title." = "Leave a field empty to use the song’s value. Handy for demos with a working title.";
+"Enter a four-digit year or leave it empty." = "Enter a four-digit year or leave it empty.";

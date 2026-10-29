@@ -97,3 +97,25 @@ extension EraStore {
         }
     }
 }
+
+// Version-Details: Name, Jahr und Abweichungen von den Song-Angaben.
+extension EraStore {
+    /// Saves the version editor. Returns false (and changes nothing) when the year is not valid.
+    @discardableResult
+    func updateVersion(_ version: SongVersion, name: String, yearText: String, title: String, artist: String, album: String) -> Bool {
+        let version = resolve(version)
+        let year: Int?
+        switch VersionDetails.parseYear(yearText) {
+        case .invalid: return false
+        case .empty: year = nil
+        case .valid(let value): year = value
+        }
+        if let cleaned = BulkTagging.cleanName(name) { version.name = cleaned }
+        version.year = year
+        version.titleOverride = VersionDetails.override(title, songValue: version.song?.title ?? "")
+        version.artistOverride = VersionDetails.override(artist, songValue: version.song?.artist ?? "")
+        version.albumOverride = VersionDetails.override(album, songValue: version.song?.album ?? "")
+        save()
+        return true
+    }
+}

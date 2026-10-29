@@ -103,4 +103,29 @@ final class BulkStoreTests: XCTestCase {
         XCTAssertTrue(pack.tagIDs.isEmpty)
         XCTAssertNil(try store.tag(named: "gone"))
     }
+
+    func testUpdateVersionStoresOnlyRealDifferences() throws {
+        let song = makeSong("Midnight")
+        song.artist = "Nova"
+        let version = try XCTUnwrap(song.primaryVersion)
+
+        XCTAssertTrue(store.updateVersion(version, name: " Demo  2019 ", yearText: "2019", title: "Midnight (Demo)", artist: "Nova ", album: ""))
+        XCTAssertEqual(version.name, "Demo 2019")
+        XCTAssertEqual(version.year, 2019)
+        XCTAssertEqual(version.titleOverride, "Midnight (Demo)")
+        XCTAssertNil(version.artistOverride, "Text identical to the song (modulo whitespace) is not an override")
+        XCTAssertEqual(version.displayTitle, "Midnight (Demo)")
+
+        XCTAssertTrue(store.updateVersion(version, name: "", yearText: "", title: "", artist: "", album: ""))
+        XCTAssertEqual(version.name, "Demo 2019", "A blank name keeps the old one")
+        XCTAssertNil(version.year)
+        XCTAssertNil(version.titleOverride)
+    }
+
+    func testUpdateVersionRefusesInvalidYear() throws {
+        let song = makeSong("A")
+        let version = try XCTUnwrap(song.primaryVersion)
+        XCTAssertFalse(store.updateVersion(version, name: "X", yearText: "12", title: "", artist: "", album: ""))
+        XCTAssertEqual(version.name, "OG")
+    }
 }

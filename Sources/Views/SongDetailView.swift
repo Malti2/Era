@@ -12,6 +12,7 @@ struct SongDetailView: View {
     @State private var showVersionDrawer = false
     @State private var showMetadataEditor = false
     @State private var versionToRename: SongVersion?
+    @State private var versionToEdit: SongVersion?
     @State private var renameText = ""
     @State private var shareItem: ShareItem?
 
@@ -74,6 +75,7 @@ struct SongDetailView: View {
         .sheet(isPresented: $showVersionDrawer) { VersionDrawer(song: song) }
         .sheet(isPresented: $showMetadataEditor) { MetadataEditView(song: song) }
         .sheet(item: $shareItem) { item in ShareSheet(items: [item.url]) }
+        .sheet(item: $versionToEdit) { VersionEditView(version: $0) }
         .alert("Versionsname", isPresented: Binding(get: { versionToRename != nil }, set: { if !$0 { versionToRename = nil } })) {
             TextField("Name", text: $renameText)
             Button("Save") { if let version = versionToRename { store.renameVersion(version, to: renameText) }; versionToRename = nil }
@@ -102,6 +104,7 @@ struct SongDetailView: View {
             renameText = version.name
             versionToRename = version
         } label: { Label("Umbenennen", systemImage: "pencil") }
+        Button { versionToEdit = version } label: { Label("Edit Details", systemImage: "slider.horizontal.3") }
         if song.versions.count > 1 {
             Button {
                 store.separateVersion(version)
