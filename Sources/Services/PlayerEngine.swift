@@ -16,6 +16,7 @@ final class PlayerEngine: NSObject, ObservableObject, AVAudioPlayerDelegate {
     }
     @Published var repeatMode = 0 // 0 off, 1 all, 2 one
     @Published private(set) var sleepTimer = SleepTimerState()
+    @Published private(set) var loop = ABLoop()
     @Published var rate: Float = 1.0
     /// Set when a track could not be loaded (missing/unreadable file); the UI shows it briefly.
     @Published var playbackError: String?
@@ -75,6 +76,7 @@ final class PlayerEngine: NSObject, ObservableObject, AVAudioPlayerDelegate {
     @discardableResult
     func play(_ version: SongVersion, from versions: [SongVersion]) -> Bool {
         cancelTransition()
+        loop.clear()
         recordPlayEvent(finished: false)
         saveResumePosition()
         queue = versions
@@ -272,7 +274,7 @@ final class PlayerEngine: NSObject, ObservableObject, AVAudioPlayerDelegate {
     }
 
     private func checkTransition() {
-        guard isPlaying, let a = audio, !sleepTimer.stopsAtTrackEnd else { return }
+        guard isPlaying, let a = audio, !sleepTimer.stopsAtTrackEnd, !loop.isActive else { return }
         if let left = sleepTimer.remaining, left <= SleepTimerState.fadeSeconds + 1 { return }
         if !transitionArmed && nextAudio == nil { prepareNext() }
         guard let nextA = nextAudio, let next = nextVersion, a.duration > 1 else { return }
@@ -363,8 +365,18 @@ final class PlayerEngine: NSObject, ObservableObject, AVAudioPlayerDelegate {
         let anchor = queue.firstIndex(where: { $0.id == current?.id }) ?? queue.count
         var newQueue = queue.filter { !ids.contains($0.id) }
         newQueue.insert(version, at: min(anchor, newQueue.count))
+        // Comparing versions of one song keeps the loop, so A/B listening lines up.
+        let keptLoop = loop
         play(version, from: newQueue)
+        loop = keptLoop
     }
+
+    /// Cycles the A-B loop: mark start, mark end, clear.
+    func cycleLoop() {
+        loop.advance(at: currentTime, duration: duration)
+    }
+
+    func clearLoop() { loop.clear() }
 
     func playNext(_ version: SongVersion) {
         if let current, let index = queue.firstIndex(where: { $0.id == current.id }) {
@@ -488,6 +500,9 @@ final class PlayerEngine: NSObject, ObservableObject, AVAudioPlayerDelegate {
             Task { @MainActor in
                 guard let self else { return }
                 if let a = self.audio {
+                    if let target = self.loop.jumpTarget(for: a.currentTime) {
+                        a.currentTime = target
+                    }
                     self.currentTime = a.currentTime
                     self.isPlaying = a.isPlaying
                     self.checkTransition()

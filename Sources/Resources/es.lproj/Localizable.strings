@@ -336,3 +336,9 @@
 "The tag is removed from all songs. The songs stay in your library." = "La etiqueta se quita de todas las canciones. Las canciones permanecen en tu biblioteca.";
 "Remove Unused Tags?" = "¿Quitar etiquetas sin usar?";
 "Remove Unused Tags" = "Quitar etiquetas sin usar";
+"Loop: Set Start (A)" = "Bucle: marcar inicio (A)";
+"Loop: Set End (B)" = "Bucle: marcar final (B)";
+"Clear Loop" = "Quitar bucle";
+"Loop %@–%@" = "Bucle %@–%@";
+"Loop from %@" = "Bucle desde %@";
+"Clears the loop" = "Quita el bucle";

@@ -336,3 +336,9 @@
 "The tag is removed from all songs. The songs stay in your library." = "The tag is removed from all songs. The songs stay in your library.";
 "Remove Unused Tags?" = "Remove Unused Tags?";
 "Remove Unused Tags" = "Remove Unused Tags";
+"Loop: Set Start (A)" = "Loop: Set Start (A)";
+"Loop: Set End (B)" = "Loop: Set End (B)";
+"Clear Loop" = "Clear Loop";
+"Loop %@–%@" = "Loop %@–%@";
+"Loop from %@" = "Loop from %@";
+"Clears the loop" = "Clears the loop";

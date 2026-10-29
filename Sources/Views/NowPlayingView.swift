@@ -88,6 +88,21 @@ struct NowPlayingView: View {
         }
     }
 
+    private var loopMenuTitle: String {
+        switch player.loop.stage {
+        case .off: String(localized: "Loop: Set Start (A)")
+        case .startSet: String(localized: "Loop: Set End (B)")
+        case .active: String(localized: "Clear Loop")
+        }
+    }
+
+    private func loopChipTitle(start: Double, end: Double?) -> String {
+        if let end {
+            return String(format: String(localized: "Loop %@–%@"), TimeFormatting.mmss(start), TimeFormatting.mmss(end))
+        }
+        return String(format: String(localized: "Loop from %@"), TimeFormatting.mmss(start))
+    }
+
     var body: some View {
         NavigationStack {
             Group {
@@ -185,6 +200,7 @@ struct NowPlayingView: View {
                                 .disabled(v.id == version.id)
                             }
                             Divider()
+                            Button { player.cycleLoop() } label: { Label(loopMenuTitle, systemImage: "repeat") }
                             Button { showTimer = true } label: { Label("Sleep Timer", systemImage: "moon.zzz") }
                         } label: {
                             Image(systemName: "ellipsis")
@@ -238,6 +254,17 @@ struct NowPlayingView: View {
                         }
                         .font(.caption.monospacedDigit())
                         .foregroundStyle(.secondary)
+                        if let start = player.loop.start {
+                            Button { player.clearLoop() } label: {
+                                Label(loopChipTitle(start: start, end: player.loop.end), systemImage: "repeat")
+                                    .font(.caption2.weight(.semibold).monospacedDigit())
+                                    .padding(.horizontal, 9)
+                                    .padding(.vertical, 4)
+                                    .background(Color.accentColor.opacity(0.18), in: .capsule)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityHint("Clears the loop")
+                        }
                     }
                         .padding(.horizontal, 30)
 
