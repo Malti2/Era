@@ -29,6 +29,23 @@ enum StatsCalculator {
         let plays: Int
     }
 
+    enum Period: String, CaseIterable, Identifiable {
+        case month, year, allTime
+        var id: String { rawValue }
+    }
+
+    static func records(_ records: [PlayRecord], in period: Period, now: Date = Date(), calendar: Calendar = .current) -> [PlayRecord] {
+        switch period {
+        case .month:
+            return self.records(records, inMonthOf: now, calendar: calendar)
+        case .year:
+            guard let interval = calendar.dateInterval(of: .year, for: now) else { return records }
+            return records.filter { $0.date >= interval.start && $0.date < interval.end }
+        case .allTime:
+            return records
+        }
+    }
+
     static func monthStart(_ date: Date, calendar: Calendar = .current) -> Date {
         calendar.date(from: calendar.dateComponents([.year, .month], from: date)) ?? date
     }

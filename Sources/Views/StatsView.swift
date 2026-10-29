@@ -7,6 +7,7 @@ struct StatsView: View {
     @Environment(\.dismiss) private var dismiss
     @Query(sort: \PlayEvent.date, order: .reverse) private var events: [PlayEvent]
     var showsDoneButton = true
+    @State private var period: StatsCalculator.Period = .month
 
     private var records: [PlayRecord] {
         events.map { PlayRecord(date: $0.date, seconds: $0.seconds, title: $0.title, artist: $0.artist) }
@@ -22,7 +23,7 @@ struct StatsView: View {
 
     var body: some View {
         let all = records
-        let month = StatsCalculator.records(all, inMonthOf: Date())
+        let scoped = StatsCalculator.records(all, in: period)
         List {
             if events.isEmpty {
                 ContentUnavailableView {
@@ -34,7 +35,6 @@ struct StatsView: View {
                 Section("All Time") {
                     LabeledContent("Plays", value: "\(all.count)")
                     LabeledContent("Time Listened", value: TimeFormatting.spoken(all.reduce(0) { $0 + $1.seconds }))
-                    LabeledContent("Listening Days", value: "\(StatsCalculator.activeDays(all))")
                     let streak = StatsCalculator.currentStreak(all)
                     if streak > 1 {
                         LabeledContent("Current Streak", value: String(format: String(localized: "%lld days"), streak))
@@ -43,13 +43,20 @@ struct StatsView: View {
                 Section("Last 6 Months") {
                     activityChart(StatsCalculator.monthlySeries(all, months: 6))
                 }
-                Section("This Month") {
-                    LabeledContent("Plays", value: "\(month.count)")
-                    LabeledContent("Time Listened", value: TimeFormatting.spoken(month.reduce(0) { $0 + $1.seconds }))
+                Section {
+                    Picker("Period", selection: $period) {
+                        Text("Month").tag(StatsCalculator.Period.month)
+                        Text("Year").tag(StatsCalculator.Period.year)
+                        Text("All Time").tag(StatsCalculator.Period.allTime)
+                    }
+                    .pickerStyle(.segmented)
+                    LabeledContent("Plays", value: "\(scoped.count)")
+                    LabeledContent("Time Listened", value: TimeFormatting.spoken(scoped.reduce(0) { $0 + $1.seconds }))
+                    LabeledContent("Listening Days", value: "\(StatsCalculator.activeDays(scoped))")
                 }
-                let tracks = StatsCalculator.topTracks(month, limit: 5)
+                let tracks = StatsCalculator.topTracks(scoped, limit: 10)
                 if !tracks.isEmpty {
-                    Section("Top Tracks This Month") {
+                    Section("Top Tracks") {
                         ForEach(Array(tracks.enumerated()), id: \.element.id) { index, track in
                             HStack {
                                 Text("\(index + 1)")
@@ -67,9 +74,9 @@ struct StatsView: View {
                         }
                     }
                 }
-                let artists = StatsCalculator.topArtists(month, limit: 3)
+                let artists = StatsCalculator.topArtists(scoped, limit: 5)
                 if !artists.isEmpty {
-                    Section("Top Artists This Month") {
+                    Section("Top Artists") {
                         ForEach(artists) { artist in
                             LabeledContent(artistName(artist.name), value: "\(artist.plays)×")
                         }

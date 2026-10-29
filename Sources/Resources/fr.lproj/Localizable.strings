@@ -347,3 +347,6 @@
 "Different from the Song" = "Différent du morceau";
 "Leave a field empty to use the song’s value. Handy for demos with a working title." = "Laissez un champ vide pour utiliser la valeur du morceau. Pratique pour les démos avec un titre provisoire.";
 "Enter a four-digit year or leave it empty." = "Saisissez une année à quatre chiffres ou laissez le champ vide.";
+"Period" = "Période";
+"Top Tracks" = "Morceaux les plus écoutés";
+"Top Artists" = "Artistes les plus écoutés";

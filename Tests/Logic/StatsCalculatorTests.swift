@@ -59,4 +59,11 @@ final class StatsCalculatorTests: XCTestCase {
         XCTAssertEqual(StatsCalculator.currentStreak(records, now: date(2026, 11, 2), calendar: calendar), 0)
         XCTAssertEqual(StatsCalculator.activeDays(records, calendar: calendar), 3)
     }
+
+    func testPeriodFiltering() {
+        let records = [play("old", on: date(2025, 12, 31)), play("jan", on: date(2026, 1, 1, 0)), play("now", on: date(2026, 10, 2)), play("next", on: date(2027, 1, 1, 0))]
+        XCTAssertEqual(StatsCalculator.records(records, in: .month, now: now, calendar: calendar).map(\.title), ["now"])
+        XCTAssertEqual(StatsCalculator.records(records, in: .year, now: now, calendar: calendar).map(\.title), ["jan", "now"])
+        XCTAssertEqual(StatsCalculator.records(records, in: .allTime, now: now, calendar: calendar).count, 4)
+    }
 }
