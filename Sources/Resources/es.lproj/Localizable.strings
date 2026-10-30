@@ -359,3 +359,12 @@
 "%@ Copy" = "%@ copia";
 "Share as Text" = "Compartir como texto";
 "Reverse Order" = "Invertir orden";
+"Per Listening Day" = "Por día de escucha";
+"When You Listen" = "Cuándo escuchas";
+"Hour" = "Hora";
+"Peak Hour" = "Hora punta";
+"Busiest Day" = "Día más activo";
+"Cover" = "Portada";
+"Choose Cover" = "Elegir portada";
+"Remove Cover" = "Quitar portada";
+"That image could not be used." = "No se pudo usar esa imagen.";

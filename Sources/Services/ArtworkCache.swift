@@ -22,3 +22,19 @@ enum ArtworkCache {
 
     static func evict(_ file: String) { cache.removeObject(forKey: file as NSString) }
 }
+
+// Bereitet ein gewaehltes Foto als Cover auf: begrenzte Kantenlaenge, JPEG, korrekte Ausrichtung.
+enum ArtworkImporter {
+    static func prepare(_ data: Data, maxSide: CGFloat = 1200) -> Data? {
+        guard let image = UIImage(data: data), image.size.width > 0, image.size.height > 0 else { return nil }
+        let longest = max(image.size.width, image.size.height)
+        let scale = min(1, maxSide / longest)
+        let target = CGSize(width: (image.size.width * scale).rounded(), height: (image.size.height * scale).rounded())
+        let format = UIGraphicsImageRendererFormat.default()
+        format.scale = 1
+        let rendered = UIGraphicsImageRenderer(size: target, format: format).image { _ in
+            image.draw(in: CGRect(origin: .zero, size: target))
+        }
+        return rendered.jpegData(compressionQuality: 0.88)
+    }
+}

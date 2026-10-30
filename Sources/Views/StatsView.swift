@@ -53,7 +53,11 @@ struct StatsView: View {
                     LabeledContent("Plays", value: "\(scoped.count)")
                     LabeledContent("Time Listened", value: TimeFormatting.spoken(scoped.reduce(0) { $0 + $1.seconds }))
                     LabeledContent("Listening Days", value: "\(StatsCalculator.activeDays(scoped))")
+                    if !scoped.isEmpty {
+                        LabeledContent("Per Listening Day", value: TimeFormatting.spoken(StatsCalculator.averageSecondsPerActiveDay(scoped)))
+                    }
                 }
+                if !scoped.isEmpty { patternSection(scoped) }
                 let tracks = StatsCalculator.topTracks(scoped, limit: 10)
                 if !tracks.isEmpty {
                     Section("Top Tracks") {
@@ -97,6 +101,45 @@ struct StatsView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }
                 }
+            }
+        }
+    }
+
+    private func hourLabel(_ hour: Int) -> String {
+        let date = Calendar.current.date(bySettingHour: hour, minute: 0, second: 0, of: Date()) ?? Date()
+        return date.formatted(.dateTime.hour())
+    }
+
+    private func weekdayName(at index: Int) -> String {
+        let calendar = Calendar.current
+        return calendar.weekdaySymbols[(calendar.firstWeekday - 1 + index) % 7]
+    }
+
+    private func patternSection(_ scoped: [PlayRecord]) -> some View {
+        let hours = StatsCalculator.hourDistribution(scoped)
+        let weekdays = StatsCalculator.weekdayDistribution(scoped)
+        return Section("When You Listen") {
+            Chart(Array(hours.enumerated()), id: \.offset) { hour, plays in
+                BarMark(
+                    x: .value(String(localized: "Hour"), hour),
+                    y: .value(String(localized: "Plays"), plays)
+                )
+                .foregroundStyle(Color.accentColor.gradient)
+            }
+            .chartXScale(domain: -0.5...23.5)
+            .chartXAxis { AxisMarks(values: [0, 6, 12, 18]) { value in
+                AxisValueLabel { if let hour = value.as(Int.self) { Text(hourLabel(hour)) } }
+            } }
+            .chartYAxis(.hidden)
+            .frame(height: 110)
+            .padding(.vertical, 6)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(Text("When You Listen"))
+            if let peak = StatsCalculator.peakHour(scoped) {
+                LabeledContent("Peak Hour", value: hourLabel(peak))
+            }
+            if let best = weekdays.max(), best > 0, let index = weekdays.firstIndex(of: best) {
+                LabeledContent("Busiest Day", value: weekdayName(at: index))
             }
         }
     }

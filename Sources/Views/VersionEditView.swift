@@ -1,4 +1,5 @@
 import SwiftUI
+import PhotosUI
 
 // Details einer Version: Name, Jahr und Angaben, die vom Song abweichen (z.B. Demo-Titel).
 struct VersionEditView: View {
@@ -11,6 +12,8 @@ struct VersionEditView: View {
     @State private var artist: String
     @State private var album: String
     @State private var yearInvalid = false
+    @State private var coverItem: PhotosPickerItem?
+    @State private var coverFailed = false
 
     init(version: SongVersion) {
         self.version = version
@@ -24,6 +27,7 @@ struct VersionEditView: View {
     var body: some View {
         NavigationStack {
             Form {
+                coverSection
                 Section("Version") {
                     TextField("Versionsname", text: $name)
                     TextField("Year", text: $year).keyboardType(.numberPad)
@@ -51,6 +55,36 @@ struct VersionEditView: View {
             }
         }
         .presentationDetents([.medium, .large])
+    }
+
+    private var coverSection: some View {
+        Section {
+            HStack(spacing: 14) {
+                Artwork(song: version.song, version: version, radius: 10).frame(width: 72, height: 72)
+                VStack(alignment: .leading, spacing: 8) {
+                    PhotosPicker(selection: $coverItem, matching: .images) {
+                        Label("Choose Cover", systemImage: "photo")
+                    }
+                    if version.artworkFile != nil {
+                        Button(role: .destructive) { store.clearArtwork(for: version) } label: {
+                            Label("Remove Cover", systemImage: "trash")
+                        }
+                    }
+                }
+            }
+        } header: {
+            Text("Cover")
+        } footer: {
+            if coverFailed { Text("That image could not be used.").foregroundStyle(.red) }
+        }
+        .onChange(of: coverItem) { _, item in
+            guard let item else { return }
+            Task {
+                let data = try? await item.loadTransferable(type: Data.self)
+                coverFailed = !(data.flatMap { ArtworkImporter.prepare($0) }.map { store.setArtwork($0, for: version) } ?? false)
+                coverItem = nil
+            }
+        }
     }
 
     private func save() {
