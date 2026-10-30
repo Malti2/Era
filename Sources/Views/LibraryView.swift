@@ -25,9 +25,11 @@ struct LibraryView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Song.dateAdded, order: .reverse) private var songs: [Song]
     @Query private var playlists: [Playlist]
+    @Query(sort: \Tag.name) private var allTags: [Tag]
 
     @AppStorage(AppSettings.librarySectionKey) private var sectionRaw = LibrarySection.songs.rawValue
     @AppStorage(AppSettings.librarySortKey) private var sortRaw = LibrarySort.recent.rawValue
+    @State private var filter = LibraryFilter()
     @State private var showImporter = false
     @State private var showFolderImporter = false
     @State private var showSettings = false
@@ -99,11 +101,12 @@ struct LibraryView: View {
                                 ForEach(LibrarySort.allCases) { Text($0.label).tag($0) }
                             }
                             if selectedSection == .songs && !songs.isEmpty {
+                                filterMenuItems
                                 Divider()
                                 Button { selecting = true } label: { Label("Select Songs", systemImage: "checkmark.circle") }
                             }
                         } label: {
-                            Image(systemName: "arrow.up.arrow.down")
+                            Image(systemName: filter.isActive ? "line.3.horizontal.decrease.circle.fill" : "arrow.up.arrow.down")
                         }
                         .accessibilityLabel("Sort")
                     }
@@ -271,14 +274,60 @@ struct LibraryView: View {
     }
 
     private var sortedSongs: [Song] {
-        guard sort != .recent else { return songs }
+        var base = songs
+        if filter.isActive {
+            let allowed = Set(filter.ids(in: songs.map(\.searchable)))
+            base = songs.filter { allowed.contains($0.id) }
+        }
+        guard sort != .recent else { return base }
         let byID = songsByID
-        return sort.ordered(songs.map(\.sortRow)).compactMap { byID[$0] }
+        return sort.ordered(base.map(\.sortRow)).compactMap { byID[$0] }
+    }
+
+    @ViewBuilder private var filterMenuItems: some View {
+        Section("Filter") {
+            Toggle(isOn: $filter.favoritesOnly) { Label("Favorites", systemImage: "heart") }
+            let statuses = allTags.filter { $0.isStatus && !$0.songs.isEmpty }
+            if !statuses.isEmpty {
+                Menu {
+                    ForEach(statuses) { tag in
+                        Toggle(tag.name, isOn: Binding(get: { filter.statuses.contains(tag.name) }, set: { _ in filter.toggle(status: tag.name) }))
+                    }
+                } label: { Label("Status", systemImage: "circle.dashed") }
+            }
+            let personal = allTags.filter { !$0.isStatus && !$0.songs.isEmpty }
+            if !personal.isEmpty {
+                Menu {
+                    ForEach(personal) { tag in
+                        Toggle(tag.name, isOn: Binding(get: { filter.tags.contains(tag.name) }, set: { _ in filter.toggle(tag: tag.name) }))
+                    }
+                } label: { Label("Tags", systemImage: "tag") }
+            }
+            if filter.isActive {
+                Button(role: .destructive) { filter = LibraryFilter() } label: { Label("Clear Filters", systemImage: "xmark.circle") }
+            }
+        }
+    }
+
+    @ViewBuilder private var filterSummary: some View {
+        if filter.isActive {
+            HStack {
+                Label("\(sortedSongs.count) of \(songs.count) songs", systemImage: "line.3.horizontal.decrease.circle.fill")
+                    .font(.footnote).foregroundStyle(.secondary)
+                Spacer()
+                Button("Clear") { withAnimation { filter = LibraryFilter() } }
+                    .font(.footnote.weight(.semibold)).buttonStyle(.borderless)
+            }
+            if sortedSongs.isEmpty {
+                Text("No song matches the active filters.").foregroundStyle(.secondary)
+            }
+        }
     }
 
     private var songsSection: some View {
         Section {
-            if !selecting {
+            filterSummary
+            if !selecting && !sortedSongs.isEmpty {
                 playAllButtons
             }
             ForEach(sortedSongs) { song in

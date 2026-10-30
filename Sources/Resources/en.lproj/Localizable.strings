@@ -350,3 +350,12 @@
 "Period" = "Period";
 "Top Tracks" = "Top Tracks";
 "Top Artists" = "Top Artists";
+"Filter" = "Filter";
+"Clear Filters" = "Clear Filters";
+"%lld of %lld songs" = "%lld of %lld songs";
+"No song matches the active filters." = "No song matches the active filters.";
+"Sort By" = "Sort By";
+"Duplicate Playlist" = "Duplicate Playlist";
+"%@ Copy" = "%@ Copy";
+"Share as Text" = "Share as Text";
+"Reverse Order" = "Reverse Order";

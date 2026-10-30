@@ -350,3 +350,12 @@
 "Period" = "Période";
 "Top Tracks" = "Morceaux les plus écoutés";
 "Top Artists" = "Artistes les plus écoutés";
+"Filter" = "Filtre";
+"Clear Filters" = "Effacer les filtres";
+"%lld of %lld songs" = "%lld titres sur %lld";
+"No song matches the active filters." = "Aucun titre ne correspond aux filtres actifs.";
+"Sort By" = "Trier par";
+"Duplicate Playlist" = "Dupliquer la playlist";
+"%@ Copy" = "%@ copie";
+"Share as Text" = "Partager en texte";
+"Reverse Order" = "Inverser l’ordre";

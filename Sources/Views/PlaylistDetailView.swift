@@ -12,6 +12,7 @@ struct PlaylistDetailView: View {
     @State private var renameText = ""
     @State private var editOrder = false
     @State private var confirmDelete = false
+    @State private var shareText: ShareTextItem?
     @Environment(\.dismiss) private var dismiss
 
     private var isFiltered: Bool { !playlist.filterTagIDs.isEmpty }
@@ -66,6 +67,19 @@ struct PlaylistDetailView: View {
                     Button { editOrder.toggle() } label: { Label(editOrder ? "Done Editing" : "Edit Order", systemImage: "arrow.up.arrow.down") }
                         .disabled(isFiltered || playlist.entries.count < 2)
                     Button { showAddSongs = true } label: { Label("Add Songs", systemImage: "plus") }
+                    Menu {
+                        ForEach(PlaylistSortOrder.allCases) { order in
+                            Button(order.label) { withAnimation { store.sortPlaylist(playlist, by: order) } }
+                        }
+                    } label: { Label("Sort By", systemImage: "arrow.up.arrow.down.circle") }
+                    .disabled(playlist.entries.count < 2)
+                    Button { store.duplicatePlaylist(playlist, named: String(localized: "\(playlist.name) Copy")) } label: {
+                        Label("Duplicate Playlist", systemImage: "plus.square.on.square")
+                    }
+                    Button { shareText = ShareTextItem(text: exportText) } label: {
+                        Label("Share as Text", systemImage: "square.and.arrow.up")
+                    }
+                    .disabled(playlist.entries.isEmpty)
                     Divider()
                     Button(role: .destructive) { confirmDelete = true } label: { Label("Delete Playlist", systemImage: "trash") }
                 } label: { Image(systemName: "ellipsis") }
@@ -73,6 +87,7 @@ struct PlaylistDetailView: View {
             }
         }
         .sheet(isPresented: $showAddSongs) { AddToPlaylistSheet(playlist: playlist) }
+        .sheet(item: $shareText) { ShareSheet(items: [$0.text]) }
         .alert("Rename Playlist", isPresented: $showRename) {
             TextField("Name", text: $renameText)
             Button("Save") { store.renamePlaylist(playlist, to: renameText) }
@@ -128,6 +143,16 @@ struct PlaylistDetailView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.horizontal, 18).padding(.bottom, 12)
+    }
+
+    private var exportText: String {
+        let items = playlist.sortedEntries.compactMap { entry -> PlaylistTextExport.Item? in
+            guard let song = entry.song else { return nil }
+            let version = entry.resolvedVersion
+            let override = version?.artistOverride ?? ""
+            return .init(title: version?.displayTitle ?? song.title, artist: override.isEmpty ? song.artist : override, duration: version?.duration ?? 0)
+        }
+        return PlaylistTextExport.text(header: "\(playlist.name) (\(summary))", items: items)
     }
 
     private var summary: String {
@@ -278,6 +303,23 @@ struct AddToPlaylistSheet: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) { Button("Cancel") { dismiss() } }
             }
+        }
+    }
+}
+
+private struct ShareTextItem: Identifiable {
+    let text: String
+    var id: String { text }
+}
+
+extension PlaylistSortOrder {
+    var label: LocalizedStringKey {
+        switch self {
+        case .title: "Title"
+        case .artist: "Artist"
+        case .newest: "Recently Added"
+        case .longest: "Longest"
+        case .reverse: "Reverse Order"
         }
     }
 }

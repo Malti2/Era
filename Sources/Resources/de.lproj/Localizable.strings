@@ -350,3 +350,12 @@
 "Period" = "Zeitraum";
 "Top Tracks" = "Top-Titel";
 "Top Artists" = "Top-Künstler";
+"Filter" = "Filter";
+"Clear Filters" = "Filter zurücksetzen";
+"%lld of %lld songs" = "%lld von %lld Songs";
+"No song matches the active filters." = "Kein Song passt zu den aktiven Filtern.";
+"Sort By" = "Sortieren nach";
+"Duplicate Playlist" = "Playlist duplizieren";
+"%@ Copy" = "%@ Kopie";
+"Share as Text" = "Als Text teilen";
+"Reverse Order" = "Reihenfolge umkehren";
