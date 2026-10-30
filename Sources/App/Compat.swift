@@ -3,6 +3,8 @@ import SwiftUI
 // iOS 18 Deployment Target: Liquid Glass laeuft nur auf iOS 26+, alles hinter
 // #available. Darunter klassische Materialien - keine handgemalte Optik.
 extension View {
+    /// Tab-Leiste auf dem iPhone, auf iPad und Mac per Tipp auf die Leiste als Seitenleiste.
+    func eraAdaptiveTabs() -> some View { self.tabViewStyle(.sidebarAdaptable) }
     @ViewBuilder func eraTabMinimize() -> some View {
         if #available(iOS 26, *) { self.tabBarMinimizeBehavior(.onScrollDown) } else { self }
     }

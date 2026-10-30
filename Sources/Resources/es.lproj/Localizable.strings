@@ -368,3 +368,6 @@
 "Choose Cover" = "Elegir portada";
 "Remove Cover" = "Quitar portada";
 "That image could not be used." = "No se pudo usar esa imagen.";
+"Play / Pause" = "Reproducir / Pausa";
+"Skip Forward" = "Avanzar";
+"Skip Back" = "Retroceder";

@@ -46,6 +46,7 @@ struct ContentView: View {
                 SearchView(showNowPlaying: $showNowPlaying)
             }
         }
+        .eraAdaptiveTabs()
         .eraTabMinimize()
         .modifier(MiniPlayerAccessory(isVisible: player.current != nil && !showNowPlaying, open: { showNowPlaying = true }))
         .sheet(isPresented: $showNowPlaying) { NowPlayingView() }
