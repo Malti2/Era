@@ -120,4 +120,34 @@ enum StatsCalculator {
         }
         return streak
     }
+
+    /// Wiedergaben je Stunde des Tages (Index 0...23).
+    static func hourDistribution(_ records: [PlayRecord], calendar: Calendar = .current) -> [Int] {
+        var hours = [Int](repeating: 0, count: 24)
+        for record in records { hours[calendar.component(.hour, from: record.date)] += 1 }
+        return hours
+    }
+
+    /// Wiedergaben je Wochentag, Index 0 = erster Wochentag des Kalenders (z. B. Montag in de).
+    static func weekdayDistribution(_ records: [PlayRecord], calendar: Calendar = .current) -> [Int] {
+        var days = [Int](repeating: 0, count: 7)
+        for record in records {
+            let weekday = calendar.component(.weekday, from: record.date)
+            days[(weekday - calendar.firstWeekday + 7) % 7] += 1
+        }
+        return days
+    }
+
+    /// Stunde mit den meisten Wiedergaben; nil ohne Daten. Bei Gleichstand die fruehere.
+    static func peakHour(_ records: [PlayRecord], calendar: Calendar = .current) -> Int? {
+        let hours = hourDistribution(records, calendar: calendar)
+        guard let best = hours.max(), best > 0 else { return nil }
+        return hours.firstIndex(of: best)
+    }
+
+    /// Durchschnittliche Hoerzeit pro aktivem Tag in Sekunden.
+    static func averageSecondsPerActiveDay(_ records: [PlayRecord], calendar: Calendar = .current) -> Double {
+        let days = activeDays(records, calendar: calendar)
+        return days == 0 ? 0 : records.reduce(0) { $0 + $1.seconds } / Double(days)
+    }
 }

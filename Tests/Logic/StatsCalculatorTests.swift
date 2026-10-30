@@ -66,4 +66,31 @@ final class StatsCalculatorTests: XCTestCase {
         XCTAssertEqual(StatsCalculator.records(records, in: .year, now: now, calendar: calendar).map(\.title), ["jan", "now"])
         XCTAssertEqual(StatsCalculator.records(records, in: .allTime, now: now, calendar: calendar).count, 4)
     }
+
+    func testHourAndWeekdayDistributionAndPeak() {
+        // 2026-10-29 is a Thursday; firstWeekday 2 = Monday -> index 3
+        calendar.firstWeekday = 2
+        let records = [
+            play("a", on: date(2026, 10, 29, 22)), play("b", on: date(2026, 10, 29, 22)),
+            play("c", on: date(2026, 10, 26, 8)),
+        ]
+        let hours = StatsCalculator.hourDistribution(records, calendar: calendar)
+        XCTAssertEqual(hours.count, 24)
+        XCTAssertEqual(hours[22], 2)
+        XCTAssertEqual(hours[8], 1)
+        XCTAssertEqual(StatsCalculator.peakHour(records, calendar: calendar), 22)
+        let days = StatsCalculator.weekdayDistribution(records, calendar: calendar)
+        XCTAssertEqual(days[3], 2)
+        XCTAssertEqual(days[0], 1)
+        XCTAssertNil(StatsCalculator.peakHour([], calendar: calendar))
+    }
+
+    func testAverageSecondsPerActiveDay() {
+        let records = [
+            play("a", on: date(2026, 10, 29, 9), seconds: 100), play("b", on: date(2026, 10, 29, 18), seconds: 200),
+            play("c", on: date(2026, 10, 28, 9), seconds: 300),
+        ]
+        XCTAssertEqual(StatsCalculator.averageSecondsPerActiveDay(records, calendar: calendar), 300, accuracy: 0.001)
+        XCTAssertEqual(StatsCalculator.averageSecondsPerActiveDay([], calendar: calendar), 0)
+    }
 }
