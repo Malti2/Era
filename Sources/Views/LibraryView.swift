@@ -29,7 +29,7 @@ struct LibraryView: View {
 
     @AppStorage(AppSettings.librarySectionKey) private var sectionRaw = LibrarySection.songs.rawValue
     @AppStorage(AppSettings.librarySortKey) private var sortRaw = LibrarySort.recent.rawValue
-    @State private var filter = LibraryFilter()
+    @AppStorage(AppSettings.libraryFilterKey) private var filterRaw = ""
     @State private var showImporter = false
     @State private var showFolderImporter = false
     @State private var showSettings = false
@@ -190,6 +190,12 @@ struct LibraryView: View {
         }
     }
 
+    /// Der Filter wird gemerkt (AppStorage), damit er nach einem Neustart noch aktiv ist.
+    private var filter: LibraryFilter {
+        get { LibraryFilter.decode(filterRaw) }
+        nonmutating set { filterRaw = newValue.encoded }
+    }
+
     private var selectedSongs: [Song] { songs.filter { selection.contains($0.id) } }
     private var selectionTitle: String {
         selection.isEmpty ? String(localized: "Select Songs") : String(format: String(localized: "%lld Selected"), selection.count)
@@ -286,7 +292,7 @@ struct LibraryView: View {
 
     @ViewBuilder private var filterMenuItems: some View {
         Section("Filter") {
-            Toggle(isOn: $filter.favoritesOnly) { Label("Favorites", systemImage: "heart") }
+            Toggle(isOn: Binding(get: { filter.favoritesOnly }, set: { filter.favoritesOnly = $0 })) { Label("Favorites", systemImage: "heart") }
             let statuses = allTags.filter { $0.isStatus && !$0.songs.isEmpty }
             if !statuses.isEmpty {
                 Menu {

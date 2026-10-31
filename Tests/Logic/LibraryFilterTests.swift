@@ -44,3 +44,22 @@ final class LibraryFilterTests: XCTestCase {
         XCTAssertEqual(filter.ids(in: [a, b, c]), [a.id, c.id])
     }
 }
+
+final class LibraryFilterPersistenceTests: XCTestCase {
+    func testEncodedFilterRoundtrips() {
+        var filter = LibraryFilter()
+        filter.favoritesOnly = true
+        filter.toggle(status: "Demo")
+        filter.toggle(tag: "Night")
+        XCTAssertEqual(LibraryFilter.decode(filter.encoded), filter)
+    }
+
+    func testInactiveFilterEncodesToEmptyString() {
+        XCTAssertEqual(LibraryFilter().encoded, "")
+        XCTAssertEqual(LibraryFilter.decode(""), LibraryFilter())
+    }
+
+    func testGarbageDecodesToNoFilter() {
+        XCTAssertEqual(LibraryFilter.decode("{broken"), LibraryFilter())
+    }
+}

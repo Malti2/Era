@@ -3,7 +3,7 @@ import Foundation
 // Filter fuer die Songliste der Bibliothek (Favoriten, Status, Tags) als reine Logik.
 // Status wirkt als ODER (Demo oder Leak), Tags als UND (jeder gewaehlte Tag muss passen).
 
-struct LibraryFilter: Equatable {
+struct LibraryFilter: Equatable, Codable {
     var favoritesOnly = false
     var statuses: Set<String> = []
     var tags: Set<String> = []
@@ -27,6 +27,18 @@ struct LibraryFilter: Equatable {
     /// Ids der passenden Songs in Eingabereihenfolge.
     func ids(in songs: [SearchableSong]) -> [UUID] {
         isActive ? songs.filter(matches).map(\.id) : songs.map(\.id)
+    }
+
+    /// Fuer `@AppStorage`: der Filter bleibt ueber App-Starts erhalten. Kaputter Text = kein Filter.
+    var encoded: String {
+        guard isActive, let data = try? JSONEncoder().encode(self) else { return "" }
+        return String(data: data, encoding: .utf8) ?? ""
+    }
+
+    static func decode(_ raw: String) -> LibraryFilter {
+        guard !raw.isEmpty, let data = raw.data(using: .utf8),
+              let filter = try? JSONDecoder().decode(LibraryFilter.self, from: data) else { return LibraryFilter() }
+        return filter
     }
 
     mutating func toggle(status: String) {
