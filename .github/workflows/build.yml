@@ -7,7 +7,7 @@ concurrency:
   group: build-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 jobs:
-  build:
+  ipa:
     runs-on: macos-15
     outputs:
       stable_version: ${{ steps.version.outputs.number }}
@@ -33,12 +33,6 @@ jobs:
         run: brew install xcodegen
       - name: Generate project
         run: xcodegen generate
-      - name: Verify localizations
-        run: python3 Scripts/check-localizations.py
-      - name: Unit tests
-        run: |
-          UDID=$(xcrun simctl list devices available -j | python3 Scripts/newest-iphone.py)
-          xcodebuild -project Era.xcodeproj -scheme Era -destination "id=$UDID" -derivedDataPath build/tests CODE_SIGNING_ALLOWED=NO test
       - name: Archive device app (unsigned)
         run: |
           xcodebuild -project Era.xcodeproj -scheme Era -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' -archivePath build/Era.xcarchive archive CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" CURRENT_PROJECT_VERSION=$GITHUB_RUN_NUMBER
@@ -61,8 +55,57 @@ jobs:
           if [ -d build/Payload/Era.app/PlugIns/EraWidgetsExtension.appex ]; then echo "Widget extension must be gone"; exit 1; fi
           ls build/Payload/Era.app/PlugIns/
           ls build/Payload/Era.app/vinyl-crackle.wav
-      - name: Build simulator
-        run: xcodebuild -project Era.xcodeproj -scheme Era -configuration Debug -sdk iphonesimulator -derivedDataPath build/sim CODE_SIGNING_ALLOWED=YES CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=- CURRENT_PROJECT_VERSION=$GITHUB_RUN_NUMBER build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Era-ipa
+          retention-days: 3
+          path: Era-unsigned.ipa
+
+  tests:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode 26
+        run: |
+          XC=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          if [ -z "$XC" ]; then XC=$(ls -d /Applications/Xcode*.app | sort -V | tail -1); fi
+          echo "Using $XC"
+          sudo xcode-select -s "$XC/Contents/Developer"
+          xcodebuild -version
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate project
+        run: xcodegen generate
+      - name: Verify localizations
+        run: python3 Scripts/check-localizations.py
+      - name: Unit tests
+        run: |
+          UDID=$(xcrun simctl list devices available -j | python3 Scripts/newest-iphone.py)
+          xcodebuild -project Era.xcodeproj -scheme Era -destination "id=$UDID" -derivedDataPath build/tests CODE_SIGNING_ALLOWED=NO test
+
+  mac:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Determine stable version
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          read BASE NEXT < <(Scripts/next-version.sh)
+          sed -i '' "s/MARKETING_VERSION: \"$BASE\"/MARKETING_VERSION: \"$NEXT\"/" project.yml
+          grep -m1 'MARKETING_VERSION' project.yml
+          echo "number=$NEXT" >> "$GITHUB_OUTPUT"
+      - name: Select Xcode 26
+        run: |
+          XC=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          if [ -z "$XC" ]; then XC=$(ls -d /Applications/Xcode*.app | sort -V | tail -1); fi
+          echo "Using $XC"
+          sudo xcode-select -s "$XC/Contents/Developer"
+          xcodebuild -version
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate project
+        run: xcodegen generate
       - name: Build Mac Catalyst app
         run: |
           xcodebuild -project Era.xcodeproj -scheme Era -configuration Release -destination 'platform=macOS,variant=Mac Catalyst' -derivedDataPath build/catalyst CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CURRENT_PROJECT_VERSION=$GITHUB_RUN_NUMBER build
@@ -73,6 +116,31 @@ jobs:
           ln -s /Applications build/mac/dmg-root/Applications
           hdiutil create -volname "Era" -srcfolder build/mac/dmg-root -ov -format UDZO build/mac/Era-macOS-Catalyst-unsigned.dmg
           ditto -c -k --sequesterRsrc --keepParent "$MAC_APP" build/mac/Era-macOS-Catalyst-unsigned.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Era-mac
+          retention-days: 3
+          path: |
+            build/mac/Era-macOS-Catalyst-unsigned.dmg
+            build/mac/Era-macOS-Catalyst-unsigned.zip
+
+  screenshots:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode 26
+        run: |
+          XC=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          if [ -z "$XC" ]; then XC=$(ls -d /Applications/Xcode*.app | sort -V | tail -1); fi
+          echo "Using $XC"
+          sudo xcode-select -s "$XC/Contents/Developer"
+          xcodebuild -version
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate project
+        run: xcodegen generate
+      - name: Build simulator
+        run: xcodebuild -project Era.xcodeproj -scheme Era -configuration Debug -sdk iphonesimulator -derivedDataPath build/sim CODE_SIGNING_ALLOWED=YES CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=- CURRENT_PROJECT_VERSION=$GITHUB_RUN_NUMBER build
       - name: Prepare test audio files
         run: |
           python3 Scripts/make-test-audio.py
@@ -141,16 +209,12 @@ jobs:
           ls -la "$CONTAINER/Library/Application Support/EraLibrary/" || true
       - uses: actions/upload-artifact@v4
         with:
-          name: Era
+          name: Era-screenshots
           retention-days: 3
-          path: |
-            Era-unsigned.ipa
-            build/mac/Era-macOS-Catalyst-unsigned.dmg
-            build/mac/Era-macOS-Catalyst-unsigned.zip
-            screenshots/*.png
+          path: screenshots/*.png
 
   release:
-    needs: build
+    needs: [ipa, tests, mac, screenshots]
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
@@ -159,20 +223,20 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-          name: Era
+          pattern: Era-*
           path: dist
       - name: Create stable release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -e
-          VERSION="${{ needs.build.outputs.stable_version }}"
+          VERSION="${{ needs.ipa.outputs.stable_version }}"
           TAG="v${VERSION}"
           echo "creating stable release $TAG"
           gh release create "$TAG" \
             --title "$VERSION" \
             --notes "Automatisches Stable-Release aus Branch main." \
-            dist/Era-unsigned.ipa \
-            dist/build/mac/Era-macOS-Catalyst-unsigned.dmg \
-            dist/build/mac/Era-macOS-Catalyst-unsigned.zip \
-            dist/screenshots/07-player.png
+            dist/Era-ipa/Era-unsigned.ipa \
+            dist/Era-mac/Era-macOS-Catalyst-unsigned.dmg \
+            dist/Era-mac/Era-macOS-Catalyst-unsigned.zip \
+            dist/Era-screenshots/07-player.png
