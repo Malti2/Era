@@ -55,11 +55,12 @@ jobs:
           if [ -d build/Payload/Era.app/PlugIns/EraWidgetsExtension.appex ]; then echo "Widget extension must be gone"; exit 1; fi
           ls build/Payload/Era.app/PlugIns/
           ls build/Payload/Era.app/vinyl-crackle.wav
-      - uses: actions/upload-artifact@v4
+      # Ungezippt hochladen: die ZIP von GitHub laesst sich in der iOS-Dateien-App nicht entpacken.
+      - uses: actions/upload-artifact@v7
         with:
-          name: Era-ipa
-          retention-days: 3
           path: Era-unsigned.ipa
+          archive: false
+          retention-days: 3
 
   tests:
     runs-on: macos-15
@@ -221,7 +222,7 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: Era-*
           path: dist
@@ -233,10 +234,12 @@ jobs:
           VERSION="${{ needs.ipa.outputs.stable_version }}"
           TAG="v${VERSION}"
           echo "creating stable release $TAG"
+          find dist -type f
+          pick() { find dist -type f -name "$1" | head -1; }
           gh release create "$TAG" \
             --title "$VERSION" \
             --notes "Automatisches Stable-Release aus Branch main." \
-            dist/Era-ipa/Era-unsigned.ipa \
-            dist/Era-mac/Era-macOS-Catalyst-unsigned.dmg \
-            dist/Era-mac/Era-macOS-Catalyst-unsigned.zip \
-            dist/Era-screenshots/07-player.png
+            "$(pick Era-unsigned.ipa)" \
+            "$(pick Era-macOS-Catalyst-unsigned.dmg)" \
+            "$(pick Era-macOS-Catalyst-unsigned.zip)" \
+            "$(pick 07-player.png)"
