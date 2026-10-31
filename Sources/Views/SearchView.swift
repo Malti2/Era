@@ -56,7 +56,10 @@ struct SearchView: View {
                 } label: {
                     VStack(alignment: .leading, spacing: 2) {
                         SongRow(song: song, version: nil, isCurrent: player.current?.song?.id == song.id)
-                        if let hint = matchHint(entry.hit) {
+                        if let snippet = noteSnippet(entry) {
+                            Label(snippet, systemImage: "note.text").labelStyle(.titleAndIcon)
+                                .font(.caption2).foregroundStyle(.tertiary).lineLimit(1).padding(.leading, 62)
+                        } else if let hint = matchHint(entry.hit) {
                             Text(hint).font(.caption2).foregroundStyle(.tertiary).padding(.leading, 62)
                         }
                     }
@@ -69,6 +72,14 @@ struct SearchView: View {
             .contextMenu { SongContextMenu(song: song, showNowPlaying: $showNowPlaying) }
         }
         .listStyle(.plain)
+    }
+
+    /// Ausschnitt aus Notiz/Marker, wenn der Treffer nur dort liegt.
+    private func noteSnippet(_ entry: Entry) -> String? {
+        guard entry.hit.matchedFields.contains(.note),
+              entry.hit.matchedFields.isDisjoint(with: [.title, .artist]) else { return nil }
+        let labels = entry.song.versions.flatMap { $0.markers.map(\.label) }
+        return NoteSnippet.excerpt(in: [entry.song.notes] + labels, terms: SongSearchQuery(query).terms)
     }
 
     /// Nur wenn der Treffer nicht schon aus Titel/Artist sichtbar ist (z.B. Tag, Version).
