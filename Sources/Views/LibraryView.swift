@@ -343,6 +343,12 @@ struct LibraryView: View {
                     songRow(song)
                 }
             }
+        } footer: {
+            if !selecting && !filter.isActive && !songs.isEmpty {
+                Text("\(songs.count) songs") + Text(verbatim: " · \(TimeFormatting.spoken(songs.reduce(0) { $0 + $1.duration }))")
+                    .frame(maxWidth: .infinity)
+                    .multilineTextAlignment(.center)
+            }
         }
     }
 

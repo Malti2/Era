@@ -47,6 +47,11 @@ struct ContentView: View {
             }
         }
         .eraAdaptiveTabs()
+        .background {
+            // ⌘F springt in die Suche (iPad/Mac mit Tastatur)
+            Button("") { selection = .search }.keyboardShortcut("f", modifiers: .command)
+                .hidden().accessibilityHidden(true)
+        }
         .eraTabMinimize()
         .modifier(MiniPlayerAccessory(isVisible: player.current != nil && !showNowPlaying, open: { showNowPlaying = true }))
         .sheet(isPresented: $showNowPlaying) { NowPlayingView() }
