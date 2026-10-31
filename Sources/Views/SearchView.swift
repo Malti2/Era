@@ -148,6 +148,7 @@ private extension SearchField {
         case .tag: String(localized: "Tags")
         case .status: String(localized: "Status")
         case .version: String(localized: "Versions")
+        case .note: String(localized: "Notes")
         }
     }
     var sortOrder: Int {
@@ -159,6 +160,7 @@ private extension SearchField {
         case .status: 4
         case .tag: 5
         case .version: 6
+        case .note: 7
         }
     }
 }

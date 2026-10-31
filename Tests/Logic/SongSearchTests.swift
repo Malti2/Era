@@ -97,4 +97,14 @@ final class SongSearchTests: XCTestCase {
         XCTAssertEqual(many.count, RecentSearches.limit)
         XCTAssertEqual(many.first, "query 19")
     }
+
+    func testNotesAndMarkerLabelsAreFindableButRankLow() {
+        let withNote = SearchableSong(title: "Untitled 4", notes: "Gitarrenriff im Intro, Vocals noch roh")
+        let withMarker = SearchableSong(title: "Sketch", markerLabels: ["Beat Drop"])
+        let titled = SearchableSong(title: "Riff Raff")
+        let hits = SongSearch.search("riff", in: [withNote, withMarker, titled])
+        XCTAssertEqual(hits.map(\.id), [titled.id, withNote.id])
+        XCTAssertTrue(hits[1].matchedFields.contains(.note))
+        XCTAssertEqual(SongSearch.search("drop", in: [withNote, withMarker]).map(\.id), [withMarker.id])
+    }
 }

@@ -17,10 +17,13 @@ struct SearchableSong: Equatable {
     var versionNames: [String]
     var isFavorite: Bool
     var playCount: Int
+    /// Freie Notiz am Song plus Marker-Beschriftungen - nur ein schwacher Treffer, aber so findet man "das mit dem Gitarrenriff".
+    var notes: String
+    var markerLabels: [String]
 
     init(id: UUID = UUID(), title: String, artist: String = "", album: String = "", era: String = "",
          year: Int? = nil, tags: [String] = [], statuses: [String] = [], versionNames: [String] = [],
-         isFavorite: Bool = false, playCount: Int = 0) {
+         isFavorite: Bool = false, playCount: Int = 0, notes: String = "", markerLabels: [String] = []) {
         self.id = id
         self.title = title
         self.artist = artist
@@ -32,11 +35,13 @@ struct SearchableSong: Equatable {
         self.versionNames = versionNames
         self.isFavorite = isFavorite
         self.playCount = playCount
+        self.notes = notes
+        self.markerLabels = markerLabels
     }
 }
 
 enum SearchField: Hashable {
-    case title, artist, album, era, tag, status, version
+    case title, artist, album, era, tag, status, version, note
 }
 
 struct SearchHit: Equatable {
@@ -152,6 +157,7 @@ enum SongSearch {
         }
         let title = fold(song.title), artist = fold(song.artist), album = fold(song.album), era = fold(song.era)
         let tags = song.tags.map(fold), statuses = song.statuses.map(fold), versions = song.versionNames.map(fold)
+        let notes = fold(song.notes), markerLabels = song.markerLabels.map(fold)
         for term in query.terms {
             var best = 0
             var termFields = Set<SearchField>()
@@ -173,6 +179,8 @@ enum SongSearch {
             for tag in tags { consider(tag, field: .tag, exact: 28, prefix: 22, word: 16, contains: 10) }
             for status in statuses { consider(status, field: .status, exact: 28, prefix: 22, word: 16, contains: 10) }
             for version in versions { consider(version, field: .version, exact: 20, prefix: 14, word: 10, contains: 6) }
+            consider(notes, field: .note, exact: 12, prefix: 10, word: 9, contains: 5)
+            for label in markerLabels { consider(label, field: .note, exact: 12, prefix: 10, word: 9, contains: 5) }
             if let year = song.year, String(year) == term { best = max(best, 26) }
             guard best > 0 else { return nil }
             score += best
