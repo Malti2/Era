@@ -373,3 +373,13 @@
 "Skip Back" = "Retroceder";
 "Rediscover" = "Redescubre";
 "Not Played Yet" = "Aún sin escuchar";
+"Notes" = "Notas";
+"Add Note" = "Añadir nota";
+"Ideas, session details, where this came from…" = "Ideas, detalles de la sesión, de dónde viene…";
+"Markers" = "Marcadores";
+"Marker" = "Marcador";
+"No Markers" = "Sin marcadores";
+"Set markers while listening to find your way back to the good parts." = "Añade marcadores mientras escuchas para volver a los mejores momentos.";
+"Rename Marker" = "Renombrar marcador";
+"Marker at %@" = "Marcador en %@";
+"Add Marker" = "Añadir marcador";

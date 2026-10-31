@@ -13,6 +13,8 @@ struct SongDetailView: View {
     @State private var showMetadataEditor = false
     @State private var versionToRename: SongVersion?
     @State private var versionToEdit: SongVersion?
+    @State private var versionForMarkers: SongVersion?
+    @State private var showNotes = false
     @State private var renameText = ""
     @State private var shareItem: ShareItem?
 
@@ -48,6 +50,19 @@ struct SongDetailView: View {
                 Button { playlistPicker.present([song]) } label: { Label("Add to Playlist", systemImage: "text.badge.plus") }
             }
 
+            Section("Notes") {
+                Button { showNotes = true } label: {
+                    if song.notes.isEmpty {
+                        Label("Add Note", systemImage: "note.text.badge.plus")
+                    } else {
+                        Text(song.notes)
+                            .foregroundStyle(.primary)
+                            .lineLimit(6)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+            }
+
             Section("Versions (\(song.versions.count))") {
                 ForEach(song.sortedVersions) { version in
                     HStack(spacing: 4) {
@@ -76,6 +91,13 @@ struct SongDetailView: View {
         .sheet(isPresented: $showMetadataEditor) { MetadataEditView(song: song) }
         .sheet(item: $shareItem) { item in ShareSheet(items: [item.url]) }
         .sheet(item: $versionToEdit) { VersionEditView(version: $0) }
+        .sheet(item: $versionForMarkers) { version in
+            MarkersSheet(version: version) { marker in
+                if player.play(version, from: [version]) { player.seek(marker.time) }
+                showNowPlaying = true
+            }
+        }
+        .sheet(isPresented: $showNotes) { SongNotesView(song: song) }
         .alert("Versionsname", isPresented: Binding(get: { versionToRename != nil }, set: { if !$0 { versionToRename = nil } })) {
             TextField("Name", text: $renameText)
             Button("Save") { if let version = versionToRename { store.renameVersion(version, to: renameText) }; versionToRename = nil }
@@ -105,6 +127,7 @@ struct SongDetailView: View {
             versionToRename = version
         } label: { Label("Umbenennen", systemImage: "pencil") }
         Button { versionToEdit = version } label: { Label("Edit Details", systemImage: "slider.horizontal.3") }
+        Button { versionForMarkers = version } label: { Label("Markers", systemImage: "mappin") }
         if song.versions.count > 1 {
             Button {
                 store.separateVersion(version)
@@ -142,6 +165,10 @@ struct VersionRow: View {
                 HStack(spacing: 4) {
                     if version.displayTitle != song.title { Text(version.displayTitle) }
                     if let year = version.year { Text(verbatim: String(year)) }
+                    if !version.markers.isEmpty {
+                        Label { Text(verbatim: String(version.markers.count)) } icon: { Image(systemName: "mappin") }
+                            .labelStyle(.titleAndIcon)
+                    }
                 }
                 .font(.caption).foregroundStyle(.secondary).lineLimit(1)
             }

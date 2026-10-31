@@ -378,6 +378,28 @@ final class PlayerEngine: NSObject, ObservableObject, AVAudioPlayerDelegate {
 
     func clearLoop() { loop.clear() }
 
+    // MARK: Marker
+
+    /// Marker der laufenden Version (SwiftData ist observable, die Views aktualisieren sich von selbst).
+    var markers: [VersionMarker] { current?.markers ?? [] }
+
+    /// Setzt einen Marker an der aktuellen Position. Gibt ihn zurueck (auch wenn dort schon einer lag).
+    @discardableResult
+    func addMarkerHere() -> VersionMarker? {
+        guard let current, let store else { return nil }
+        return store.addMarker(at: currentTime, to: current)
+    }
+
+    func nextMarker() {
+        guard let marker = VersionMarkers.next(after: currentTime, in: markers) else { return }
+        seek(marker.time)
+    }
+
+    func previousMarker() {
+        guard let marker = VersionMarkers.previous(before: currentTime, in: markers) else { return }
+        seek(marker.time)
+    }
+
     func playNext(_ version: SongVersion) {
         if let current, let index = queue.firstIndex(where: { $0.id == current.id }) {
             queue.insert(version, at: index + 1)

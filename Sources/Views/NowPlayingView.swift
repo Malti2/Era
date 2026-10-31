@@ -76,6 +76,9 @@ struct NowPlayingView: View {
     @State private var scrubbing = false
     @State private var scrubValue: Double = 0
     @State private var showTimer = false
+    @State private var showMarkers = false
+    @State private var markerToast: String?
+    @State private var markerFeedback = 0
     @State private var confirmClearQueue = false
     @State private var queueEditing = false
     @State private var artworkTint = Color(white: 0.10)
@@ -103,6 +106,17 @@ struct NowPlayingView: View {
         return String(format: String(localized: "Loop from %@"), TimeFormatting.mmss(start))
     }
 
+    private func addMarker() {
+        guard let marker = player.addMarkerHere() else { return }
+        markerFeedback += 1
+        let text = String(format: String(localized: "Marker at %@"), TimeFormatting.mmss(marker.time))
+        withAnimation(.snappy) { markerToast = text }
+        Task {
+            try? await Task.sleep(for: .seconds(2.2))
+            withAnimation(.snappy) { if markerToast == text { markerToast = nil } }
+        }
+    }
+
     var body: some View {
         NavigationStack {
             Group {
@@ -118,14 +132,21 @@ struct NowPlayingView: View {
                     Button { dismiss() } label: { Image(systemName: "chevron.down") }
                 }
             }
+            .sensoryFeedback(.success, trigger: markerFeedback) { _, _ in haptics }
             .sheet(isPresented: $showQueue) { queueSheet }
             .sheet(isPresented: $showTimer) { timerSheet }
+            .sheet(isPresented: $showMarkers) {
+                if let version = player.current {
+                    MarkersSheet(version: version) { player.seek($0.time) }
+                }
+            }
             .background {
                 // Tastaturkurzbefehle (iPad/Mac): Leertaste + Pfeile, unsichtbar
                 Group {
                     Button("") { player.toggle() }.keyboardShortcut(.space, modifiers: [])
                     Button("") { player.next() }.keyboardShortcut(.rightArrow, modifiers: [])
                     Button("") { player.previous() }.keyboardShortcut(.leftArrow, modifiers: [])
+                    Button("") { addMarker() }.keyboardShortcut("m", modifiers: .command)
                 }
                 .hidden()
                 .accessibilityHidden(true)
@@ -201,6 +222,10 @@ struct NowPlayingView: View {
                             }
                             Divider()
                             Button { player.cycleLoop() } label: { Label(loopMenuTitle, systemImage: "repeat") }
+                            Button { addMarker() } label: { Label("Add Marker", systemImage: "mappin.and.ellipse") }
+                            if !version.markers.isEmpty {
+                                Button { showMarkers = true } label: { Label("Markers", systemImage: "mappin") }
+                            }
                             Button { showTimer = true } label: { Label("Sleep Timer", systemImage: "moon.zzz") }
                         } label: {
                             Image(systemName: "ellipsis")
@@ -232,6 +257,10 @@ struct NowPlayingView: View {
                             }
                         }
                         .tint(.primary)
+                        .overlay(alignment: .bottom) {
+                            ScrubberOverlay(markers: version.markers, loopStart: player.loop.start, loopEnd: player.loop.end, duration: player.duration)
+                                .offset(y: 9)
+                        }
 
                         HStack {
                             Text(TimeFormatting.mmss(scrubbing ? scrubValue : player.currentTime))
@@ -254,6 +283,14 @@ struct NowPlayingView: View {
                         }
                         .font(.caption.monospacedDigit())
                         .foregroundStyle(.secondary)
+                        if let toast = markerToast {
+                            Label(toast, systemImage: "mappin.and.ellipse")
+                                .font(.caption2.weight(.semibold).monospacedDigit())
+                                .padding(.horizontal, 9)
+                                .padding(.vertical, 4)
+                                .background(.ultraThinMaterial, in: .capsule)
+                                .transition(.opacity.combined(with: .scale(scale: 0.9)))
+                        }
                         if let start = player.loop.start {
                             Button { player.clearLoop() } label: {
                                 Label(loopChipTitle(start: start, end: player.loop.end), systemImage: "repeat")
