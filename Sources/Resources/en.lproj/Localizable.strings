@@ -388,3 +388,7 @@
 "Back Up" = "Back Up";
 "Remind me later" = "Remind me later";
 "Last backup: %@" = "Last backup: %@";
+"Playback Position" = "Playback Position";
+"%@ of %@" = "%1$@ of %2$@";
+"Next Marker" = "Next Marker";
+"Previous Marker" = "Previous Marker";

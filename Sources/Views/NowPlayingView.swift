@@ -261,6 +261,12 @@ struct NowPlayingView: View {
                             ScrubberOverlay(markers: version.markers, loopStart: player.loop.start, loopEnd: player.loop.end, duration: player.duration)
                                 .offset(y: 9)
                         }
+                        .accessibilityLabel("Playback Position")
+                        .accessibilityValue(String(format: String(localized: "%@ of %@"),
+                                                   TimeFormatting.mmss(player.currentTime), TimeFormatting.mmss(player.duration)))
+                        .accessibilityAction(named: "Add Marker") { addMarker() }
+                        .accessibilityAction(named: "Next Marker") { player.nextMarker() }
+                        .accessibilityAction(named: "Previous Marker") { player.previousMarker() }
 
                         HStack {
                             Text(TimeFormatting.mmss(scrubbing ? scrubValue : player.currentTime))
