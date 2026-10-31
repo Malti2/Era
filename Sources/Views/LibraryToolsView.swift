@@ -12,6 +12,7 @@ struct LibraryToolsView: View {
     @State private var alert: ToolAlert?
     @State private var pending: PendingAction?
     @State private var exportFailed = false
+    @AppStorage(AppSettings.lastBackupKey) private var lastBackup = 0.0
 
     private struct ToolAlert: Identifiable {
         let id = UUID()
@@ -33,7 +34,13 @@ struct LibraryToolsView: View {
     var body: some View {
         List {
             Section {
-                Button { export { try BackupService.exportURL(store: store) } } label: {
+                Button {
+                    export {
+                        let url = try BackupService.exportURL(store: store)
+                        lastBackup = Date().timeIntervalSince1970
+                        return url
+                    }
+                } label: {
                     Label("Export Library (JSON)", systemImage: "square.and.arrow.up.on.square")
                 }
                 Button { export { try CSVExport.exportURL(store: store) } } label: {
@@ -45,6 +52,9 @@ struct LibraryToolsView: View {
             } header: {
                 Text("Backup")
             } footer: {
+                if lastBackup > 0 {
+                    Text("Last backup: \(Date(timeIntervalSince1970: lastBackup).formatted(date: .abbreviated, time: .shortened))")
+                }
                 Text("Backups contain your library data, not the audio files. Restoring adds songs back whose audio is still on this device and never overwrites anything.")
             }
 

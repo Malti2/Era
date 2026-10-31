@@ -19,6 +19,8 @@ enum AppSettings {
     static let hasSeenVersionsCoachKey = "settings.hasSeenVersionsCoach"
     static let librarySortKey = "settings.librarySort"
     static let libraryFilterKey = "settings.libraryFilter"
+    static let lastBackupKey = "backup.lastExport"
+    static let backupSnoozeKey = "backup.snoozedUntil"
     static let recentSearchesKey = "search.recents"
 
     static let skipIntervals = [5, 10, 15, 30]

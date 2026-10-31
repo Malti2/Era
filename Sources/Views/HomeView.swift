@@ -10,6 +10,9 @@ struct HomeView: View {
     @EnvironmentObject private var importer: ImportManager
     @State private var showStats = ProcessInfo.processInfo.arguments.contains("--era-stats")
     @State private var showImporter = false
+    @State private var showBackupTools = false
+    @AppStorage(AppSettings.lastBackupKey) private var lastBackup = 0.0
+    @AppStorage(AppSettings.backupSnoozeKey) private var backupSnooze = 0.0
 
     private var lastPlayed: [Song] {
         songs.filter { $0.lastPlayedAt != nil }.sorted { ($0.lastPlayedAt ?? .distantPast) > ($1.lastPlayedAt ?? .distantPast) }
@@ -25,6 +28,39 @@ struct HomeView: View {
     }
     private var mostPlayed: [Song] { songs.filter { $0.playCount > 0 }.sorted { $0.playCount > $1.playCount } }
 
+    private var backupDue: Bool {
+        BackupReminder.isDue(
+            songCount: songs.count,
+            lastBackup: lastBackup > 0 ? Date(timeIntervalSince1970: lastBackup) : nil,
+            libraryStarted: songs.map(\.dateAdded).min(),
+            snoozedUntil: backupSnooze > 0 ? Date(timeIntervalSince1970: backupSnooze) : nil
+        )
+    }
+
+    private var backupCard: some View {
+        let days = BackupReminder.daysSince(lastBackup > 0 ? Date(timeIntervalSince1970: lastBackup) : nil)
+        return HStack(spacing: 12) {
+            Image(systemName: "externaldrive.badge.timemachine").font(.title2).foregroundStyle(.tint)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Time for a Backup").font(.subheadline.weight(.semibold))
+                Group {
+                    if let days { Text("Last backup \(days) days ago") } else { Text("You have not backed up your library yet.") }
+                }
+                .font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 8)
+            Button("Back Up") { showBackupTools = true }.buttonStyle(.borderedProminent).controlSize(.small)
+            Button { withAnimation { backupSnooze = BackupReminder.snoozeDate().timeIntervalSince1970 } } label: {
+                Image(systemName: "xmark").font(.caption.weight(.semibold)).frame(width: 32, height: 32)
+            }
+            .buttonStyle(.plain).foregroundStyle(.secondary)
+            .accessibilityLabel("Remind me later")
+        }
+        .padding(12)
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .padding(.horizontal)
+    }
+
     var body: some View {
         NavigationStack {
             Group {
@@ -39,6 +75,7 @@ struct HomeView: View {
                 } else {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 26) {
+                            if backupDue { backupCard }
                             if let resume = lastPlayed.first {
                                 resumeCard(resume)
                             }
@@ -62,6 +99,12 @@ struct HomeView: View {
                     Button { showStats = true } label: {
                         Label("Listening Stats", systemImage: "chart.bar.fill")
                     }
+                }
+            }
+            .sheet(isPresented: $showBackupTools) {
+                NavigationStack {
+                    LibraryToolsView()
+                        .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Done") { showBackupTools = false } } }
                 }
             }
             .sheet(isPresented: $showStats) { NavigationStack { StatsView() } }

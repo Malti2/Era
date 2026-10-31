@@ -383,3 +383,8 @@
 "Rename Marker" = "Renombrar marcador";
 "Marker at %@" = "Marcador en %@";
 "Add Marker" = "Añadir marcador";
+"Time for a Backup" = "Hora de hacer una copia";
+"You have not backed up your library yet." = "Aún no has hecho una copia de tu biblioteca.";
+"Back Up" = "Copiar";
+"Remind me later" = "Recordar más tarde";
+"Last backup: %@" = "Última copia: %@";

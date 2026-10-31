@@ -383,3 +383,8 @@
 "Rename Marker" = "Rename Marker";
 "Marker at %@" = "Marker at %@";
 "Add Marker" = "Add Marker";
+"Time for a Backup" = "Time for a Backup";
+"You have not backed up your library yet." = "You have not backed up your library yet.";
+"Back Up" = "Back Up";
+"Remind me later" = "Remind me later";
+"Last backup: %@" = "Last backup: %@";

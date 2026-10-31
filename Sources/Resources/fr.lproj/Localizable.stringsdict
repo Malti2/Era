@@ -194,5 +194,21 @@
 			<string>%lld fichiers déjà dans la bibliothèque</string>
 		</dict>
 	</dict>
+	<key>Last backup %lld days ago</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>Dernière sauvegarde il y a %lld jour</string>
+			<key>other</key>
+			<string>Dernière sauvegarde il y a %lld jours</string>
+		</dict>
+	</dict>
 </dict>
 </plist>
