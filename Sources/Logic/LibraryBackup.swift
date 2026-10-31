@@ -17,6 +17,8 @@ struct LibraryBackup: Codable, Equatable {
         var resumePosition: Double
         var primaryVersionID: UUID?
         var tagIDs: [UUID]
+        /// Seit Notizen/Marker: optional, damit alte Backups weiter lesbar bleiben.
+        var notes: String?
     }
     struct VersionEntry: Codable, Equatable {
         var id: UUID
@@ -32,6 +34,7 @@ struct LibraryBackup: Codable, Equatable {
         var artistOverride: String?
         var albumOverride: String?
         var artworkFile: String?
+        var markersJSON: String?
     }
     struct TagEntry: Codable, Equatable {
         var id: UUID

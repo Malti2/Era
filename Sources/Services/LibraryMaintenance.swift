@@ -140,6 +140,7 @@ extension BackupService {
             song.lastPlayedAt = entry.lastPlayedAt
             song.isFavorite = entry.isFavorite
             song.resumePosition = entry.resumePosition
+            song.notes = entry.notes ?? ""
             for tagID in entry.tagIDs {
                 if let tag = localTag(tagID), !song.tags.contains(where: { $0.id == tag.id }) { song.tags.append(tag) }
             }
@@ -151,6 +152,7 @@ extension BackupService {
                 version.titleOverride = v.titleOverride
                 version.artistOverride = v.artistOverride
                 version.albumOverride = v.albumOverride
+                version.markersJSON = v.markersJSON ?? ""
                 if let art = v.artworkFile, FileManager.default.fileExists(atPath: LibraryFiles.artworkURL(art).path) {
                     version.artworkFile = art
                 }

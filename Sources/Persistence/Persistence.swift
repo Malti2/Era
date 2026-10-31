@@ -133,6 +133,7 @@ extension EraStore: SongRepository {
             nextSortIndex += 1
             target.versions.append(version)
         }
+        target.notes = VersionMarkers.mergedNotes(target.notes, source.notes)
         for tag in source.tags where !target.tags.contains(where: { $0.id == tag.id }) {
             target.tags.append(tag)
         }

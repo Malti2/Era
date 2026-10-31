@@ -17,6 +17,8 @@ final class Song {
     var isFavorite: Bool = false
     var resumePosition: Double = 0
     var primaryVersionID: UUID?
+    /// Freie Notiz (Lyrics-Ideen, Session-Infos, Herkunft). Neues Feld mit Default -> leichtgewichtige Migration.
+    var notes: String = ""
 
     @Relationship(deleteRule: .cascade, inverse: \SongVersion.song)
     var versions: [SongVersion] = []
@@ -71,6 +73,8 @@ final class SongVersion {
     var artistOverride: String?
     var albumOverride: String?
     var artworkFile: String?
+    /// Marker als JSON (siehe `VersionMarkers`), leer = keine.
+    var markersJSON: String = ""
     var song: Song?
 
     init(name: String, fileName: String, pcmHash: String, duration: Double, year: Int? = nil) {
@@ -96,6 +100,11 @@ final class SongVersion {
         return song?.album ?? ""
     }
     var durationText: String { TimeFormatting.mmss(duration) }
+
+    var markers: [VersionMarker] {
+        get { VersionMarkers.decode(markersJSON) }
+        set { markersJSON = VersionMarkers.encode(newValue) }
+    }
 }
 
 // MARK: - Tag (flexibel, kombinierbar; Status = reservierte Tags)

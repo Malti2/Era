@@ -27,6 +27,34 @@ final class LibraryBackupTests: XCTestCase {
         XCTAssertEqual(decoded.versions, original.versions)
     }
 
+    func testNotesAndMarkersSurviveRoundtrip() throws {
+        var s = song("A")
+        s.notes = "Intro neu aufnehmen"
+        var v = version(s.id, file: "a.m4a")
+        v.markersJSON = VersionMarkers.encode([VersionMarker(time: 12, label: "Hook")])
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        let decoded = try LibraryBackup.decode(from: encoder.encode(backup([s], [v])))
+        XCTAssertEqual(decoded.songs.first?.notes, "Intro neu aufnehmen")
+        XCTAssertEqual(VersionMarkers.decode(decoded.versions.first?.markersJSON).first?.label, "Hook")
+    }
+
+    func testBackupsWithoutNotesFieldsStillDecode() throws {
+        let s = song("Old")
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        let data = try encoder.encode(backup([s], [version(s.id, file: "o.m4a")]))
+        // Altes Format kannte weder "notes" noch "markersJSON".
+        var object = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        var songs = try XCTUnwrap(object["songs"] as? [[String: Any]])
+        songs[0].removeValue(forKey: "notes")
+        object["songs"] = songs
+        let legacy = try JSONSerialization.data(withJSONObject: object)
+        let decoded = try LibraryBackup.decode(from: legacy)
+        XCTAssertNil(decoded.songs.first?.notes)
+        XCTAssertNil(decoded.versions.first?.markersJSON)
+    }
+
     func testDecodeRejectsGarbageForeignAndNewerFiles() throws {
         XCTAssertThrowsError(try LibraryBackup.decode(from: Data("nope".utf8))) { XCTAssertEqual($0 as? BackupError, .unreadable) }
         let encoder = JSONEncoder()

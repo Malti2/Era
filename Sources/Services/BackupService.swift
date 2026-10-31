@@ -17,7 +17,8 @@ enum BackupService {
                     era: song.era, year: song.year, dateAdded: song.dateAdded,
                     playCount: song.playCount, lastPlayedAt: song.lastPlayedAt,
                     isFavorite: song.isFavorite, resumePosition: song.resumePosition,
-                    primaryVersionID: song.primaryVersionID, tagIDs: song.tags.map(\.id)
+                    primaryVersionID: song.primaryVersionID, tagIDs: song.tags.map(\.id),
+                    notes: song.notes.isEmpty ? nil : song.notes
                 )
             },
             versions: versions.map { v in
@@ -26,7 +27,8 @@ enum BackupService {
                     pcmHash: v.pcmHash, duration: v.duration, dateAdded: v.dateAdded,
                     year: v.year, sortIndex: v.sortIndex, titleOverride: v.titleOverride,
                     artistOverride: v.artistOverride, albumOverride: v.albumOverride,
-                    artworkFile: v.artworkFile
+                    artworkFile: v.artworkFile,
+                    markersJSON: v.markersJSON.isEmpty ? nil : v.markersJSON
                 )
             },
             tags: tags.map { LibraryBackup.TagEntry(id: $0.id, name: $0.name, scopeRaw: $0.scopeRaw, isStatus: $0.isStatus) },
