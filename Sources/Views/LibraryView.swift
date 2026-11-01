@@ -341,26 +341,46 @@ struct LibraryView: View {
         }
     }
 
-    private var songsSection: some View {
-        Section {
-            filterSummary
-            if !selecting && !sortedSongs.isEmpty {
+    @ViewBuilder private var songsSection: some View {
+        let ordered = sortedSongs
+        if !selecting, let groups = AlphaSections.sections(orderedRows: ordered.map(\.sortRow), sort: sort) {
+            // Lange Listen nach Titel/Artist: Buchstaben-Abschnitte statt einer endlosen Liste.
+            let byID = songsByID
+            Section {
+                filterSummary
                 playAllButtons
             }
-            ForEach(sortedSongs) { song in
-                if selecting {
-                    selectableRow(song)
-                } else {
-                    songRow(song)
+            ForEach(groups) { group in
+                Section {
+                    ForEach(group.ids.compactMap { byID[$0] }) { songRow($0) }
+                } header: {
+                    Text(verbatim: group.letter)
                 }
             }
-        } footer: {
-            if !selecting && !filter.isActive && !songs.isEmpty {
-                (Text("\(songs.count) songs") + Text(verbatim: " · \(TimeFormatting.spoken(songs.reduce(0) { $0 + $1.duration }))"))
-                    .frame(maxWidth: .infinity)
-                    .multilineTextAlignment(.center)
+            if !filter.isActive { Section { } footer: { songsFooter } }
+        } else {
+            Section {
+                filterSummary
+                if !selecting && !ordered.isEmpty {
+                    playAllButtons
+                }
+                ForEach(ordered) { song in
+                    if selecting {
+                        selectableRow(song)
+                    } else {
+                        songRow(song)
+                    }
+                }
+            } footer: {
+                if !selecting && !filter.isActive && !songs.isEmpty { songsFooter }
             }
         }
+    }
+
+    private var songsFooter: some View {
+        (Text("\(songs.count) songs") + Text(verbatim: " · \(TimeFormatting.spoken(songs.reduce(0) { $0 + $1.duration }))"))
+            .frame(maxWidth: .infinity)
+            .multilineTextAlignment(.center)
     }
 
     @ViewBuilder private var playAllButtons: some View {

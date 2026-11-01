@@ -93,3 +93,37 @@ enum LibraryGrouping {
         }
     }
 }
+
+/// Buchstaben-Abschnitte (A-Z, # fuer Sonstiges) fuer lange, nach Titel oder Artist sortierte Listen.
+enum AlphaSections {
+    struct Section: Equatable, Identifiable {
+        var id: String { letter }
+        var letter: String
+        var ids: [UUID]
+    }
+
+    /// Ab dieser Laenge lohnt sich die Gruppierung; kuerzere Listen bleiben ruhig und flach.
+    static let minimumCount = 20
+
+    static func letter(for text: String) -> String {
+        let folded = SongSearch.fold(text.trimmingCharacters(in: .whitespacesAndNewlines))
+        guard let first = folded.first, first.isLetter else { return "#" }
+        return String(first).uppercased()
+    }
+
+    /// Gruppiert bereits sortierte Zeilen, ohne die Reihenfolge zu aendern. nil, wenn die Sortierung
+    /// keine Buchstaben-Reihenfolge ist oder die Liste zu kurz ist.
+    static func sections(orderedRows rows: [SortRow], sort: LibrarySort) -> [Section]? {
+        guard rows.count >= minimumCount, sort == .title || sort == .artist else { return nil }
+        var result: [Section] = []
+        for row in rows {
+            let letter = letter(for: sort == .artist ? row.artist : row.title)
+            if result.last?.letter == letter {
+                result[result.count - 1].ids.append(row.id)
+            } else {
+                result.append(Section(letter: letter, ids: [row.id]))
+            }
+        }
+        return result
+    }
+}
