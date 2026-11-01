@@ -40,6 +40,9 @@ struct StatsView: View {
                         LabeledContent("Current Streak", value: String(format: String(localized: "%lld days"), streak))
                     }
                 }
+                Section {
+                    NavigationLink { YearReviewView() } label: { Label("Year in Review", systemImage: "sparkles") }
+                }
                 Section("Last 6 Months") {
                     activityChart(StatsCalculator.monthlySeries(all, months: 6))
                 }

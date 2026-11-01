@@ -392,3 +392,9 @@
 "%@ of %@" = "%1$@ de %2$@";
 "Next Marker" = "Siguiente marcador";
 "Previous Marker" = "Marcador anterior";
+"Year in Review" = "Resumen del año";
+"Longest Streak" = "Racha más larga";
+"New Tracks" = "Canciones nuevas";
+"Busiest Month" = "Mes más activo";
+"Top Track" = "Canción top";
+"Top Artist" = "Artista top";
