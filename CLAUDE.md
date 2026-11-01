@@ -13,13 +13,13 @@ Versionen. Alles bleibt lokal: kein Server, kein Account, kein Tracking. Distrib
   `resolve()` vor jedem Write!), `LibraryFiles`/`VersionFiles` (Dateien im App-Container).
 - `Sources/Logic` – **reine Foundation-Logik ohne SwiftData/UIKit** (auf Linux testbar): `SongSearch`, `LibraryOrdering` (Sortierung/Gruppierung),
   `LibraryBackup` (Format, Restore-Planung), `LibraryHealth` (Check), `PlaybackSession` (Snapshot + `ShuffleBag`), `SleepTimerState`, `Reordering`,
-  `StatsCalculator` (Hörstatistik, Streak, Zeiträume, Tageszeit/Wochentag), `LibraryFilter` (Favoriten/Status/Tags), `PlaylistTools` (Sortierung, Text-Export), `HomeShelves` (Wiederentdecken/Nicht gespielt), `BulkSelection` (+ `BulkTagging`, `TagRename`), `ABLoop`, `VersionDetails`, `VersionMarkers` (Marker-JSON, Navigation, Notiz-Merge), `NoteSnippet` (Treffer-Ausschnitt), `BackupReminder`.
+  `StatsCalculator` (Hörstatistik, Streak, Zeiträume, Tageszeit/Wochentag), `LibraryFilter` (Favoriten/Status/Tags), `PlaylistTools` (Sortierung, Text-Export), `HomeShelves` (Wiederentdecken/Nicht gespielt), `BulkSelection` (+ `BulkTagging`, `TagRename`), `YearReview` (Jahresrückblick), `CollectionRule`/`CollectionName` (Sammlungs-Regel & Namensprüfung), `AlphaSections` (A–Z-Abschnitte, in LibraryOrdering.swift), `ABLoop`, `VersionDetails`, `VersionMarkers` (Marker-JSON, Navigation, Notiz-Merge), `NoteSnippet` (Treffer-Ausschnitt), `BackupReminder`.
 - `Sources/Services` – `PlayerEngine` (AVAudioPlayer, Queue, Gapless/Crossfade, Sleep, Session-Restore), `ImportManager`, `BackupService`
   (+ `LibraryMaintenance`: Restore & Reparaturen), `MetadataService`, `ArtworkCache`, Spotlight/Shortcuts/Intelligence/Update.
 - `Sources/Views` – `LibraryView` (Songs/Albums/Artists/Playlists), `SearchView`, `HomeView`, `PacksView` ("Collections"), `SongDetailView`
   (+ `SongContextMenu`), `PlaylistDetailView`, `PlaylistPickerSheet` (zentral über `PlaylistPickerCoordinator`), `NowPlayingView`,
   `SettingsView` → `LibraryToolsView` (Backup/Restore/Check), `TagsView` (Tag-Verwaltung), `StatsView` (Swift Charts), `MetadataEditView`, `VersionEditView`,
-  `BulkTagSheet`; Mehrfachauswahl steckt in `LibraryView` (Sort-Menü → "Select Songs"). Bulk-/Tag-Schreibzugriffe: `Persistence/EraStore+Bulk.swift`; Playlist-Sortierung/Duplizieren: `EraStore+Playlists.swift`; Version-Cover: `EraStore+Artwork.swift` (+ `ArtworkImporter`); Notizen/Marker: `EraStore+Markers.swift` (`Song.notes`, `SongVersion.markersJSON` – als String statt Schema-Typ; UI: `MarkersView.swift` = `MarkersSheet` + `ScrubberOverlay`, `SongNotesView`; Setzen in NowPlaying-Menü/⌘M). `App/PlaybackCommands.swift` = Mac/iPad-Tastaturbefehle (⌘P, ⌘←/→); TabView ist `.sidebarAdaptable`.
+  `BulkTagSheet`, `YearReviewView` (Stats → Year in Review, teilbare Karte per ImageRenderer), `CollectionEditorView` (Sammlungen anlegen/bearbeiten/löschen; Store-Seite: `EraStore+Collections.swift`); Mehrfachauswahl steckt in `LibraryView` (Sort-Menü → "Select Songs"). Bulk-/Tag-Schreibzugriffe: `Persistence/EraStore+Bulk.swift`; Playlist-Sortierung/Duplizieren: `EraStore+Playlists.swift`; Version-Cover: `EraStore+Artwork.swift` (+ `ArtworkImporter`); Notizen/Marker: `EraStore+Markers.swift` (`Song.notes`, `SongVersion.markersJSON` – als String statt Schema-Typ; UI: `MarkersView.swift` = `MarkersSheet` + `ScrubberOverlay`, `SongNotesView`; Setzen in NowPlaying-Menü/⌘M). `App/PlaybackCommands.swift` = Mac/iPad-Tastaturbefehle (⌘P, ⌘←/→); TabView ist `.sidebarAdaptable`.
 - `Tests` – XCTest: `StoreTests`, `PlaylistStoreTests`, `LibraryMaintenanceTests` (in-memory SwiftData); `Tests/Logic/*` = Tests der reinen Logik.
 - `ShareExtension`, `Scripts` (Release/AltStore/Lokalisierung), `docs/source.json` (AltStore), `.github/workflows` (PR-Check, Release).
 
@@ -38,6 +38,7 @@ Versionen. Alles bleibt lokal: kein Server, kein Account, kein Tracking. Distrib
 - Keine neuen Abhängigkeiten ohne guten Grund; keine Secrets.
 
 ## Stolperfallen
+- Toolchain-Setup 2026-11 erneut bestätigt (Docker-Rate-Limit dauerte ~10 Min, Skript mit `sleep 60`-Retry in Hintergrund starten und währenddessen coden). `swiftc -parse` für App-Dateien; `swift test` im Chroot: 131 Logic-Tests.
 - Linux-Tests laufen mit: Chroot-Paket (siehe unten) + `swift test`; `localizedStandardCompare` verhält sich auf Linux bei Groß/Klein-Gleichstand anders → in Tests nur eindeutige Fälle prüfen.
 - Chroot-Kurzform: Package unter /opt/swiftroot/work/Era (Sources/Logic, Tests/Logic als Symlinks auf /home/user/Era, das per `mount --bind` nach /opt/swiftroot/home/user/Era gespiegelt wird), `chroot … swift test`; Syntax-Check: `swiftc -parse`. Docker-Hub-Rate-Limit: Manifest-Abruf in Schleife mit `sleep 60` wiederholen (kann mehrere Minuten dauern).
 - Neue Sprachstrings: Schlüssel per kleinem Python-Skript an alle vier `.strings` anhängen; Plural-Keys mit Zahl brauchen Eintrag in jeder `.stringsdict`.
@@ -54,9 +55,12 @@ Versionen. Alles bleibt lokal: kein Server, kein Account, kein Tracking. Distrib
 
 ## Ideen-Backlog (noch nicht umgesetzt)
 - Mehrfachauswahl auch für Alben/Künstler-Detail und Playlists (Logik `BulkSelection` ist generisch).
+- Sammlungen: Sortierung/Play-on-Tap im PackDetailView, Regel mit ODER/NICHT; Sammlung als Playlist speichern.
+- Year in Review: Top-Alben (PlayEvent hat kein Album-Feld), Vergleich zum Vorjahr, Auswahl beliebiger Zeiträume.
 - iPad/Mac: Tastaturkürzel in der Bibliothek (⌘F → Suche), eigenes Split-View-Layout für Library/Detail.
-- Stats: Jahresrückblick, Top-Alben (PlayEvent hat kein Album-Feld → Schema); Spotlight pro Song aktualisieren statt Komplett-Reindex.
-- Dynamic-Type-Audit der festen Frames (50pt-Artwork, 44pt-Buttons, Selektionsleiste).
+- Spotlight: Tag-Umbenennung/Bulk-Tagging aktualisiert den Index noch nicht (nur Löschen/Merge/Metadaten-Edit tun es via `SpotlightIndexer.update/remove`).
+- Dynamic-Type-Audit: Listen-Cover nutzen `.scaledSquare()`; offen: feste 44pt-Buttons, Selektionsleiste, Now-Playing.
+- Library-Filter-UI: A–Z-Sprungleiste (iOS 26 `sectionIndexLabel`) zusätzlich zu den Abschnitten.
 - Marker: per Tipp auf Scrubber-Strich springen, Marker in Siri/Shortcuts, Marker-Export; Notizen im CSV-Export.
 - Library-Filter auch für Alben/Künstler (Songs-Filter wird bereits gemerkt, `settings.libraryFilter`).
 - DemoSeed um Notizen/Marker erweitern (Screenshots), Launch-Argument für Marker-Sheet.
