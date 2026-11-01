@@ -110,9 +110,11 @@ extension EraStore: SongRepository {
         for playlist in (try? allPlaylists()) ?? [] {
             for entry in playlist.entries where entry.song?.id == song.id { context.delete(entry) }
         }
+        let removedID = song.id
         for v in song.versions { VersionFiles.delete(version: v) }
         context.delete(song)
         save()
+        SpotlightIndexer.remove(ids: [removedID])
     }
     func allSongs() throws -> [Song] { try context.fetch(FetchDescriptor<Song>(sortBy: [SortDescriptor(\.dateAdded, order: .reverse)])) }
     func allVersions() throws -> [SongVersion] { try context.fetch(FetchDescriptor<SongVersion>()) }
@@ -142,8 +144,11 @@ extension EraStore: SongRepository {
                 entry.song = target
             }
         }
+        let removedID = source.id
         context.delete(source)
         save()
+        SpotlightIndexer.remove(ids: [removedID])
+        SpotlightIndexer.update(songs: [target])
     }
 
     /// Renames a version; blank names are ignored. Returns whether anything changed.

@@ -125,5 +125,6 @@ struct MetadataEditView: View {
         }
         song.tags = final
         store.save()
+        SpotlightIndexer.update(songs: [song])
     }
 }
