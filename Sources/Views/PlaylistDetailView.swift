@@ -226,7 +226,7 @@ struct PlaylistEntryRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Artwork(song: song, version: version, radius: 6).frame(width: 52, height: 52)
+            Artwork(song: song, version: version, radius: 6).scaledSquare(52)
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 5) {
                     Text(version?.displayTitle ?? song.title).font(.body).lineLimit(1)

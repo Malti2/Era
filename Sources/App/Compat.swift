@@ -24,3 +24,25 @@ extension View {
         if #available(iOS 26, *) { self.buttonStyle(.glassProminent) } else { self.buttonStyle(.borderedProminent) }
     }
 }
+
+/// Quadratischer Rahmen, der mit Dynamic Type mitwaechst (Cover in Listenzeilen), aber hoechstens auf das 1,6-fache.
+private struct ScaledSquare: ViewModifier {
+    @ScaledMetric private var side: CGFloat
+    private let base: CGFloat
+
+    init(base: CGFloat, relativeTo style: Font.TextStyle) {
+        self.base = base
+        _side = ScaledMetric(wrappedValue: base, relativeTo: style)
+    }
+
+    func body(content: Content) -> some View {
+        let size = min(side, base * 1.6)
+        content.frame(width: size, height: size)
+    }
+}
+
+extension View {
+    func scaledSquare(_ base: CGFloat, relativeTo style: Font.TextStyle = .body) -> some View {
+        modifier(ScaledSquare(base: base, relativeTo: style))
+    }
+}

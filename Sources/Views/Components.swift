@@ -35,7 +35,7 @@ struct SongRow: View {
     var body: some View {
         let v = version ?? song.primaryVersion
         HStack(spacing: 12) {
-            Artwork(song: song, version: v, radius: 8).frame(width: 50, height: 50)
+            Artwork(song: song, version: v, radius: 8).scaledSquare(50)
             VStack(alignment: .leading, spacing: 2) {
                 Text((v?.displayTitle.isEmpty == false ? v?.displayTitle : nil) ?? song.title)
                     .font(.body).lineLimit(1)

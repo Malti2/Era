@@ -100,8 +100,10 @@ struct LibraryView: View {
                             Picker("Sort", selection: Binding(get: { sort }, set: { sortRaw = $0.rawValue })) {
                                 ForEach(LibrarySort.allCases) { Text($0.label).tag($0) }
                             }
-                            if selectedSection == .songs && !songs.isEmpty {
+                            if [.songs, .albums, .artists].contains(selectedSection) && !songs.isEmpty {
                                 filterMenuItems
+                            }
+                            if selectedSection == .songs && !songs.isEmpty {
                                 Divider()
                                 Button { selecting = true } label: { Label("Select Songs", systemImage: "checkmark.circle") }
                             }
@@ -251,14 +253,17 @@ struct LibraryView: View {
 
     private var artistList: some View {
         let byID = songsByID
-        let groups = LibraryGrouping.groups(of: songs.map { ($0.id, $0.artist) })
-        return List(groups) { group in
-            let members = group.ids.compactMap { byID[$0] }
-            let name = group.name.isEmpty ? String(localized: "Unknown Artist") : group.name
-            NavigationLink { CollectionDetailView(title: name, songs: members, kind: .artist, showNowPlaying: $showNowPlaying) } label: {
-                HStack(spacing: 14) {
-                    Artwork(song: members.first, radius: 34).frame(width: 64, height: 64).clipShape(Circle())
-                    VStack(alignment: .leading) { Text(name); Text("\(members.count) tracks").font(.subheadline).foregroundStyle(.secondary) }
+        let groups = LibraryGrouping.groups(of: filteredSongs.map { ($0.id, $0.artist) })
+        return List {
+            filterSummary
+            ForEach(groups) { group in
+                let members = group.ids.compactMap { byID[$0] }
+                let name = group.name.isEmpty ? String(localized: "Unknown Artist") : group.name
+                NavigationLink { CollectionDetailView(title: name, songs: members, kind: .artist, showNowPlaying: $showNowPlaying) } label: {
+                    HStack(spacing: 14) {
+                        Artwork(song: members.first, radius: 34).scaledSquare(64).clipShape(Circle())
+                        VStack(alignment: .leading) { Text(name); Text("\(members.count) tracks").font(.subheadline).foregroundStyle(.secondary) }
+                    }
                 }
             }
         }.listStyle(.plain)
@@ -266,25 +271,31 @@ struct LibraryView: View {
 
     private var albumList: some View {
         let byID = songsByID
-        let groups = LibraryGrouping.groups(of: songs.map { ($0.id, $0.album) })
-        return List(groups) { group in
-            let members = group.ids.compactMap { byID[$0] }
-            let name = group.name.isEmpty ? String(localized: "Unknown Album") : group.name
-            NavigationLink { CollectionDetailView(title: name, songs: members, kind: .album, showNowPlaying: $showNowPlaying) } label: {
-                HStack(spacing: 14) {
-                    Artwork(song: members.first, radius: 8).frame(width: 64, height: 64)
-                    VStack(alignment: .leading) { Text(name); Text(members.first?.displayArtist ?? "").font(.subheadline).foregroundStyle(.secondary) }
+        let groups = LibraryGrouping.groups(of: filteredSongs.map { ($0.id, $0.album) })
+        return List {
+            filterSummary
+            ForEach(groups) { group in
+                let members = group.ids.compactMap { byID[$0] }
+                let name = group.name.isEmpty ? String(localized: "Unknown Album") : group.name
+                NavigationLink { CollectionDetailView(title: name, songs: members, kind: .album, showNowPlaying: $showNowPlaying) } label: {
+                    HStack(spacing: 14) {
+                        Artwork(song: members.first, radius: 8).scaledSquare(64)
+                        VStack(alignment: .leading) { Text(name); Text(members.first?.displayArtist ?? "").font(.subheadline).foregroundStyle(.secondary) }
+                    }
                 }
             }
         }.listStyle(.plain)
     }
 
+    /// Songs after the (remembered) library filter; shared by songs, albums and artists.
+    private var filteredSongs: [Song] {
+        guard filter.isActive else { return songs }
+        let allowed = Set(filter.ids(in: songs.map(\.searchable)))
+        return songs.filter { allowed.contains($0.id) }
+    }
+
     private var sortedSongs: [Song] {
-        var base = songs
-        if filter.isActive {
-            let allowed = Set(filter.ids(in: songs.map(\.searchable)))
-            base = songs.filter { allowed.contains($0.id) }
-        }
+        let base = filteredSongs
         guard sort != .recent else { return base }
         let byID = songsByID
         return sort.ordered(base.map(\.sortRow)).compactMap { byID[$0] }
@@ -411,7 +422,7 @@ struct LibraryView: View {
                 } label: {
                     HStack(spacing: 14) {
                         PlaylistMosaic(playlist: playlist)
-                            .frame(width: 64, height: 64)
+                            .scaledSquare(64)
                         VStack(alignment: .leading, spacing: 3) {
                             Text(playlist.name).font(.body)
                             Text("\(playlist.entries.count) tracks")
@@ -449,7 +460,7 @@ struct LibraryView: View {
             ForEach(songs) { song in
                 ForEach(song.sortedVersions) { version in
                     HStack(spacing: 12) {
-                        Artwork(song: song, version: version, radius: 7).frame(width: 40, height: 40)
+                        Artwork(song: song, version: version, radius: 7).scaledSquare(40)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(song.title).font(.body).lineLimit(1)
                             HStack(spacing: 4) {
