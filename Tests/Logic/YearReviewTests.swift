@@ -12,7 +12,7 @@ final class YearReviewTests: XCTestCase {
         calendar.date(from: DateComponents(year: year, month: month, day: day, hour: hour))!
     }
 
-    private func play(_ title: String, _ artist: String = "A", _ when: Date, seconds: Double = 60) -> PlayRecord {
+    private func play(_ title: String, _ when: Date, artist: String = "A", seconds: Double = 60) -> PlayRecord {
         PlayRecord(date: when, seconds: seconds, title: title, artist: artist)
     }
 
@@ -44,7 +44,7 @@ final class YearReviewTests: XCTestCase {
             play("old", date(2026, 6, 1)),
             play("fresh", date(2026, 6, 2)),
             play("fresh", date(2026, 6, 3)),
-            play("other", "B", date(2026, 7, 1)),
+            play("other", date(2026, 7, 1), artist: "B"),
         ]
         XCTAssertEqual(YearReview.make(year: 2026, from: records, calendar: calendar).newTracks, 2)
         XCTAssertEqual(YearReview.make(year: 2025, from: records, calendar: calendar).newTracks, 1)

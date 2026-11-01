@@ -398,3 +398,14 @@
 "Busiest Month" = "Busiest Month";
 "Top Track" = "Top Track";
 "Top Artist" = "Top Artist";
+"Edit" = "Edit";
+"New Collection" = "New Collection";
+"Edit Collection" = "Edit Collection";
+"Delete Collection?" = "Delete Collection?";
+"Delete Collection" = "Delete Collection";
+"Songs stay in your library." = "Songs stay in your library.";
+"A collection with this name already exists." = "A collection with this name already exists.";
+"Add tags to songs first, then use them here." = "Add tags to songs first, then use them here.";
+"Choose at least one status or tag." = "Choose at least one status or tag.";
+"%lld songs match" = "%lld songs match";
+"A song must have all chosen statuses and tags." = "A song must have all chosen statuses and tags.";

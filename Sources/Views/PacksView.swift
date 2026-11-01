@@ -8,6 +8,8 @@ struct PacksView: View {
     @Query private var packs: [Pack]
     @Query private var songs: [Song]
     @Query private var tags: [Tag]
+    @State private var editor: CollectionEditorTarget?
+    @State private var packToDelete: Pack?
 
     private var confirmed: [Pack] { packs.filter { $0.confirmed } }
     private var suggested: [Pack] { packs.filter { !$0.confirmed } }
@@ -46,6 +48,14 @@ struct PacksView: View {
                                 PackDetailView(pack: pack, showNowPlaying: $showNowPlaying)
                             } label: {
                                 Label("\(pack.name) (\(matching(pack).count))", systemImage: "square.stack.fill")
+                            }
+                            .swipeActions {
+                                Button(role: .destructive) { packToDelete = pack } label: { Label("Delete", systemImage: "trash") }
+                                Button { editor = .edit(pack) } label: { Label("Edit", systemImage: "pencil") }.tint(.blue)
+                            }
+                            .contextMenu {
+                                Button { editor = .edit(pack) } label: { Label("Edit", systemImage: "pencil") }
+                                Button(role: .destructive) { packToDelete = pack } label: { Label("Delete", systemImage: "trash") }
                             }
                         }
                     }
@@ -90,6 +100,24 @@ struct PacksView: View {
             }
             .navigationTitle("Collections")
             .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { editor = .new } label: { Image(systemName: "plus") }
+                        .accessibilityLabel("New Collection")
+                }
+            }
+            .sheet(item: $editor) { target in
+                CollectionEditorView(pack: target.pack)
+            }
+            .confirmationDialog("Delete Collection?", isPresented: Binding(get: { packToDelete != nil }, set: { if !$0 { packToDelete = nil } }), titleVisibility: .visible) {
+                Button("Delete Collection", role: .destructive) {
+                    if let pack = packToDelete { store.deletePack(pack) }
+                    packToDelete = nil
+                }
+                Button("Cancel", role: .cancel) { packToDelete = nil }
+            } message: {
+                Text("Songs stay in your library.")
+            }
         }
     }
 
@@ -100,11 +128,26 @@ struct PacksView: View {
     }
 
     func matching(_ pack: Pack) -> [Song] {
-        songs.filter { song in
-            let tagMatch = pack.tagIDs.isEmpty || pack.tagIDs.allSatisfy { id in song.tags.contains { $0.id == id } }
-            let statusMatch = pack.statusNames.isEmpty || pack.statusNames.allSatisfy { name in song.statusTags.contains { $0.name == name } }
-            return tagMatch && statusMatch
+        let rule = pack.rule
+        return songs.filter { $0.matches(rule) }
+    }
+}
+
+/// Ziel des Sammlungs-Editors: neu oder bestehend.
+enum CollectionEditorTarget: Identifiable {
+    case new
+    case edit(Pack)
+
+    var id: String {
+        switch self {
+        case .new: "new"
+        case .edit(let pack): pack.id.uuidString
         }
+    }
+
+    var pack: Pack? {
+        if case .edit(let pack) = self { return pack }
+        return nil
     }
 }
 
@@ -114,12 +157,11 @@ struct PackDetailView: View {
     @EnvironmentObject private var player: PlayerEngine
     @Query private var songs: [Song]
 
+    @State private var showEditor = false
+
     private var matching: [Song] {
-        songs.filter { song in
-            let tagMatch = pack.tagIDs.isEmpty || pack.tagIDs.allSatisfy { id in song.tags.contains { $0.id == id } }
-            let statusMatch = pack.statusNames.isEmpty || pack.statusNames.allSatisfy { name in song.statusTags.contains { $0.name == name } }
-            return tagMatch && statusMatch
-        }
+        let rule = pack.rule
+        return songs.filter { $0.matches(rule) }
     }
 
     private func count(_ status: String) -> Int {
@@ -158,6 +200,12 @@ struct PackDetailView: View {
             }
         }
         .navigationTitle(pack.name)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Edit") { showEditor = true }
+            }
+        }
+        .sheet(isPresented: $showEditor) { CollectionEditorView(pack: pack) }
     }
 
     private func stat(_ label: String, _ value: Int) -> some View {

@@ -210,5 +210,21 @@
 			<string>Última copia hace %lld días</string>
 		</dict>
 	</dict>
+	<key>%lld songs match</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld canción coincide</string>
+			<key>other</key>
+			<string>%lld canciones coinciden</string>
+		</dict>
+	</dict>
 </dict>
 </plist>

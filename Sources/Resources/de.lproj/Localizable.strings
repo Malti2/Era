@@ -398,3 +398,14 @@
 "Busiest Month" = "Aktivster Monat";
 "Top Track" = "Top-Track";
 "Top Artist" = "Top-Künstler";
+"Edit" = "Bearbeiten";
+"New Collection" = "Neue Sammlung";
+"Edit Collection" = "Sammlung bearbeiten";
+"Delete Collection?" = "Sammlung löschen?";
+"Delete Collection" = "Sammlung löschen";
+"Songs stay in your library." = "Songs bleiben in deiner Mediathek.";
+"A collection with this name already exists." = "Eine Sammlung mit diesem Namen gibt es schon.";
+"Add tags to songs first, then use them here." = "Vergib zuerst Tags an Songs, dann kannst du sie hier nutzen.";
+"Choose at least one status or tag." = "Wähle mindestens einen Status oder Tag.";
+"%lld songs match" = "%lld Songs passen";
+"A song must have all chosen statuses and tags." = "Ein Song muss alle gewählten Status und Tags haben.";
