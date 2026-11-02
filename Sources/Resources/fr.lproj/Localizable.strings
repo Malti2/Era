@@ -422,3 +422,4 @@
 "%lld missing audio files restored" = "%lld fichiers audio manquants restaurés";
 "Go" = "Aller à";
 "without %@" = "sans %@";
+"Importing the same files again relinks them." = "Réimporter les mêmes fichiers les relie à nouveau.";

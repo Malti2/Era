@@ -13,13 +13,13 @@ Versionen. Alles bleibt lokal: kein Server, kein Account, kein Tracking. Distrib
   `resolve()` vor jedem Write!), `LibraryFiles`/`VersionFiles` (Dateien im App-Container).
 - `Sources/Logic` – **reine Foundation-Logik ohne SwiftData/UIKit** (auf Linux testbar): `SongSearch`, `LibraryOrdering` (Sortierung/Gruppierung),
   `LibraryBackup` (Format, Restore-Planung), `LibraryHealth` (Check), `PlaybackSession` (Snapshot + `ShuffleBag`), `SleepTimerState`, `Reordering`,
-  `StatsCalculator` (Hörstatistik, Streak, Zeiträume, Tageszeit/Wochentag), `LibraryFilter` (Favoriten/Status/Tags), `PlaylistTools` (Sortierung, Text-Export), `HomeShelves` (Wiederentdecken/Nicht gespielt), `BulkSelection` (+ `BulkTagging`, `TagRename`), `YearReview` (Jahresrückblick), `CollectionRule`/`CollectionName` (Sammlungs-Regel & Namensprüfung), `AlphaSections` (A–Z-Abschnitte, in LibraryOrdering.swift), `ABLoop`, `VersionDetails`, `VersionMarkers` (Marker-JSON, Navigation, Notiz-Merge), `NoteSnippet` (Treffer-Ausschnitt), `BackupReminder`.
+  `StatsCalculator` (Hörstatistik, Streak, Zeiträume, Tageszeit/Wochentag), `LibraryFilter` (Favoriten/Status/Tags), `PlaylistTools` (Sortierung, Text-Export), `HomeShelves` (Wiederentdecken/Nicht gespielt), `BulkSelection` (+ `BulkTagging`, `TagRename`), `YearReview` (Jahresrückblick), `CollectionRule`/`CollectionName` (Sammlungs-Regel v2: dabei/ohne je Tag/Status, Alle/Eine-Modus, `labels` für Kurztext; Pack hat dafür `excludedTagIDs`/`excludedStatusNames`/`matchAny`, Backup-Felder optional), `AlphaSections` (A–Z-Abschnitte, in LibraryOrdering.swift), `ABLoop`, `VersionDetails`, `VersionMarkers` (Marker-JSON, Navigation, Notiz-Merge), `NoteSnippet` (Treffer-Ausschnitt), `BackupReminder`.
 - `Sources/Services` – `PlayerEngine` (AVAudioPlayer, Queue, Gapless/Crossfade, Sleep, Session-Restore), `ImportManager`, `BackupService`
   (+ `LibraryMaintenance`: Restore & Reparaturen), `MetadataService`, `ArtworkCache`, Spotlight/Shortcuts/Intelligence/Update.
 - `Sources/Views` – `LibraryView` (Songs/Albums/Artists/Playlists), `SearchView`, `HomeView`, `PacksView` ("Collections"), `SongDetailView`
   (+ `SongContextMenu`), `PlaylistDetailView`, `PlaylistPickerSheet` (zentral über `PlaylistPickerCoordinator`), `NowPlayingView`,
   `SettingsView` → `LibraryToolsView` (Backup/Restore/Check), `TagsView` (Tag-Verwaltung), `StatsView` (Swift Charts), `MetadataEditView`, `VersionEditView`,
-  `BulkTagSheet`, `YearReviewView` (Stats → Year in Review, teilbare Karte per ImageRenderer), `CollectionEditorView` (Sammlungen anlegen/bearbeiten/löschen; Store-Seite: `EraStore+Collections.swift`); Mehrfachauswahl steckt in `LibraryView` (Sort-Menü → "Select Songs"). Bulk-/Tag-Schreibzugriffe: `Persistence/EraStore+Bulk.swift`; Playlist-Sortierung/Duplizieren: `EraStore+Playlists.swift`; Version-Cover: `EraStore+Artwork.swift` (+ `ArtworkImporter`); Notizen/Marker: `EraStore+Markers.swift` (`Song.notes`, `SongVersion.markersJSON` – als String statt Schema-Typ; UI: `MarkersView.swift` = `MarkersSheet` + `ScrubberOverlay`, `SongNotesView`; Setzen in NowPlaying-Menü/⌘M). `App/PlaybackCommands.swift` = Mac/iPad-Tastaturbefehle (⌘P, ⌘←/→); TabView ist `.sidebarAdaptable`.
+  `BulkTagSheet`, `YearReviewView` (Stats → Year in Review, teilbare Karte per ImageRenderer), `CollectionEditorView` (Sammlungen anlegen/bearbeiten/löschen; Store-Seite: `EraStore+Collections.swift`); Mehrfachauswahl steckt in `LibraryView` (Sort-Menü → "Select Songs"). Bulk-/Tag-Schreibzugriffe: `Persistence/EraStore+Bulk.swift`; Playlist-Sortierung/Duplizieren: `EraStore+Playlists.swift`; Version-Cover: `EraStore+Artwork.swift` (+ `ArtworkImporter`); Notizen/Marker: `EraStore+Markers.swift` (`Song.notes`, `SongVersion.markersJSON` – als String statt Schema-Typ; UI: `MarkersView.swift` = `MarkersSheet` + `ScrubberOverlay`, `SongNotesView`; Setzen in NowPlaying-Menü/⌘M). `App/PlaybackCommands.swift` = Mac/iPad-Tastaturbefehle (⌘P, ⌘←/→; `NavigationCommands`: ⌘1–4 Tabs, ⌘F Suche über `.eraSwitchScreen`-Notification); TabView ist `.sidebarAdaptable`.
 - `Tests` – XCTest: `StoreTests`, `PlaylistStoreTests`, `LibraryMaintenanceTests` (in-memory SwiftData); `Tests/Logic/*` = Tests der reinen Logik.
 - `ShareExtension`, `Scripts` (Release/AltStore/Lokalisierung), `docs/source.json` (AltStore), `.github/workflows` (PR-Check, Release).
 
@@ -38,6 +38,8 @@ Versionen. Alles bleibt lokal: kein Server, kein Account, kein Tracking. Distrib
 - Keine neuen Abhängigkeiten ohne guten Grund; keine Secrets.
 
 ## Stolperfallen
+- Toolchain-Setup 2026-11 (2. Lauf) bestätigt: Pull-Skript mit Retry-Schleife im Hintergrund (`nohup`), nach ~8 Min fertig; danach `mount --bind /dev|/proc|/home/user/Era` und `swift test` im Chroot. Der App-Teil (SwiftUI/SwiftData) wird dort nur per `swiftc -parse` geprüft, nicht typgeprüft.
+- WICHTIG: Vor Arbeitsbeginn `git fetch origin claude/nightly` – der Branch existiert und enthält den Stand aller früheren Läufe (nicht von main starten).
 - Toolchain-Setup 2026-11 erneut bestätigt (Docker-Rate-Limit dauerte ~10 Min, Skript mit `sleep 60`-Retry in Hintergrund starten und währenddessen coden). `swiftc -parse` für App-Dateien; `swift test` im Chroot: 131 Logic-Tests.
 - Linux-Tests laufen mit: Chroot-Paket (siehe unten) + `swift test`; `localizedStandardCompare` verhält sich auf Linux bei Groß/Klein-Gleichstand anders → in Tests nur eindeutige Fälle prüfen.
 - Chroot-Kurzform: Package unter /opt/swiftroot/work/Era (Sources/Logic, Tests/Logic als Symlinks auf /home/user/Era, das per `mount --bind` nach /opt/swiftroot/home/user/Era gespiegelt wird), `chroot … swift test`; Syntax-Check: `swiftc -parse`. Docker-Hub-Rate-Limit: Manifest-Abruf in Schleife mit `sleep 60` wiederholen (kann mehrere Minuten dauern).
@@ -55,10 +57,10 @@ Versionen. Alles bleibt lokal: kein Server, kein Account, kein Tracking. Distrib
 
 ## Ideen-Backlog (noch nicht umgesetzt)
 - Mehrfachauswahl auch für Alben/Künstler-Detail und Playlists (Logik `BulkSelection` ist generisch).
-- Sammlungen: Sortierung/Play-on-Tap im PackDetailView, Regel mit ODER/NICHT; Sammlung als Playlist speichern.
+- Sammlungen: Play-on-Tap im PackDetailView, Regel-Gruppen (z. B. (A oder B) und nicht C).
 - Year in Review: Top-Alben (PlayEvent hat kein Album-Feld), Vergleich zum Vorjahr, Auswahl beliebiger Zeiträume.
-- iPad/Mac: Tastaturkürzel in der Bibliothek (⌘F → Suche), eigenes Split-View-Layout für Library/Detail.
-- Spotlight: Tag-Umbenennung/Bulk-Tagging aktualisiert den Index noch nicht (nur Löschen/Merge/Metadaten-Edit tun es via `SpotlightIndexer.update/remove`).
+- iPad/Mac: weitere Tastaturkürzel (⌘N neue Playlist, ⌘O Import), eigenes Split-View-Layout für Library/Detail.
+- Relink beim Import (`StoreOutcome.relinked`) ist nur durch Gerätetest abgedeckt (braucht echte Audiodatei).
 - Dynamic-Type-Audit: Listen-Cover nutzen `.scaledSquare()`; offen: feste 44pt-Buttons, Selektionsleiste, Now-Playing.
 - Library-Filter-UI: A–Z-Sprungleiste (iOS 26 `sectionIndexLabel`) zusätzlich zu den Abschnitten.
 - Marker: per Tipp auf Scrubber-Strich springen, Marker in Siri/Shortcuts, Marker-Export; Notizen im CSV-Export.

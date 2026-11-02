@@ -91,7 +91,8 @@ struct LibraryToolsView: View {
     @ViewBuilder private func findings(_ report: LibraryHealthReport) -> some View {
         if !report.missingAudio.isEmpty {
             finding(String(localized: "\(report.missingAudio.count) missing audio files"), symbol: "exclamationmark.triangle.fill", tint: .orange,
-                    detail: report.missingAudio.prefix(3).map { "\($0.title) (\($0.versionName))" }.joined(separator: ", "),
+                    detail: report.missingAudio.prefix(3).map { "\($0.title) (\($0.versionName))" }.joined(separator: ", ")
+                        + "\n" + String(localized: "Importing the same files again relinks them."),
                     action: String(localized: "Remove")) { pending = .removeMissing }
         }
         if !report.emptySongIDs.isEmpty {
