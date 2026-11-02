@@ -67,7 +67,7 @@ final class ImportManager: ObservableObject {
         defer { releaseScopes() }
         let targets = expandFolders(urls)
         isImporting = true
-        var imported = 0, dupes = 0
+        var imported = 0, dupes = 0, relinked = 0
         var errors: [(String, String)] = []
         for source in targets {
             let name = source.lastPathComponent
@@ -82,6 +82,7 @@ final class ImportManager: ObservableObject {
                 switch outcome {
                 case .imported: imported += 1
                 case .duplicate: dupes += 1
+                case .relinked: relinked += 1
                 }
             } catch {
                 errors.append((name, error.localizedDescription))
@@ -92,10 +93,11 @@ final class ImportManager: ObservableObject {
         if imported > 0, let songs = try? store.allSongs() {
             SpotlightIndexer.reindex(songs: songs)
         }
-        message = summary(imported: imported, dupes: dupes, errors: errors)
+        message = summary(imported: imported, dupes: dupes, relinked: relinked, errors: errors)
     }
 
-    enum StoreOutcome { case imported, duplicate }
+    /// relinked: bekannte Version (z.B. aus einem Backup), deren Audiodatei fehlte, hat ihre Datei zurueck.
+    enum StoreOutcome { case imported, duplicate, relinked }
 
     @discardableResult
     func storeOne(data: Data, ext: String, name: String, into store: EraStore, linkTo song: Song?, versionName: String, year: Int? = nil, statusName: String? = nil, tagNames: [String] = []) async throws -> StoreOutcome {
@@ -107,7 +109,11 @@ final class ImportManager: ObservableObject {
             throw NSError(domain: "EraImport", code: 1, userInfo: [NSLocalizedDescriptionKey: String(localized: "Audio file could not be read")])
         }
         if let existing = try store.version(matchingHash: hashed.hash, duration: hashed.duration) {
-            _ = existing
+            let target = LibraryFiles.url(for: existing)
+            if !FileManager.default.fileExists(atPath: target.path) {
+                try data.write(to: target, options: .atomic)
+                return .relinked
+            }
             return .duplicate // Dupe-Fall: Hinweis statt zweiter Version (Spec 4)
         }
         let meta = await MetadataService.read(url: tmp)
@@ -207,7 +213,7 @@ final class ImportManager: ObservableObject {
         staged = []
         defer { releaseScopes() }
         isImporting = true
-        var imported = 0, dupes = 0
+        var imported = 0, dupes = 0, relinked = 0
         var errors: [(String, String)] = []
         for item in items where item.error == nil {
             do {
@@ -221,6 +227,7 @@ final class ImportManager: ObservableObject {
                         _ = s
                     }
                 case .duplicate: dupes += 1
+                case .relinked: relinked += 1
                 }
                 // Titel/Artist aus der Staging-Liste uebernehmen
                 if outcome == .imported {
@@ -237,7 +244,7 @@ final class ImportManager: ObservableObject {
         if imported > 0, let songs = try? store.allSongs() {
             SpotlightIndexer.reindex(songs: songs)
         }
-        message = summary(imported: imported, dupes: dupes, errors: errors)
+        message = summary(imported: imported, dupes: dupes, relinked: relinked, errors: errors)
     }
 
     // MARK: - Hilfe
@@ -290,9 +297,10 @@ final class ImportManager: ObservableObject {
         return lines.joined(separator: "\n")
     }
 
-    private func summary(imported: Int, dupes: Int, errors: [(String, String)]) -> String? {
+    private func summary(imported: Int, dupes: Int, relinked: Int = 0, errors: [(String, String)]) -> String? {
         var parts: [String] = []
         if imported > 0 { parts.append(String(localized: "\(imported) songs imported")) }
+        if relinked > 0 { parts.append(String(localized: "\(relinked) missing audio files restored")) }
         if dupes > 0 { parts.append(String(localized: "\(dupes) files already in the library")) }
         if !errors.isEmpty {
             if errors.count == 1 {

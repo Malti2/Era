@@ -419,3 +419,4 @@
 "Save as Playlist" = "Enregistrer comme playlist";
 "Playlist Created" = "Playlist créée";
 "“%@” is now in your playlists. It will not change when the collection does." = "« %@ » est maintenant dans tes playlists. Elle ne change plus avec la collection.";
+"%lld missing audio files restored" = "%lld fichiers audio manquants restaurés";
