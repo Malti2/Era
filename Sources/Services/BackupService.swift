@@ -32,7 +32,8 @@ enum BackupService {
                 )
             },
             tags: tags.map { LibraryBackup.TagEntry(id: $0.id, name: $0.name, scopeRaw: $0.scopeRaw, isStatus: $0.isStatus) },
-            packs: packs.map { LibraryBackup.PackEntry(id: $0.id, name: $0.name, tagIDs: $0.tagIDs, statusNames: $0.statusNames, confirmed: $0.confirmed) },
+            packs: packs.map { LibraryBackup.PackEntry(id: $0.id, name: $0.name, tagIDs: $0.tagIDs, statusNames: $0.statusNames, confirmed: $0.confirmed,
+                                                       excludedTagIDs: $0.excludedTagIDs, excludedStatusNames: $0.excludedStatusNames, matchAny: $0.matchAny) },
             playlists: playlists.map { playlist in
                 LibraryBackup.PlaylistEntry2(
                     id: playlist.id, name: playlist.name, filterTagIDs: playlist.filterTagIDs,

@@ -151,6 +151,10 @@ final class Pack {
     var statusNames: [String] = []
     var confirmed: Bool = false
     var dateAdded: Date = Date()
+    // Regel v2 (Standardwerte -> automatische leichte Migration): Ausschluesse und "eine reicht"-Modus.
+    var excludedTagIDs: [UUID] = []
+    var excludedStatusNames: [String] = []
+    var matchAny: Bool = false
 
     init(name: String, tagIDs: [UUID] = [], statusNames: [String] = [], confirmed: Bool = false) {
         self.id = UUID()

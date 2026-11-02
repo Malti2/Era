@@ -48,6 +48,10 @@ struct LibraryBackup: Codable, Equatable {
         var tagIDs: [UUID]
         var statusNames: [String]
         var confirmed: Bool
+        // Regel v2 - optional, damit aeltere Backups weiter lesbar bleiben.
+        var excludedTagIDs: [UUID]? = nil
+        var excludedStatusNames: [String]? = nil
+        var matchAny: Bool? = nil
     }
     struct PlaylistEntryItem: Codable, Equatable {
         var position: Int

@@ -107,4 +107,19 @@ final class LibraryBackupTests: XCTestCase {
         XCTAssertEqual(plan.newPlaylists.map(\.name), ["P"])
         XCTAssertFalse(plan.isEmpty)
     }
+
+    func testPackRuleV2SurvivesRoundtripAndOldPacksStillDecode() throws {
+        let skip = UUID()
+        let pack = LibraryBackup.PackEntry(id: UUID(), name: "Odd", tagIDs: [], statusNames: ["Demo"], confirmed: true,
+                                           excludedTagIDs: [skip], excludedStatusNames: ["Leak"], matchAny: true)
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        let decoded = try LibraryBackup.decode(from: encoder.encode(backup([], [], packs: [pack])))
+        XCTAssertEqual(decoded.packs, [pack])
+
+        // Backup ohne die neuen Felder (aelterer Stand) bleibt lesbar.
+        let old = LibraryBackup.PackEntry(id: UUID(), name: "Old", tagIDs: [], statusNames: [], confirmed: true)
+        let oldDecoded = try LibraryBackup.decode(from: encoder.encode(backup([], [], packs: [old])))
+        XCTAssertNil(oldDecoded.packs.first?.matchAny)
+    }
 }

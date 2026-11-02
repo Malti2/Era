@@ -409,3 +409,13 @@
 "Choose at least one status or tag." = "Choisis au moins un statut ou un tag.";
 "%lld songs match" = "%lld morceaux correspondent";
 "A song must have all chosen statuses and tags." = "Un morceau doit avoir tous les statuts et tags choisis.";
+"Match" = "Correspondance";
+"Any" = "Au moins un";
+"A song needs at least one of the chosen statuses or tags." = "Un morceau doit avoir au moins l'un des statuts ou tags choisis.";
+"A song needs all of the chosen statuses and tags." = "Un morceau doit avoir tous les statuts et tags choisis.";
+"Tap once to include, twice to exclude, a third time to clear." = "Touche une fois pour inclure, deux fois pour exclure, trois fois pour effacer.";
+"Included" = "Inclus";
+"Excluded" = "Exclu";
+"Save as Playlist" = "Enregistrer comme playlist";
+"Playlist Created" = "Playlist créée";
+"“%@” is now in your playlists. It will not change when the collection does." = "« %@ » est maintenant dans tes playlists. Elle ne change plus avec la collection.";

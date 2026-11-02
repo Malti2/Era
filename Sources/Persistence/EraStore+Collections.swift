@@ -3,7 +3,19 @@ import SwiftData
 
 // Sammlungen (Packs) anlegen, bearbeiten, loeschen. Namen sind eindeutig, eine Sammlung braucht mindestens eine Bedingung.
 extension Pack {
-    var rule: CollectionRule { CollectionRule(tagIDs: Set(tagIDs), statusNames: Set(statusNames)) }
+    var rule: CollectionRule {
+        get {
+            CollectionRule(tagIDs: Set(tagIDs), statusNames: Set(statusNames),
+                           excludedTagIDs: Set(excludedTagIDs), excludedStatusNames: Set(excludedStatusNames), matchAny: matchAny)
+        }
+        set {
+            tagIDs = Array(newValue.tagIDs)
+            statusNames = Array(newValue.statusNames).sorted()
+            excludedTagIDs = Array(newValue.excludedTagIDs)
+            excludedStatusNames = Array(newValue.excludedStatusNames).sorted()
+            matchAny = newValue.matchAny
+        }
+    }
 }
 
 extension Song {
@@ -19,7 +31,8 @@ extension EraStore {
         guard !rule.isEmpty else { return nil }
         let existing = ((try? allPacks()) ?? []).map(\.name)
         guard case .ok(let name) = CollectionName.validate(proposed, existing: existing) else { return nil }
-        let pack = Pack(name: name, tagIDs: Array(rule.tagIDs), statusNames: Array(rule.statusNames).sorted(), confirmed: true)
+        let pack = Pack(name: name, confirmed: true)
+        pack.rule = rule
         context.insert(pack)
         save()
         return pack
@@ -33,10 +46,19 @@ extension EraStore {
         let others = ((try? allPacks()) ?? []).filter { $0.id != pack.id }.map(\.name)
         guard case .ok(let name) = CollectionName.validate(proposed, existing: others) else { return false }
         pack.name = name
-        pack.tagIDs = Array(rule.tagIDs)
-        pack.statusNames = Array(rule.statusNames).sorted()
+        pack.rule = rule
         pack.confirmed = true
         save()
         return true
+    }
+
+    /// Legt aus den aktuellen Treffern einer Sammlung eine normale Playlist an (Momentaufnahme).
+    @discardableResult
+    func playlistFromCollection(_ pack: Pack, songs: [Song]) -> Playlist? {
+        let existing = Set(((try? allPlaylists()) ?? []).map { $0.name.lowercased() })
+        var name = pack.name
+        var n = 2
+        while existing.contains(name.lowercased()) { name = "\(pack.name) \(n)"; n += 1 }
+        return createPlaylist(named: name, songs: songs)
     }
 }

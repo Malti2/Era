@@ -157,11 +157,18 @@ struct PackDetailView: View {
     @EnvironmentObject private var player: PlayerEngine
     @Query private var songs: [Song]
 
+    @EnvironmentObject private var store: EraStore
     @State private var showEditor = false
+    @State private var savedPlaylistName: String?
+    @AppStorage(AppSettings.collectionSortKey) private var sortRaw = LibrarySort.recent.rawValue
+
+    private var sort: LibrarySort { LibrarySort(rawValue: sortRaw) ?? .recent }
 
     private var matching: [Song] {
         let rule = pack.rule
-        return songs.filter { $0.matches(rule) }
+        let hits = songs.filter { $0.matches(rule) }
+        let byID = Dictionary(hits.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        return sort.ordered(hits.map(\.sortRow)).compactMap { byID[$0] }
     }
 
     private func count(_ status: String) -> Int {
@@ -202,10 +209,28 @@ struct PackDetailView: View {
         .navigationTitle(pack.name)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button("Edit") { showEditor = true }
+                Menu {
+                    Picker("Sort", selection: Binding(get: { sort }, set: { sortRaw = $0.rawValue })) {
+                        ForEach(LibrarySort.allCases) { Text($0.label).tag($0) }
+                    }
+                    Divider()
+                    Button { savePlaylist() } label: { Label("Save as Playlist", systemImage: "music.note.list") }
+                        .disabled(matching.isEmpty)
+                    Button { showEditor = true } label: { Label("Edit", systemImage: "pencil") }
+                } label: { Image(systemName: "ellipsis.circle") }
+                .accessibilityLabel("More")
             }
         }
         .sheet(isPresented: $showEditor) { CollectionEditorView(pack: pack) }
+        .alert("Playlist Created", isPresented: Binding(get: { savedPlaylistName != nil }, set: { if !$0 { savedPlaylistName = nil } })) {
+            Button("OK", role: .cancel) { savedPlaylistName = nil }
+        } message: {
+            Text("“\(savedPlaylistName ?? "")” is now in your playlists. It will not change when the collection does.")
+        }
+    }
+
+    private func savePlaylist() {
+        if let playlist = store.playlistFromCollection(pack, songs: matching) { savedPlaylistName = playlist.name }
     }
 
     private func stat(_ label: String, _ value: Int) -> some View {

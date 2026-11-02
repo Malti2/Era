@@ -16,6 +16,7 @@ enum AppSettings {
     static let transitionStyleKey = "settings.transitionStyle"
     static let crossfadeSecondsKey = "settings.crossfadeSeconds"
     static let librarySectionKey = "settings.librarySection"
+    static let collectionSortKey = "settings.collectionSort"
     static let hasSeenVersionsCoachKey = "settings.hasSeenVersionsCoach"
     static let librarySortKey = "settings.librarySort"
     static let libraryFilterKey = "settings.libraryFilter"

@@ -409,3 +409,13 @@
 "Choose at least one status or tag." = "Choose at least one status or tag.";
 "%lld songs match" = "%lld songs match";
 "A song must have all chosen statuses and tags." = "A song must have all chosen statuses and tags.";
+"Match" = "Match";
+"Any" = "Any";
+"A song needs at least one of the chosen statuses or tags." = "A song needs at least one of the chosen statuses or tags.";
+"A song needs all of the chosen statuses and tags." = "A song needs all of the chosen statuses and tags.";
+"Tap once to include, twice to exclude, a third time to clear." = "Tap once to include, twice to exclude, a third time to clear.";
+"Included" = "Included";
+"Excluded" = "Excluded";
+"Save as Playlist" = "Save as Playlist";
+"Playlist Created" = "Playlist Created";
+"“%@” is now in your playlists. It will not change when the collection does." = "“%@” is now in your playlists. It will not change when the collection does.";

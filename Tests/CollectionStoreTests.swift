@@ -63,4 +63,35 @@ final class CollectionStoreTests: XCTestCase {
         XCTAssertTrue(song.matches(rule(tags: [tag], statuses: ["Demo"])))
         XCTAssertFalse(song.matches(rule(tags: [tag], statuses: ["Live"])))
     }
+
+    func testRuleV2RoundTripsThroughPack() throws {
+        let night = store.makeTag(named: "Night"), skip = store.makeTag(named: "Skip")
+        let rule = CollectionRule(tagIDs: [night.id], excludedTagIDs: [skip.id], excludedStatusNames: ["Leak"], matchAny: true)
+        let pack = try XCTUnwrap(store.createCollection(named: "Odd", rule: rule))
+        XCTAssertEqual(pack.rule, rule)
+        XCTAssertEqual(pack.excludedStatusNames, ["Leak"])
+        XCTAssertTrue(pack.matchAny)
+    }
+
+    func testExclusionOnlyRuleIsAccepted() {
+        let skip = store.makeTag(named: "Skip")
+        XCTAssertNotNil(store.createCollection(named: "Not skipped", rule: CollectionRule(excludedTagIDs: [skip.id])))
+    }
+
+    func testPlaylistFromCollectionSnapshotsSongsAndAvoidsNameClash() throws {
+        let songs = ["A", "B"].map { title -> Song in
+            let song = Song(title: title)
+            let version = SongVersion(name: "OG", fileName: "\(title).m4a", pcmHash: title, duration: 10)
+            version.song = song; song.versions.append(version); song.primaryVersionID = version.id
+            store.insertSong(song)
+            return song
+        }
+        let tag = store.makeTag(named: "Night")
+        let pack = try XCTUnwrap(store.createCollection(named: "Late", rule: rule(tags: [tag])))
+        let first = try XCTUnwrap(store.playlistFromCollection(pack, songs: songs))
+        XCTAssertEqual(first.name, "Late")
+        XCTAssertEqual(first.entries.count, 2)
+        let second = try XCTUnwrap(store.playlistFromCollection(pack, songs: songs))
+        XCTAssertEqual(second.name, "Late 2")
+    }
 }

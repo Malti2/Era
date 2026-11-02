@@ -169,6 +169,9 @@ extension BackupService {
         for entry in plan.newPacks {
             let tagIDs = entry.tagIDs.compactMap { localTag($0)?.id }
             let pack = Pack(name: entry.name, tagIDs: tagIDs, statusNames: entry.statusNames, confirmed: entry.confirmed)
+            pack.excludedTagIDs = (entry.excludedTagIDs ?? []).compactMap { localTag($0)?.id }
+            pack.excludedStatusNames = entry.excludedStatusNames ?? []
+            pack.matchAny = entry.matchAny ?? false
             context.insert(pack)
             summary.packs += 1
         }

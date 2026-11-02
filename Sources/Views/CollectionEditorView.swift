@@ -36,27 +36,40 @@ struct CollectionEditorView: View {
                 } footer: {
                     if nameCheck == .duplicate { Text("A collection with this name already exists.").foregroundStyle(.red) }
                 }
+                if rule.needsMatchMode {
+                    Section {
+                        Picker("Match", selection: $rule.matchAny) {
+                            Text("All").tag(false)
+                            Text("Any").tag(true)
+                        }
+                        .pickerStyle(.segmented)
+                    } footer: {
+                        Text(rule.matchAny ? "A song needs at least one of the chosen statuses or tags." : "A song needs all of the chosen statuses and tags.")
+                    }
+                }
                 if !statusTags.isEmpty {
                     Section("Status") {
                         ForEach(statusTags) { tag in
-                            Toggle(tag.name, isOn: Binding(get: { rule.statusNames.contains(tag.name) }, set: { _ in rule.toggle(status: tag.name) }))
+                            markRow(tag.name, mark: rule.mark(status: tag.name)) { rule.cycle(status: tag.name) }
                         }
                     }
                 }
-                Section("Tags") {
+                Section {
                     if personalTags.isEmpty {
                         Text("Add tags to songs first, then use them here.").foregroundStyle(.secondary)
                     }
                     ForEach(personalTags) { tag in
-                        Toggle(tag.name, isOn: Binding(get: { rule.tagIDs.contains(tag.id) }, set: { _ in rule.toggle(tag: tag.id) }))
+                        markRow(tag.name, mark: rule.mark(tag: tag.id)) { rule.cycle(tag: tag.id) }
                     }
+                } header: {
+                    Text("Tags")
+                } footer: {
+                    Text("Tap once to include, twice to exclude, a third time to clear.")
                 }
                 Section {
                     Label(rule.isEmpty ? String(localized: "Choose at least one status or tag.") : String(localized: "\(matchCount) songs match"),
                           systemImage: rule.isEmpty ? "hand.point.up.left" : "music.note.list")
                         .foregroundStyle(.secondary)
-                } footer: {
-                    Text("A song must have all chosen statuses and tags.")
                 }
             }
             .navigationTitle(pack == nil ? "New Collection" : "Edit Collection")
@@ -70,10 +83,29 @@ struct CollectionEditorView: View {
             .onAppear {
                 if let pack, name.isEmpty {
                     name = pack.name
-                    rule = pack.rule
+                    rule = pack.rule.pruned(toExistingTagIDs: Set(tags.map(\.id)))
                 }
             }
         }
+    }
+
+    /// Dreistufige Zeile: aus / dabei (Haken) / ohne (rotes Minus). Der Zustand steht auch als Text im Accessibility-Wert.
+    private func markRow(_ title: String, mark: CollectionRule.Mark, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack {
+                Text(title).foregroundStyle(mark == .exclude ? Color.secondary : Color.primary)
+                    .strikethrough(mark == .exclude)
+                Spacer()
+                switch mark {
+                case .none: EmptyView()
+                case .include: Image(systemName: "checkmark").foregroundStyle(.tint)
+                case .exclude: Image(systemName: "minus.circle.fill").foregroundStyle(.red)
+                }
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityValue(mark == .include ? Text("Included") : (mark == .exclude ? Text("Excluded") : Text("Off")))
     }
 
     private func save() {
