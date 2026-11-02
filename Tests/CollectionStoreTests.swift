@@ -97,13 +97,15 @@ final class CollectionStoreTests: XCTestCase {
 
     func testTagMergeAndDeleteFollowExcludedTagsOfCollections() throws {
         let keep = store.makeTag(named: "Keep"), dupe = store.makeTag(named: "Dupe"), gone = store.makeTag(named: "Gone")
+        let other = store.makeTag(named: "Other")
         let pack = try XCTUnwrap(store.createCollection(named: "Rules", rule: CollectionRule(tagIDs: [keep.id], excludedTagIDs: [dupe.id, gone.id])))
 
-        XCTAssertEqual(store.renameTag(dupe, to: "keep"), .merge("Keep"))
-        XCTAssertEqual(Set(pack.excludedTagIDs), [keep.id, gone.id])
+        guard case .merge = store.renameTag(dupe, to: "other") else { return XCTFail("expected merge") }
+        XCTAssertEqual(Set(pack.excludedTagIDs), [other.id, gone.id])
+        XCTAssertEqual(pack.tagIDs, [keep.id])
 
         store.deleteTagEverywhere(gone)
-        XCTAssertEqual(pack.excludedTagIDs, [keep.id])
+        XCTAssertEqual(pack.excludedTagIDs, [other.id])
         XCTAssertTrue(store.unusedTags().isEmpty, "tags used only as exclusions still count as referenced")
     }
 }

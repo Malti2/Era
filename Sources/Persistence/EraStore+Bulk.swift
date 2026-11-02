@@ -10,16 +10,20 @@ extension EraStore {
 
     func add(_ tag: Tag, to songs: [Song]) {
         let tag = resolve(tag)
-        for song in songs.map({ resolve($0) }) where !song.tags.contains(where: { $0.id == tag.id }) {
+        let targets = songs.map { resolve($0) }
+        for song in targets where !song.tags.contains(where: { $0.id == tag.id }) {
             song.tags.append(tag)
         }
         save()
+        SpotlightIndexer.update(songs: targets)
     }
 
     func remove(_ tag: Tag, from songs: [Song]) {
         let tag = resolve(tag)
-        for song in songs.map({ resolve($0) }) { song.tags.removeAll { $0.id == tag.id } }
+        let targets = songs.map { resolve($0) }
+        for song in targets { song.tags.removeAll { $0.id == tag.id } }
         save()
+        SpotlightIndexer.update(songs: targets)
     }
 
     func deleteSongs(_ songs: [Song]) {
@@ -42,15 +46,18 @@ extension EraStore {
         case .rename(let name):
             tag.name = name
             save()
+            SpotlightIndexer.update(songs: Array(tag.songs)) // Tags sind Spotlight-Stichwoerter
         case .merge(let name):
             guard let target = try? self.tag(named: name), target.id != tag.id else { return .invalid }
-            for song in Array(tag.songs) {
+            let affected = Array(tag.songs)
+            for song in affected {
                 song.tags.removeAll { $0.id == tag.id }
                 if !song.tags.contains(where: { $0.id == target.id }) { song.tags.append(target) }
             }
             repoint(tag.id, to: target.id)
             context.delete(tag)
             save()
+            SpotlightIndexer.update(songs: affected)
         }
         return outcome
     }
@@ -60,15 +67,17 @@ extension EraStore {
         let tag = resolve(tag)
         guard !tag.isStatus else { return }
         repoint(tag.id, to: nil)
-        for song in Array(tag.songs) { song.tags.removeAll { $0.id == tag.id } }
+        let affected = Array(tag.songs)
+        for song in affected { song.tags.removeAll { $0.id == tag.id } }
         context.delete(tag)
         save()
+        SpotlightIndexer.update(songs: affected)
     }
 
     /// Personal tags no song carries and no pack or playlist filter refers to.
     func unusedTags() -> [Tag] {
         var referenced = Set<UUID>()
-        for pack in (try? allPacks()) ?? [] { referenced.formUnion(pack.tagIDs) }
+        for pack in (try? allPacks()) ?? [] { referenced.formUnion(pack.tagIDs); referenced.formUnion(pack.excludedTagIDs) }
         for playlist in (try? allPlaylists()) ?? [] { referenced.formUnion(playlist.filterTagIDs) }
         return ((try? allTags()) ?? []).filter { !$0.isStatus && $0.songs.isEmpty && !referenced.contains($0.id) }
     }
@@ -91,7 +100,12 @@ extension EraStore {
             }
             return result
         }
-        for pack in (try? allPacks()) ?? [] where pack.tagIDs.contains(old) { pack.tagIDs = updated(pack.tagIDs) }
+        for pack in (try? allPacks()) ?? [] {
+            guard pack.tagIDs.contains(old) || pack.excludedTagIDs.contains(old) else { continue }
+            pack.tagIDs = updated(pack.tagIDs)
+            // Landet ein Tag nach dem Zusammenfuehren in beiden Listen, gewinnt "dabei".
+            pack.excludedTagIDs = updated(pack.excludedTagIDs).filter { !pack.tagIDs.contains($0) }
+        }
         for playlist in (try? allPlaylists()) ?? [] where playlist.filterTagIDs.contains(old) {
             playlist.filterTagIDs = updated(playlist.filterTagIDs)
         }
