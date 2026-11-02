@@ -1,5 +1,26 @@
 import SwiftUI
 
+extension Notification.Name {
+    /// userInfo["screen"] = AppScreen.rawValue; ContentView wechselt den Tab.
+    static let eraSwitchScreen = Notification.Name("era.switchScreen")
+}
+
+// Tab-Wechsel per Tastatur (Mac/iPad): Cmd+1...4 und Cmd+F fuer die Suche.
+struct NavigationCommands: Commands {
+    private func show(_ screen: AppScreen) {
+        NotificationCenter.default.post(name: .eraSwitchScreen, object: nil, userInfo: ["screen": screen.rawValue])
+    }
+
+    var body: some Commands {
+        CommandMenu("Go") {
+            Button("Home") { show(.home) }.keyboardShortcut("1", modifiers: .command)
+            Button("Collections") { show(.packs) }.keyboardShortcut("2", modifiers: .command)
+            Button("Library") { show(.library) }.keyboardShortcut("3", modifiers: .command)
+            Button("Search") { show(.search) }.keyboardShortcut("f", modifiers: .command)
+        }
+    }
+}
+
 // Menue- und Tastaturbefehle fuer Mac (Catalyst) und iPad mit Tastatur.
 struct PlaybackCommands: Commands {
     let player: PlayerEngine

@@ -420,3 +420,5 @@
 "Playlist Created" = "Lista creada";
 "“%@” is now in your playlists. It will not change when the collection does." = "«%@» ya está en tus listas. No cambiará cuando cambie la colección.";
 "%lld missing audio files restored" = "%lld archivos de audio perdidos recuperados";
+"Go" = "Ir a";
+"without %@" = "sin %@";

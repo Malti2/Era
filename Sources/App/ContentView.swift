@@ -75,6 +75,9 @@ struct ContentView: View {
             if let release = launchUpdater.availableRelease,
                UserDefaults.standard.string(forKey: "updates.snoozedVersion") != release.version { showUpdatePrompt = true }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .eraSwitchScreen)) { note in
+            if let raw = note.userInfo?["screen"] as? String, let screen = AppScreen(rawValue: raw) { selection = screen }
+        }
         .onOpenURL { url in
             guard url.scheme == "era" else { return }
             switch url.host {

@@ -46,7 +46,10 @@ struct EraApp: App {
                 .environmentObject(playlistPicker)
         }
         .modelContainer(container)
-        .commands { PlaybackCommands(player: PlayerEngine.shared) }
+        .commands {
+            PlaybackCommands(player: PlayerEngine.shared)
+            NavigationCommands()
+        }
     }
 }
 

@@ -73,6 +73,16 @@ struct CollectionRule: Equatable {
         }
     }
 
+    /// Namen der Bedingungen fuer die Kurzbeschreibung in Listen: Status zuerst, dann Tags, jeweils sortiert.
+    /// Tags ohne Namen (geloescht) fallen weg.
+    func labels(tagName: (UUID) -> String?) -> (include: [String], exclude: [String]) {
+        func sorted(_ status: Set<String>, _ ids: Set<UUID>) -> [String] {
+            status.sorted { $0.localizedStandardCompare($1) == .orderedAscending }
+                + ids.compactMap(tagName).sorted { $0.localizedStandardCompare($1) == .orderedAscending }
+        }
+        return (sorted(statusNames, tagIDs), sorted(excludedStatusNames, excludedTagIDs))
+    }
+
     /// Entfernt Tags, die es nicht mehr gibt (geloescht/zusammengefuehrt), aus allen Bedingungen.
     func pruned(toExistingTagIDs existing: Set<UUID>) -> CollectionRule {
         var copy = self

@@ -47,7 +47,12 @@ struct PacksView: View {
                             NavigationLink {
                                 PackDetailView(pack: pack, showNowPlaying: $showNowPlaying)
                             } label: {
-                                Label("\(pack.name) (\(matching(pack).count))", systemImage: "square.stack.fill")
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Label("\(pack.name) (\(matching(pack).count))", systemImage: "square.stack.fill")
+                                    if let text = ruleSummary(pack) {
+                                        Text(text).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                                    }
+                                }
                             }
                             .swipeActions {
                                 Button(role: .destructive) { packToDelete = pack } label: { Label("Delete", systemImage: "trash") }
@@ -125,6 +130,17 @@ struct PacksView: View {
         if let status = pack.statusNames.first { return String(localized: "Suggested from status: \(status)") }
         if let tagID = pack.tagIDs.first, let tag = tags.first(where: { $0.id == tagID }) { return String(localized: "Suggested from tag: \(tag.name)") }
         return String(localized: "Suggested from your library")
+    }
+
+    /// "Night + Road · ohne Demo": macht die Regel einer Sammlung auf einen Blick lesbar.
+    private func ruleSummary(_ pack: Pack) -> String? {
+        let rule = pack.rule
+        let names = Dictionary(tags.map { ($0.id, $0.name) }, uniquingKeysWith: { first, _ in first })
+        let labels = rule.labels(tagName: { names[$0] })
+        var parts: [String] = []
+        if !labels.include.isEmpty { parts.append(labels.include.joined(separator: rule.matchAny ? " / " : " + ")) }
+        if !labels.exclude.isEmpty { parts.append(String(localized: "without \(labels.exclude.joined(separator: ", "))")) }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
     func matching(_ pack: Pack) -> [Song] {

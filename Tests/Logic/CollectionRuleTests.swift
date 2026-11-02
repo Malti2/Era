@@ -99,4 +99,13 @@ final class CollectionRuleTests: XCTestCase {
         let rule = CollectionRule(tagIDs: [keep, gone], excludedTagIDs: [gone])
         XCTAssertEqual(rule.pruned(toExistingTagIDs: [keep]), CollectionRule(tagIDs: [keep]))
     }
+
+    func testLabelsListStatusBeforeTagsAndSkipUnknownTags() {
+        let night = UUID(), gone = UUID(), skip = UUID()
+        let names = [night: "Night", skip: "Skit"]
+        let rule = CollectionRule(tagIDs: [night, gone], statusNames: ["Demo"], excludedTagIDs: [skip], excludedStatusNames: ["Leak"])
+        let labels = rule.labels(tagName: { names[$0] })
+        XCTAssertEqual(labels.include, ["Demo", "Night"])
+        XCTAssertEqual(labels.exclude, ["Leak", "Skit"])
+    }
 }
