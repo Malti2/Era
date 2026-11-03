@@ -117,6 +117,14 @@ struct LibraryView: View {
             .navigationBarTitleDisplayMode(selecting ? .inline : .automatic)
             .toolbar(selecting ? .hidden : .automatic, for: .tabBar)
             .onChange(of: songs.count) { _, _ in selection.prune(to: Set(songs.map(\.id))) }
+            .onReceive(NotificationCenter.default.publisher(for: .eraImportMusic)) { _ in showImporter = true }
+            .onReceive(NotificationCenter.default.publisher(for: .eraNewPlaylist)) { _ in
+                sectionRaw = LibrarySection.playlists.rawValue
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 300_000_000)
+                    showNewPlaylist = true
+                }
+            }
             .sheet(isPresented: $showBulkTags) { BulkTagSheet(songs: selectedSongs) }
             .confirmationDialog("Delete Songs?", isPresented: $confirmBulkDelete, titleVisibility: .visible) {
                 Button("Delete \(selection.count) Songs", role: .destructive) {
