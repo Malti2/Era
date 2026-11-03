@@ -427,3 +427,7 @@
 "Import Music…" = "Import Music…";
 "New Playlist…" = "New Playlist…";
 "Compared to %@" = "Compared to %@";
+"Listening" = "Listening";
+"First Played" = "First Played";
+"Last Played" = "Last Played";
+"Plays per month, last 12 months" = "Plays per month, last 12 months";

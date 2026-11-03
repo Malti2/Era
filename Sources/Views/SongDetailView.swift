@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import Charts
 
 // Song-Detail: primaere Version gross, alle Versionen darunter, Verknuepfen-Flow (Spec 4).
 struct SongDetailView: View {
@@ -17,6 +18,14 @@ struct SongDetailView: View {
     @State private var showNotes = false
     @State private var renameText = ""
     @State private var shareItem: ShareItem?
+    @Query private var playEvents: [PlayEvent]
+
+    init(song: Song, showNowPlaying: Binding<Bool>) {
+        self.song = song
+        _showNowPlaying = showNowPlaying
+        let id: UUID? = song.id
+        _playEvents = Query(filter: #Predicate<PlayEvent> { $0.songID == id }, sort: \.date)
+    }
 
     var body: some View {
         List {
@@ -79,6 +88,8 @@ struct SongDetailView: View {
                 }
             }
 
+            listeningSection
+
             if !song.personalTags.isEmpty {
                 Section("Tags") {
                     FlowTags(tags: song.personalTags)
@@ -102,6 +113,35 @@ struct SongDetailView: View {
             TextField("Name", text: $renameText)
             Button("Save") { if let version = versionToRename { store.renameVersion(version, to: renameText) }; versionToRename = nil }
             Button("Cancel", role: .cancel) { versionToRename = nil }
+        }
+    }
+
+    @ViewBuilder private var listeningSection: some View {
+        let listening = SongListening.make(from: playEvents.map {
+            PlayRecord(date: $0.date, seconds: $0.seconds, title: $0.title, artist: $0.artist)
+        })
+        if !listening.isEmpty {
+            Section("Listening") {
+                LabeledContent("Plays", value: "\(listening.plays)")
+                LabeledContent("Time Listened", value: TimeFormatting.spoken(listening.totalSeconds))
+                if let first = listening.firstPlayed {
+                    LabeledContent("First Played", value: first.formatted(date: .abbreviated, time: .omitted))
+                }
+                if let last = listening.lastPlayed {
+                    LabeledContent("Last Played", value: last.formatted(date: .abbreviated, time: .omitted))
+                }
+                if listening.monthlyPlays.filter({ $0 > 0 }).count > 1 {
+                    Chart(Array(listening.monthlyPlays.enumerated()), id: \.offset) { index, plays in
+                        BarMark(x: .value("Month", index), y: .value("Plays", plays))
+                            .foregroundStyle(Color.accentColor.gradient)
+                            .cornerRadius(2)
+                    }
+                    .chartXAxis(.hidden)
+                    .chartYAxis(.hidden)
+                    .frame(height: 56)
+                    .accessibilityLabel("Plays per month, last 12 months")
+                }
+            }
         }
     }
 

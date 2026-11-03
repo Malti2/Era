@@ -427,3 +427,7 @@
 "Import Music…" = "Musik importieren …";
 "New Playlist…" = "Neue Playlist …";
 "Compared to %@" = "Im Vergleich zu %@";
+"Listening" = "Wiedergabe";
+"First Played" = "Zuerst gespielt";
+"Last Played" = "Zuletzt gespielt";
+"Plays per month, last 12 months" = "Wiedergaben pro Monat, letzte 12 Monate";
