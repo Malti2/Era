@@ -80,6 +80,8 @@ struct NowPlayingView: View {
     @State private var markerToast: String?
     @State private var markerFeedback = 0
     @State private var confirmClearQueue = false
+    @State private var showSaveQueue = false
+    @State private var queuePlaylistName = ""
     @State private var queueEditing = false
     @State private var artworkTint = Color(white: 0.10)
     @AppStorage(AppSettings.skipIntervalKey) private var skipInterval = 15
@@ -421,12 +423,21 @@ struct NowPlayingView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     if player.queue.count > 1 {
                         Menu {
+                            Button {
+                                queuePlaylistName = String(localized: "Queue") + " · " + Date().formatted(date: .abbreviated, time: .omitted)
+                                showSaveQueue = true
+                            } label: { Label("Save as Playlist", systemImage: "music.note.list") }
                             Button("Clear Queue", role: .destructive) { confirmClearQueue = true }
                         } label: {
                             Image(systemName: "ellipsis.circle")
                         }
                     }
                 }
+            }
+            .alert("New Playlist", isPresented: $showSaveQueue) {
+                TextField("Name", text: $queuePlaylistName)
+                Button("Save") { _ = store.createPlaylist(named: queuePlaylistName, fromQueue: player.queue) }
+                Button("Cancel", role: .cancel) {}
             }
             .confirmationDialog("Clear Queue?", isPresented: $confirmClearQueue, titleVisibility: .visible) {
                 Button("Clear Queue", role: .destructive) { player.clearQueue() }

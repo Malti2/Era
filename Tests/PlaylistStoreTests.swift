@@ -63,3 +63,46 @@ final class PlaylistStoreTests: XCTestCase {
         XCTAssertEqual(playlist.totalDuration, 150, accuracy: 0.01)
     }
 }
+
+@MainActor
+final class QueuePlaylistTests: XCTestCase {
+    private var store: EraStore!
+
+    override func setUp() async throws {
+        store = EraStore(context: ModelContext(Persistence.makeContainer(inMemory: true)))
+    }
+
+    private func makeSong(_ title: String, extraVersion: Bool = false) -> Song {
+        let song = Song(title: title)
+        for name in extraVersion ? ["OG", "Demo"] : ["OG"] {
+            let version = SongVersion(name: name, fileName: "\(title)-\(name).m4a", pcmHash: UUID().uuidString, duration: 100)
+            version.song = song
+            song.versions.append(version)
+        }
+        song.primaryVersionID = song.versions.first?.id
+        store.insertSong(song)
+        return song
+    }
+
+    func testQueueBecomesPlaylistInOrderWithChosenVersions() throws {
+        let a = makeSong("A", extraVersion: true), b = makeSong("B")
+        let demo = try XCTUnwrap(a.versions.first { $0.name == "Demo" })
+        let playlist = try XCTUnwrap(store.createPlaylist(named: " Mix ", fromQueue: [b.versions[0], demo]))
+        XCTAssertEqual(playlist.name, "Mix")
+        XCTAssertEqual(playlist.sortedEntries.compactMap { $0.song?.title }, ["B", "A"])
+        XCTAssertEqual(playlist.sortedEntries.last?.versionID, demo.id)
+    }
+
+    func testSongQueuedTwiceIsAddedOnce() throws {
+        let a = makeSong("A")
+        let playlist = try XCTUnwrap(store.createPlaylist(named: "P", fromQueue: [a.versions[0], a.versions[0]]))
+        XCTAssertEqual(playlist.entries.count, 1)
+    }
+
+    func testBlankNameOrEmptyQueueCreatesNothing() throws {
+        let a = makeSong("A")
+        XCTAssertNil(store.createPlaylist(named: "  ", fromQueue: [a.versions[0]]))
+        XCTAssertNil(store.createPlaylist(named: "P", fromQueue: []))
+        XCTAssertTrue(try store.allPlaylists().isEmpty)
+    }
+}

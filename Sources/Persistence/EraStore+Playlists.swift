@@ -42,4 +42,20 @@ extension EraStore {
         save()
         return copy
     }
+
+    /// Legt aus der Warteschlange eine Playlist an. Die jeweils eingereihte Version wird
+    /// mitgespeichert; Songs, die mehrfach in der Queue stehen, zaehlen nur einmal.
+    @discardableResult
+    func createPlaylist(named name: String, fromQueue versions: [SongVersion]) -> Playlist? {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, versions.contains(where: { $0.song != nil }) else { return nil }
+        let playlist = Playlist(name: trimmed)
+        context.insert(playlist)
+        for version in versions {
+            guard let song = version.song else { continue }
+            appendEntry(song: song, version: version, to: playlist)
+        }
+        save()
+        return playlist
+    }
 }

@@ -28,6 +28,9 @@ struct YearReviewView: View {
                 } else {
                     YearReviewCard(review: review)
                     highlights(review)
+                    if let comparison = YearComparison.make(current: review, previous: YearReview.make(year: selected - 1, from: all)) {
+                        comparisonCard(comparison)
+                    }
                     if !review.topTracks.isEmpty { rankedCard("Top Tracks", rows: review.topTracks.map { ($0.title, artistName($0.artist), $0.plays) }) }
                     if !review.topArtists.isEmpty { rankedCard("Top Artists", rows: review.topArtists.map { (artistName($0.name), nil, $0.plays) }) }
                 }
@@ -85,6 +88,32 @@ struct YearReviewView: View {
             }
         }
         .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
+    private func comparisonCard(_ comparison: YearComparison) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Compared to \(String(comparison.previousYear))").font(.headline)
+            HStack(alignment: .top, spacing: 12) {
+                comparisonTile("Time Listened", comparison.secondsPercent.map(YearComparison.signedPercent)
+                               ?? YearComparison.signed(Int((comparison.secondsDelta / 60).rounded())) + " min",
+                               good: comparison.secondsDelta >= 0)
+                comparisonTile("Plays", YearComparison.signed(comparison.playsDelta), good: comparison.playsDelta >= 0)
+                comparisonTile("Active Days", YearComparison.signed(comparison.activeDaysDelta), good: comparison.activeDaysDelta >= 0)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
+    private func comparisonTile(_ title: LocalizedStringKey, _ value: String, good: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(value).font(.title3.bold().monospacedDigit()).foregroundStyle(good ? Color.green : Color.orange)
+                .minimumScaleFactor(0.7).lineLimit(1)
+            Text(title).font(.caption).foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
     }
 
     private struct HighlightRow {
