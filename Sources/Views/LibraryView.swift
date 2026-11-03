@@ -81,7 +81,7 @@ struct LibraryView: View {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button("Done") { endSelecting() }.fontWeight(.semibold)
                     }
-                    ToolbarItemGroup(placement: .bottomBar) { selectionBar }
+                    SongSelectionToolbar(chosen: selectedSongs, store: store, playlistPicker: playlistPicker, showTags: $showBulkTags, confirmDelete: $confirmBulkDelete)
                 } else {
                     ToolbarItem(placement: .topBarTrailing) {
                         Menu {
@@ -206,24 +206,6 @@ struct LibraryView: View {
     private func endSelecting() {
         selecting = false
         selection.clear()
-    }
-
-    @ViewBuilder private var selectionBar: some View {
-        let chosen = selectedSongs
-        let allFavorites = !chosen.isEmpty && chosen.allSatisfy(\.isFavorite)
-        Button { playlistPicker.present(chosen) } label: { Label("Add to Playlist", systemImage: "text.badge.plus") }
-            .disabled(chosen.isEmpty)
-        Spacer()
-        Button { store.setFavorite(!allFavorites, for: chosen) } label: {
-            Label(LocalizedStringKey(allFavorites ? "Remove Favorite" : "Favorite"), systemImage: allFavorites ? "heart.slash" : "heart")
-        }
-        .disabled(chosen.isEmpty)
-        Spacer()
-        Button { showBulkTags = true } label: { Label("Tags", systemImage: "tag") }
-            .disabled(chosen.isEmpty)
-        Spacer()
-        Button(role: .destructive) { confirmBulkDelete = true } label: { Label("Delete", systemImage: "trash") }
-            .disabled(chosen.isEmpty)
     }
 
     private var sort: LibrarySort { LibrarySort(rawValue: sortRaw) ?? .recent }
@@ -420,18 +402,7 @@ struct LibraryView: View {
     }
 
     private func selectableRow(_ song: Song) -> some View {
-        let isSelected = selection.contains(song.id)
-        return Button { selection.toggle(song.id) } label: {
-            HStack(spacing: 12) {
-                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .font(.title3)
-                    .foregroundStyle(isSelected ? Color.accentColor : Color.secondary)
-                SongRow(song: song, version: nil, isCurrent: false)
-            }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
+        SelectableSongRow(song: song, isSelected: selection.contains(song.id)) { selection.toggle(song.id) }
     }
 
     private var playlistsSection: some View {
@@ -563,54 +534,143 @@ struct CollectionDetailView: View {
     let songs: [Song]
     let kind: CollectionKind
     @Binding var showNowPlaying: Bool
+    @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var player: PlayerEngine
+    @EnvironmentObject private var store: EraStore
+    @EnvironmentObject private var playlistPicker: PlaylistPickerCoordinator
+    @State private var selecting = false
+    @State private var selection = BulkSelection()
+    @State private var showBulkTags = false
+    @State private var confirmBulkDelete = false
+
+    private var selectedSongs: [Song] { songs.filter { selection.contains($0.id) } }
+
+    private var totalDurationText: String {
+        let count = String(localized: "\(songs.count) tracks")
+        return count + " · " + TimeFormatting.spoken(songs.reduce(0) { $0 + $1.duration })
+    }
+
+    private func endSelecting() {
+        selecting = false
+        selection.clear()
+    }
 
     var body: some View {
         ScrollView {
             LazyVStack(spacing: 0) {
-                VStack(spacing: 14) {
-                    if let song = songs.first {
-                        Artwork(song: song, radius: kind == .artist ? 120 : 14)
-                            .frame(width: 250, height: 250)
-                            .clipShape(kind == .artist ? AnyShape(Circle()) : AnyShape(RoundedRectangle(cornerRadius: 14, style: .continuous)))
-                            .shadow(color: .black.opacity(0.25), radius: 22, y: 12)
-                    }
-                    Text(title).font(.largeTitle.bold()).multilineTextAlignment(.center)
-                    if kind == .album {
-                        Text(songs.first?.displayArtist ?? "").font(.title3).foregroundStyle(.tint)
-                        Text([songs.first?.era, songs.first?.year.map(String.init)].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · "))
-                            .font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
-                    }
-                    HStack(spacing: 18) {
-                        Button { player.playShuffled(songs.compactMap(\.primaryVersion)) } label: {
-                            Image(systemName: "shuffle").font(.title2).frame(width: 52, height: 52).background(.thinMaterial, in: .circle)
-                        }
-                        Button {
-                            let versions = songs.compactMap(\.primaryVersion)
-                            if let first = versions.first { player.play(first, from: versions); showNowPlaying = true }
-                        } label: {
-                            Label("Wiedergeben", systemImage: "play.fill").font(.headline).padding(.horizontal, 25).frame(height: 52)
-                                .background(Color.accentColor, in: .capsule).foregroundStyle(.white)
-                        }
-                    }.buttonStyle(.plain)
-                }.padding(.horizontal, 18).padding(.vertical, 20)
+                header
                 Divider().padding(.horizontal, 18)
                 ForEach(Array(songs.enumerated()), id: \.element.id) { index, song in
-                    HStack(spacing: 12) {
-                        Text("\(index + 1)").font(.subheadline).foregroundStyle(.secondary).frame(width: 24)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(song.title).lineLimit(1)
-                            Text(song.displayArtist).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
-                        }
-                        Spacer()
-                        Menu { Button("Up Next") { if let v = song.primaryVersion { player.playNext(v) } } } label: { Image(systemName: "ellipsis").frame(width: 40, height: 40) }
-                    }
-                    .padding(.horizontal, 18).padding(.vertical, 10)
-                    .contentShape(Rectangle()).onTapGesture { if let v = song.primaryVersion { player.play(v, from: songs.compactMap(\.primaryVersion)) } }
+                    row(index: index, song: song)
                     Divider().padding(.leading, 54)
                 }
             }
         }
-        .navigationTitle(title).navigationBarTitleDisplayMode(.inline)
+        .navigationTitle(selecting ? selectionTitle : title)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if selecting {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button(LocalizedStringKey(selection.coversAll(of: songs.map(\.id)) ? "Deselect All" : "Select All")) {
+                        if selection.coversAll(of: songs.map(\.id)) { selection.clear() } else { selection.selectAll(songs.map(\.id)) }
+                    }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { endSelecting() }.fontWeight(.semibold)
+                }
+                SongSelectionToolbar(chosen: selectedSongs, store: store, playlistPicker: playlistPicker, showTags: $showBulkTags, confirmDelete: $confirmBulkDelete)
+            } else if songs.count > 1 {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        Button { selecting = true } label: { Label("Select Songs", systemImage: "checkmark.circle") }
+                    } label: { Image(systemName: "ellipsis.circle") }
+                    .accessibilityLabel("More")
+                }
+            }
+        }
+        .toolbar(selecting ? .hidden : .automatic, for: .tabBar)
+        .sheet(isPresented: $showBulkTags) { BulkTagSheet(songs: selectedSongs) }
+        .confirmationDialog("Delete Songs?", isPresented: $confirmBulkDelete, titleVisibility: .visible) {
+            Button("Delete \(selection.count) Songs", role: .destructive) {
+                store.deleteSongs(selectedSongs)
+                endSelecting()
+                // The list holds the deleted models; leave instead of showing stale rows.
+                dismiss()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This removes the songs with all their versions and local audio files.")
+        }
+    }
+
+    private var selectionTitle: String {
+        selection.isEmpty ? String(localized: "Select Songs") : String(format: String(localized: "%lld Selected"), selection.count)
+    }
+
+    private var header: some View {
+        VStack(spacing: 14) {
+            if let song = songs.first {
+                Artwork(song: song, radius: kind == .artist ? 120 : 14)
+                    .scaledSquare(250)
+                    .clipShape(kind == .artist ? AnyShape(Circle()) : AnyShape(RoundedRectangle(cornerRadius: 14, style: .continuous)))
+                    .shadow(color: .black.opacity(0.25), radius: 22, y: 12)
+            }
+            Text(title).font(.largeTitle.bold()).multilineTextAlignment(.center)
+            if kind == .album {
+                Text(songs.first?.displayArtist ?? "").font(.title3).foregroundStyle(.tint)
+                Text([songs.first?.era, songs.first?.year.map(String.init)].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · "))
+                    .font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
+            }
+            Text(totalDurationText).font(.footnote).foregroundStyle(.secondary)
+            HStack(spacing: 18) {
+                Button { player.playShuffled(songs.compactMap(\.primaryVersion)) } label: {
+                    Image(systemName: "shuffle").font(.title2).frame(width: 52, height: 52).background(.thinMaterial, in: .circle)
+                }
+                .accessibilityLabel("Shuffle")
+                Button {
+                    let versions = songs.compactMap(\.primaryVersion)
+                    if let first = versions.first { player.play(first, from: versions); showNowPlaying = true }
+                } label: {
+                    Label("Play", systemImage: "play.fill").font(.headline).padding(.horizontal, 25).frame(height: 52)
+                        .background(Color.accentColor, in: .capsule).foregroundStyle(.white)
+                }
+            }.buttonStyle(.plain)
+        }
+        .padding(.horizontal, 18).padding(.vertical, 20)
+    }
+
+    @ViewBuilder private func row(index: Int, song: Song) -> some View {
+        if selecting {
+            SelectableSongRow(song: song, isSelected: selection.contains(song.id)) { selection.toggle(song.id) }
+                .padding(.horizontal, 18).padding(.vertical, 6)
+        } else {
+            let isCurrent = player.current?.song?.id == song.id
+            HStack(spacing: 12) {
+                Group {
+                    if isCurrent {
+                        Image(systemName: "waveform").foregroundStyle(.tint)
+                            .symbolEffect(.variableColor.iterative, isActive: player.isPlaying)
+                    } else {
+                        Text("\(index + 1)").font(.subheadline).foregroundStyle(.secondary)
+                    }
+                }
+                .frame(width: 24)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(song.title).lineLimit(1).foregroundStyle(isCurrent ? Color.accentColor : Color.primary)
+                    Text(song.displayArtist).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
+                }
+                Spacer()
+                if song.isFavorite { Image(systemName: "heart.fill").font(.caption).foregroundStyle(.pink) }
+                Text(song.durationText).font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                Menu { SongContextMenu(song: song, showNowPlaying: $showNowPlaying) } label: {
+                    Image(systemName: "ellipsis").frame(width: 40, height: 40)
+                }
+                .accessibilityLabel("More")
+            }
+            .padding(.horizontal, 18).padding(.vertical, 10)
+            .contentShape(Rectangle())
+            .onTapGesture { if let v = song.primaryVersion { player.play(v, from: songs.compactMap(\.primaryVersion)) } }
+            .contextMenu { SongContextMenu(song: song, showNowPlaying: $showNowPlaying) }
+        }
     }
 }
