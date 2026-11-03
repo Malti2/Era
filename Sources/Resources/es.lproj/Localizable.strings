@@ -423,3 +423,7 @@
 "Go" = "Ir a";
 "without %@" = "sin %@";
 "Importing the same files again relinks them." = "Si vuelves a importar los mismos archivos, se vuelven a vincular.";
+"Active Days" = "Días activos";
+"Import Music…" = "Importar música…";
+"New Playlist…" = "Nueva lista…";
+"Compared to %@" = "En comparación con %@";
