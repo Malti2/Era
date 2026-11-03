@@ -154,8 +154,9 @@ struct ContentView: View {
     }
 
     private func findSong(_ uuid: UUID) -> Song? {
-        var descriptor = FetchDescriptor<Song>()
-        return try? modelContext.fetch(descriptor).first { $0.id == uuid }
+        var descriptor = FetchDescriptor<Song>(predicate: #Predicate { $0.id == uuid })
+        descriptor.fetchLimit = 1
+        return try? modelContext.fetch(descriptor).first
     }
 
     private func firstSong() -> Song? {

@@ -494,17 +494,33 @@ struct LibraryView: View {
     }
 }
 
-// Schlichtes Listen-Ziel fuer Artists/Alben
+// Schlichtes Listen-Ziel fuer automatische Sammlungen: Tippen spielt ab, "..." oeffnet die Details.
 struct SongListView: View {
     let title: String
     let songs: [Song]
     @Binding var showNowPlaying: Bool
+    @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var player: PlayerEngine
     @EnvironmentObject private var store: EraStore
+    @EnvironmentObject private var playlistPicker: PlaylistPickerCoordinator
+    @State private var selecting = false
+    @State private var selection = BulkSelection()
+    @State private var showBulkTags = false
+    @State private var confirmBulkDelete = false
+
+    private var selectedSongs: [Song] { songs.filter { selection.contains($0.id) } }
+    private var selectionTitle: String {
+        selection.isEmpty ? String(localized: "Select Songs") : String(format: String(localized: "%lld Selected"), selection.count)
+    }
+
+    private func endSelecting() {
+        selecting = false
+        selection.clear()
+    }
 
     var body: some View {
         List {
-            if songs.count > 1 {
+            if songs.count > 1 && !selecting {
                 Section {
                     Button {
                         let versions = songs.compactMap(\.primaryVersion)
@@ -517,21 +533,62 @@ struct SongListView: View {
             }
             Section {
                 ForEach(songs) { song in
-                    NavigationLink {
-                        SongDetailView(song: song, showNowPlaying: $showNowPlaying)
-                    } label: {
-                        SongRow(song: song, version: nil, isCurrent: player.current?.song?.id == song.id)
+                    if selecting {
+                        SelectableSongRow(song: song, isSelected: selection.contains(song.id)) { selection.toggle(song.id) }
+                    } else {
+                        HStack(spacing: 8) {
+                            Button {
+                                if let v = song.primaryVersion { player.play(v, from: songs.compactMap(\.primaryVersion)); showNowPlaying = true }
+                            } label: { SongRow(song: song, version: nil, isCurrent: player.current?.song?.id == song.id) }
+                            .buttonStyle(.plain)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            NavigationLink { SongDetailView(song: song, showNowPlaying: $showNowPlaying) } label: { Image(systemName: "ellipsis").frame(width: 36, height: 44) }
+                            .fixedSize(horizontal: true, vertical: false)
+                            .accessibilityLabel("Song Details")
+                        }
+                        .swipeActions(edge: .leading) {
+                            Button { song.isFavorite.toggle(); store.save() } label: {
+                                Label("Favorite", systemImage: song.isFavorite ? "heart.slash" : "heart.fill")
+                            }.tint(.pink)
+                        }
+                        .contextMenu { SongContextMenu(song: song, showNowPlaying: $showNowPlaying) }
                     }
-                    .swipeActions(edge: .leading) {
-                        Button { song.isFavorite.toggle(); store.save() } label: {
-                            Label("Favorite", systemImage: song.isFavorite ? "heart.slash" : "heart.fill")
-                        }.tint(.pink)
-                    }
-                    .contextMenu { SongContextMenu(song: song, showNowPlaying: $showNowPlaying) }
                 }
             }
         }
-        .navigationTitle(title)
+        .navigationTitle(selecting ? selectionTitle : title)
+        .toolbar {
+            if selecting {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button(LocalizedStringKey(selection.coversAll(of: songs.map(\.id)) ? "Deselect All" : "Select All")) {
+                        if selection.coversAll(of: songs.map(\.id)) { selection.clear() } else { selection.selectAll(songs.map(\.id)) }
+                    }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { endSelecting() }.fontWeight(.semibold)
+                }
+                SongSelectionToolbar(chosen: selectedSongs, store: store, playlistPicker: playlistPicker, showTags: $showBulkTags, confirmDelete: $confirmBulkDelete)
+            } else if songs.count > 1 {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        Button { selecting = true } label: { Label("Select Songs", systemImage: "checkmark.circle") }
+                    } label: { Image(systemName: "ellipsis.circle") }
+                    .accessibilityLabel("More")
+                }
+            }
+        }
+        .toolbar(selecting ? .hidden : .automatic, for: .tabBar)
+        .sheet(isPresented: $showBulkTags) { BulkTagSheet(songs: selectedSongs) }
+        .confirmationDialog("Delete Songs?", isPresented: $confirmBulkDelete, titleVisibility: .visible) {
+            Button("Delete \(selection.count) Songs", role: .destructive) {
+                store.deleteSongs(selectedSongs)
+                endSelecting()
+                dismiss()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This removes the songs with all their versions and local audio files.")
+        }
     }
 }
 
