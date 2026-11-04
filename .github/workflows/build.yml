@@ -243,3 +243,43 @@ jobs:
             "$(pick Era-macOS-Catalyst-unsigned.dmg)" \
             "$(pick Era-macOS-Catalyst-unsigned.zip)" \
             "$(pick 07-player.png)"
+
+  # Jeder Push auf claude/nightly: IPA dauerhaft als Pre-Release `nightly-<run>` ablegen und den
+  # privaten AltStore-Feed neu erzeugen (Asset des festen Releases `nightly-source`, nirgends verlinkt).
+  nightly-release:
+    needs: [ipa, tests]
+    if: github.ref == 'refs/heads/claude/nightly'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: nightly-source
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: Era-*
+          path: dist
+      - name: Publish nightly pre-release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          TAG="nightly-${{ github.run_number }}"
+          VERSION="${{ needs.ipa.outputs.stable_version }}-nightly.${{ github.run_number }}"
+          IPA=$(find dist -type f -name Era-unsigned.ipa | head -1)
+          test -n "$IPA"
+          git log -1 --format=%B | grep -viE '^(co-authored-by|claude-session):' > notes.txt || true
+          gh release create "$TAG" --prerelease --target "$GITHUB_SHA" --title "$VERSION" --notes-file notes.txt "$IPA"
+      - name: Update private nightly AltStore feed
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          python3 Scripts/update-nightly-source.py nightly-source.json
+          python3 Scripts/validate-altstore-source.py nightly-source.json
+          gh release view nightly-source >/dev/null 2>&1 || \
+            gh release create nightly-source --prerelease --title "Nightly feed" --notes "AltStore feed for nightly builds (generated)."
+          gh release upload nightly-source nightly-source.json --clobber
+          echo "Feed: https://github.com/${{ github.repository }}/releases/download/nightly-source/nightly-source.json" >> "$GITHUB_STEP_SUMMARY"
