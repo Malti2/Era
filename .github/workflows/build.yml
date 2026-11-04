@@ -271,15 +271,21 @@ jobs:
           IPA=$(find dist -type f -name Era-unsigned.ipa | head -1)
           test -n "$IPA"
           git log -1 --format=%B | grep -viE '^(co-authored-by|claude-session):' > notes.txt || true
-          gh release create "$TAG" --prerelease --target "$GITHUB_SHA" --title "$VERSION" --notes-file notes.txt "$IPA"
+          # Idempotent + Retry: GitHub-API liefert gelegentlich 502, Re-run darf nicht an "exists" scheitern.
+          retry() { for i in 1 2 3 4 5; do "$@" && return 0; echo "retry $i: $*"; sleep $((i * 10)); done; return 1; }
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            retry gh release create "$TAG" --prerelease --target "$GITHUB_SHA" --title "$VERSION" --notes-file notes.txt "$IPA"
+          fi
       - name: Update private nightly AltStore feed
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -e
-          python3 Scripts/update-nightly-source.py nightly-source.json
+          retry() { for i in 1 2 3 4 5; do "$@" && return 0; echo "retry $i: $*"; sleep $((i * 10)); done; return 1; }
+          retry python3 Scripts/update-nightly-source.py nightly-source.json
           python3 Scripts/validate-altstore-source.py nightly-source.json
-          gh release view nightly-source >/dev/null 2>&1 || \
-            gh release create nightly-source --prerelease --title "Nightly feed" --notes "AltStore feed for nightly builds (generated)."
-          gh release upload nightly-source nightly-source.json --clobber
+          if ! gh release view nightly-source >/dev/null 2>&1; then
+            retry gh release create nightly-source --prerelease --title "Nightly feed" --notes "AltStore feed for nightly builds (generated)."
+          fi
+          retry gh release upload nightly-source nightly-source.json --clobber
           echo "Feed: https://github.com/${{ github.repository }}/releases/download/nightly-source/nightly-source.json" >> "$GITHUB_STEP_SUMMARY"
