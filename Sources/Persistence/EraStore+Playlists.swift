@@ -25,6 +25,21 @@ extension EraStore {
         save()
     }
 
+    /// Entfernt mehrere Eintraege auf einmal und nummeriert die Rest-Playlist lueckenlos neu.
+    /// Gibt die Anzahl entfernter Eintraege zurueck (Songs bleiben in der Bibliothek).
+    @discardableResult
+    func removeEntries(_ entries: [PlaylistEntry], from playlist: Playlist) -> Int {
+        let playlist = resolve(playlist)
+        let ids = Set(entries.map(\.id))
+        let doomed = playlist.entries.filter { ids.contains($0.id) }
+        guard !doomed.isEmpty else { return 0 }
+        playlist.entries.removeAll { ids.contains($0.id) }
+        for entry in doomed { context.delete(entry) }
+        for (index, rest) in playlist.sortedEntries.enumerated() where rest.position != index { rest.position = index }
+        save()
+        return doomed.count
+    }
+
     /// Kopiert eine Playlist samt Reihenfolge, gewaehlter Versionen und Tag-Filter.
     @discardableResult
     func duplicatePlaylist(_ playlist: Playlist, named name: String) -> Playlist? {

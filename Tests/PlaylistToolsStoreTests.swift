@@ -53,4 +53,21 @@ final class PlaylistToolsStoreTests: XCTestCase {
         let playlist = makePlaylist([("A", "x", 60)])
         XCTAssertNil(store.duplicatePlaylist(playlist, named: "  "))
     }
+
+    func testRemoveEntriesRenumbersAndKeepsSongs() throws {
+        let playlist = makePlaylist([("A", "x", 60), ("B", "x", 60), ("C", "x", 60), ("D", "x", 60)])
+        let entries = playlist.sortedEntries
+        XCTAssertEqual(store.removeEntries([entries[1], entries[3]], from: playlist), 2)
+        XCTAssertEqual(titles(playlist), ["A", "C"])
+        XCTAssertEqual(playlist.sortedEntries.map(\.position), [0, 1])
+        XCTAssertEqual(try store.allSongs().count, 4, "songs stay in the library")
+    }
+
+    func testRemoveEntriesIgnoresForeignAndEmptyInput() {
+        let playlist = makePlaylist([("A", "x", 60)])
+        let other = makePlaylist([("B", "x", 60)])
+        XCTAssertEqual(store.removeEntries([], from: playlist), 0)
+        XCTAssertEqual(store.removeEntries(other.sortedEntries, from: playlist), 0, "entries of another playlist are not touched")
+        XCTAssertEqual(titles(other), ["B"])
+    }
 }

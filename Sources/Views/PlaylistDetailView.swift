@@ -6,7 +6,11 @@ struct PlaylistDetailView: View {
     @Binding var showNowPlaying: Bool
     @EnvironmentObject private var player: PlayerEngine
     @EnvironmentObject private var store: EraStore
+    @EnvironmentObject private var playlistPicker: PlaylistPickerCoordinator
     @Query private var tags: [Tag]
+    @State private var selecting = false
+    @State private var selection = BulkSelection()
+    @State private var showBulkTags = false
     @State private var showAddSongs = false
     @State private var showRename = false
     @State private var renameText = ""
@@ -31,6 +35,16 @@ struct PlaylistDetailView: View {
         return tags.filter { ids.contains($0.id) }.sorted { $0.name < $1.name }
     }
 
+    private var selectedEntries: [PlaylistEntry] { filteredEntries.filter { selection.contains($0.id) } }
+    private var selectionTitle: String {
+        selection.isEmpty ? String(localized: "Select Songs") : String(format: String(localized: "%lld Selected"), selection.count)
+    }
+
+    private func endSelecting() {
+        selecting = false
+        selection.clear()
+    }
+
     var body: some View {
         let entries = filteredEntries
         let queue = entries.compactMap(\.resolvedVersion)
@@ -46,7 +60,8 @@ struct PlaylistDetailView: View {
             }
             ForEach(entries) { entry in
                 if let song = entry.song {
-                    PlaylistEntryRow(playlist: playlist, entry: entry, song: song, queue: queue)
+                    PlaylistEntryRow(playlist: playlist, entry: entry, song: song, queue: queue,
+                                     isSelected: selecting ? selection.contains(entry.id) : nil) { selection.toggle(entry.id) }
                 }
             }
             .onMove(perform: isFiltered ? nil : { source, destination in
@@ -58,11 +73,29 @@ struct PlaylistDetailView: View {
         }
         .listStyle(.plain)
         .environment(\.editMode, .constant(editOrder ? .active : .inactive))
-        .navigationTitle(playlist.name)
+        .navigationTitle(selecting ? selectionTitle : playlist.name)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            if selecting {
+                ToolbarItem(placement: .topBarLeading) {
+                    let all = entries.map(\.id)
+                    Button(LocalizedStringKey(selection.coversAll(of: all) ? "Deselect All" : "Select All")) {
+                        if selection.coversAll(of: all) { selection.clear() } else { selection.selectAll(all) }
+                    }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { endSelecting() }.fontWeight(.semibold)
+                }
+                SongSelectionToolbar(chosen: selectedEntries.compactMap(\.song), store: store, playlistPicker: playlistPicker,
+                                     showTags: $showBulkTags, confirmDelete: .constant(false)) {
+                    store.removeEntries(selectedEntries, from: playlist)
+                    endSelecting()
+                }
+            } else {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
+                    Button { editOrder = false; selecting = true } label: { Label("Select Songs", systemImage: "checkmark.circle") }
+                        .disabled(playlist.entries.isEmpty)
                     Button { renameText = playlist.name; showRename = true } label: { Label("Rename Playlist", systemImage: "pencil") }
                     Button { editOrder.toggle() } label: { Label(editOrder ? "Done Editing" : "Edit Order", systemImage: "arrow.up.arrow.down") }
                         .disabled(isFiltered || playlist.entries.count < 2)
@@ -85,7 +118,9 @@ struct PlaylistDetailView: View {
                 } label: { Image(systemName: "ellipsis") }
                 .accessibilityLabel("More")
             }
+            }
         }
+        .sheet(isPresented: $showBulkTags) { BulkTagSheet(songs: selectedEntries.compactMap(\.song)) }
         .sheet(isPresented: $showAddSongs) { AddToPlaylistSheet(playlist: playlist) }
         .sheet(item: $shareText) { ShareSheet(items: [$0.text]) }
         .alert("Rename Playlist", isPresented: $showRename) {
@@ -98,6 +133,7 @@ struct PlaylistDetailView: View {
             Button("Cancel", role: .cancel) {}
         } message: { Text("Songs stay in your library.") }
         .onChange(of: playlist.filterTagIDs) { _, filter in if !filter.isEmpty { editOrder = false } }
+        .onChange(of: playlist.entries.count) { _, _ in selection.prune(to: Set(playlist.entries.map(\.id))) }
     }
 
     private var emptyHint: some View {
@@ -219,6 +255,9 @@ struct PlaylistEntryRow: View {
     let song: Song
     /// Versions in the order currently shown (respects the active tag filter).
     let queue: [SongVersion]
+    /// nil = normaler Modus; sonst Auswahlmodus mit diesem Zustand.
+    var isSelected: Bool?
+    var toggle: () -> Void = {}
     @EnvironmentObject private var player: PlayerEngine
     @EnvironmentObject private var store: EraStore
     @State private var showDrawer = false
@@ -226,6 +265,11 @@ struct PlaylistEntryRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
+            if let isSelected {
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .font(.title3)
+                    .foregroundStyle(isSelected ? Color.accentColor : Color.secondary)
+            }
             Artwork(song: song, version: version, radius: 6).scaledSquare(52)
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 5) {
@@ -241,6 +285,7 @@ struct PlaylistEntryRow: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .layoutPriority(1)
             if player.current?.id == version?.id { Image(systemName: "waveform").foregroundStyle(.tint) }
+            if isSelected == nil {
             Menu {
                 Button { if let v = version { player.playNext(v) } } label: { Label("Play Next", systemImage: "text.line.first.and.arrowtriangle.forward") }
                 Button { if let v = version { player.playLater(v) } } label: { Label("Add to End", systemImage: "text.line.last.and.arrowtriangle.forward") }
@@ -250,11 +295,13 @@ struct PlaylistEntryRow: View {
             } label: { Image(systemName: "ellipsis").frame(width: 32, height: 44) }
             .buttonStyle(.borderless)
             .accessibilityLabel("More")
+            }
         }
         .contentShape(Rectangle())
         .onTapGesture {
-            if let v = version { player.play(v, from: queue) }
+            if isSelected != nil { toggle() } else if let v = version { player.play(v, from: queue) }
         }
+        .accessibilityAddTraits(isSelected == true ? .isSelected : [])
         .sheet(isPresented: $showDrawer) { VersionDrawer(song: song) }
     }
 }

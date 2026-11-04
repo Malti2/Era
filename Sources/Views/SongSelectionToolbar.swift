@@ -7,6 +7,8 @@ struct SongSelectionToolbar: ToolbarContent {
     let playlistPicker: PlaylistPickerCoordinator
     @Binding var showTags: Bool
     @Binding var confirmDelete: Bool
+    /// Gesetzt in Playlists: der letzte Knopf entfernt dann nur aus der Playlist, statt Songs zu loeschen.
+    var removeFromPlaylist: (() -> Void)?
 
     var body: some ToolbarContent {
         ToolbarItemGroup(placement: .bottomBar) {
@@ -22,8 +24,13 @@ struct SongSelectionToolbar: ToolbarContent {
             Button { showTags = true } label: { Label("Tags", systemImage: "tag") }
                 .disabled(chosen.isEmpty)
             Spacer()
-            Button(role: .destructive) { confirmDelete = true } label: { Label("Delete", systemImage: "trash") }
-                .disabled(chosen.isEmpty)
+            if let removeFromPlaylist {
+                Button(role: .destructive, action: removeFromPlaylist) { Label("Remove from Playlist", systemImage: "minus.circle") }
+                    .disabled(chosen.isEmpty)
+            } else {
+                Button(role: .destructive) { confirmDelete = true } label: { Label("Delete", systemImage: "trash") }
+                    .disabled(chosen.isEmpty)
+            }
         }
     }
 }
