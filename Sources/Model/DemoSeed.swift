@@ -48,6 +48,12 @@ enum DemoSeed {
         store.insertPack(Pack(name: "Studio Archive", tagIDs: [studio.id], confirmed: false))
         store.insertPack(Pack(name: "Unreleased Mixes", statusNames: ["Unreleased"], confirmed: false))
 
+        nightDrive.notes = "Bridge neu singen, Gitarre im zweiten Refrain leiser."
+        if let version = nightDrive.primaryVersion {
+            version.markersJSON = VersionMarkers.encode([
+                VersionMarker(time: 18, label: "Hook"), VersionMarker(time: 64, label: "Bridge"), VersionMarker(time: 121, label: "Outro")
+            ])
+        }
         northernLights.isFavorite = true
         openRoad.isFavorite = true
         afterglow.isFavorite = true

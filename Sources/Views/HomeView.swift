@@ -79,7 +79,7 @@ struct HomeView: View {
                             if let resume = lastPlayed.first {
                                 resumeCard(resume)
                             }
-                            if !lastPlayed.isEmpty { shelf(String(localized: "Recently Played"), songs: lastPlayed) }
+                            if !lastPlayed.isEmpty { shelf(String(localized: "Recently Played"), songs: lastPlayed, linksToHistory: true) }
                             if !favorites.isEmpty { shelf(String(localized: "Favorites"), songs: favorites) }
                             if mostPlayed.count > 1 { shelf(String(localized: "Most Played"), songs: mostPlayed) }
                             let rediscover = resolveSongs(HomeShelves.rediscover(shelfSongs, limit: 12))
@@ -145,9 +145,20 @@ struct HomeView: View {
         .buttonStyle(.plain)
     }
 
-    private func shelf(_ title: String, songs: [Song]) -> some View {
+    private func shelf(_ title: String, songs: [Song], linksToHistory: Bool = false) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(title).font(.title2.bold()).padding(.horizontal)
+            HStack(alignment: .firstTextBaseline) {
+                Text(title).font(.title2.bold())
+                Spacer()
+                if linksToHistory {
+                    NavigationLink { HistoryView() } label: {
+                        HStack(spacing: 3) { Text("History"); Image(systemName: "chevron.right").font(.caption.weight(.semibold)) }
+                            .font(.subheadline)
+                    }
+                    .accessibilityLabel("Listening History")
+                }
+            }
+            .padding(.horizontal)
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 14) {
                     ForEach(songs) { song in

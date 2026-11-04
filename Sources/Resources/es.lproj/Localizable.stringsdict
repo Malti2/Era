@@ -226,5 +226,21 @@
 			<string>%lld canciones coinciden</string>
 		</dict>
 	</dict>
+	<key>%lld plays</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld reproducción</string>
+			<key>other</key>
+			<string>%lld reproducciones</string>
+		</dict>
+	</dict>
 </dict>
 </plist>
