@@ -42,6 +42,7 @@ struct StatsView: View {
                 }
                 Section {
                     NavigationLink { YearReviewView() } label: { Label("Year in Review", systemImage: "sparkles") }
+                    NavigationLink { HistoryView() } label: { Label("History", systemImage: "clock.arrow.circlepath") }
                 }
                 Section("Last 6 Months") {
                     activityChart(StatsCalculator.monthlySeries(all, months: 6))

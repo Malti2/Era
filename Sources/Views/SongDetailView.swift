@@ -18,6 +18,7 @@ struct SongDetailView: View {
     @State private var showNotes = false
     @State private var renameText = ""
     @State private var shareItem: ShareItem?
+    @State private var rank: SongRank?
     @Query private var playEvents: [PlayEvent]
 
     init(song: Song, showNowPlaying: Binding<Bool>) {
@@ -109,6 +110,7 @@ struct SongDetailView: View {
             }
         }
         .sheet(isPresented: $showNotes) { SongNotesView(song: song) }
+        .task(id: song.playCount) { loadRank() }
         .alert("Versionsname", isPresented: Binding(get: { versionToRename != nil }, set: { if !$0 { versionToRename = nil } })) {
             TextField("Name", text: $renameText)
             Button("Save") { if let version = versionToRename { store.renameVersion(version, to: renameText) }; versionToRename = nil }
@@ -124,6 +126,7 @@ struct SongDetailView: View {
             Section("Listening") {
                 LabeledContent("Plays", value: "\(listening.plays)")
                 LabeledContent("Time Listened", value: TimeFormatting.spoken(listening.totalSeconds))
+                if let rank { LabeledContent("Rank", value: rankText(rank)) }
                 if let first = listening.firstPlayed {
                     LabeledContent("First Played", value: first.formatted(date: .abbreviated, time: .omitted))
                 }
@@ -141,8 +144,19 @@ struct SongDetailView: View {
                     .frame(height: 56)
                     .accessibilityLabel("Plays per month, last 12 months")
                 }
+                NavigationLink { HistoryView(songID: song.id) } label: { Label("Play History", systemImage: "clock.arrow.circlepath") }
             }
         }
+    }
+
+    private func rankText(_ rank: SongRank) -> String {
+        let base = String(localized: "#\(rank.position) of \(rank.total)")
+        guard let top = rank.topPercent else { return base }
+        return base + " · " + String(localized: "Top \(top)%")
+    }
+
+    private func loadRank() {
+        rank = SongRank.make(playCount: song.playCount, higher: store.songsPlayedMore(than: song.playCount), total: store.songCount())
     }
 
     @ViewBuilder
