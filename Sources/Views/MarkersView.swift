@@ -8,6 +8,7 @@ struct MarkersSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var markerToRename: VersionMarker?
     @State private var renameText = ""
+    @State private var shareText: MarkerShareText?
 
     var body: some View {
         NavigationStack {
@@ -42,8 +43,14 @@ struct MarkersSheet: View {
             .navigationTitle("Markers")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    if !version.markers.isEmpty {
+                        Button { shareText = MarkerShareText(text: shareBody) } label: { Label("Share Markers", systemImage: "square.and.arrow.up") }
+                    }
+                }
                 ToolbarItem(placement: .topBarTrailing) { Button("Done") { dismiss() }.fontWeight(.semibold) }
             }
+            .sheet(item: $shareText) { ShareSheet(items: [$0.text]) }
             .alert("Rename Marker", isPresented: Binding(get: { markerToRename != nil }, set: { if !$0 { markerToRename = nil } })) {
                 TextField("Name", text: $renameText)
                 Button("Save") {
@@ -56,10 +63,20 @@ struct MarkersSheet: View {
         .presentationDetents([.medium, .large])
     }
 
+    private var shareBody: String {
+        let title = [version.displayTitle, version.name].filter { !$0.isEmpty }.joined(separator: " · ")
+        return title + "\n" + VersionMarkers.listText(version.markers)
+    }
+
     private func beginRename(_ marker: VersionMarker) {
         renameText = marker.label
         markerToRename = marker
     }
+}
+
+private struct MarkerShareText: Identifiable {
+    let text: String
+    var id: String { text }
 }
 
 struct MarkerRow: View {

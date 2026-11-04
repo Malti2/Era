@@ -92,4 +92,18 @@ final class VersionMarkersTests: XCTestCase {
         XCTAssertEqual(VersionMarkers.mergedNotes("a", "b"), "a\n\nb")
         XCTAssertEqual(VersionMarkers.mergedNotes("a b", "b"), "a b")
     }
+
+    func testTimeText() {
+        XCTAssertEqual(VersionMarkers.timeText(0), "0:00")
+        XCTAssertEqual(VersionMarkers.timeText(65.9), "1:05")
+        XCTAssertEqual(VersionMarkers.timeText(3725), "1:02:05")
+        XCTAssertEqual(VersionMarkers.timeText(-4), "0:00")
+        XCTAssertEqual(VersionMarkers.timeText(.nan), "0:00")
+    }
+
+    func testListTextIsSortedAndLabelsAreOptional() {
+        let m = [VersionMarker(time: 90, label: "Drop"), VersionMarker(time: 12, label: ""), VersionMarker(time: 40, label: "Hook")]
+        XCTAssertEqual(VersionMarkers.listText(m), "0:12\n0:40 Hook\n1:30 Drop")
+        XCTAssertEqual(VersionMarkers.listText([]), "")
+    }
 }

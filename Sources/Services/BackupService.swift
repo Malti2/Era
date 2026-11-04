@@ -57,12 +57,21 @@ enum BackupService {
 
 // CSV-Export der Bibliothek (eine Zeile pro Song) fuer Tabellenkalkulationen.
 enum CSVExport {
-    static let header = ["Title", "Artist", "Album", "Era", "Year", "Duration", "Versions", "Status", "Tags", "Plays", "Favorite", "Date Added"]
+    static let header = ["Title", "Artist", "Album", "Era", "Year", "Duration", "Versions", "Status", "Tags", "Plays", "Favorite", "Date Added", "Notes", "Markers"]
 
     /// RFC 4180: Felder mit Komma, Anfuehrungszeichen oder Zeilenumbruch werden gequotet.
     static func escape(_ field: String) -> String {
         guard field.contains(where: { $0 == "," || $0 == "\"" || $0 == "\n" || $0 == "\r" }) else { return field }
         return "\"" + field.replacingOccurrences(of: "\"", with: "\"\"") + "\""
+    }
+
+    /// "OG 0:42 Hook; V2 1:05" - Marker aller Versionen in einer Zelle.
+    static func markerSummary(of song: Song) -> String {
+        song.sortedVersions.flatMap { version in
+            version.markers.map { marker in
+                [version.name, VersionMarkers.timeText(marker.time), marker.label].filter { !$0.isEmpty }.joined(separator: " ")
+            }
+        }.joined(separator: "; ")
     }
 
     static func csv(songs: [Song]) -> String {
@@ -78,7 +87,9 @@ enum CSVExport {
                 song.personalTags.map(\.name).joined(separator: "; "),
                 String(song.playCount),
                 song.isFavorite ? "yes" : "no",
-                dateFormatter.string(from: song.dateAdded)
+                dateFormatter.string(from: song.dateAdded),
+                song.notes,
+                markerSummary(of: song)
             ]
             lines.append(fields.map(escape).joined(separator: ","))
         }

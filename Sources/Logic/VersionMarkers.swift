@@ -92,4 +92,19 @@ enum VersionMarkers {
         if b.isEmpty || a == b || a.contains(b) { return a }
         return a + "\n\n" + b
     }
+
+    /// "m:ss" bzw. "h:mm:ss" ab einer Stunde.
+    static func timeText(_ time: Double) -> String {
+        let total = max(0, Int(time.isFinite ? time : 0))
+        let h = total / 3600, m = (total % 3600) / 60, sec = total % 60
+        return h > 0 ? String(format: "%d:%02d:%02d", h, m, sec) : String(format: "%d:%02d", m, sec)
+    }
+
+    /// Eine Zeile pro Marker ("1:05 Hook"), zeitlich sortiert - zum Teilen und fuer den CSV-Export.
+    /// Marker ohne Namen zeigen nur die Zeit.
+    static func listText(_ markers: [VersionMarker]) -> String {
+        sorted(markers).map { marker in
+            marker.label.isEmpty ? timeText(marker.time) : timeText(marker.time) + " " + marker.label
+        }.joined(separator: "\n")
+    }
 }

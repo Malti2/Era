@@ -155,4 +155,16 @@ final class CSVExportTests: XCTestCase {
         XCTAssertTrue(lines[0].hasPrefix("Title,Artist,Album"))
         XCTAssertTrue(lines[1].hasPrefix("\"Hello, World\",Me,,,2024,"))
     }
+
+    func testCSVIncludesNotesAndMarkers() {
+        let song = Song(title: "Sketch")
+        song.notes = "Refrain, neu"
+        let version = SongVersion(name: "OG", fileName: "s.m4a", pcmHash: "h", duration: 100)
+        version.markersJSON = VersionMarkers.encode([VersionMarker(time: 42, label: "Hook"), VersionMarker(time: 70, label: "")])
+        version.song = song
+        song.versions.append(version)
+        let lines = CSVExport.csv(songs: [song]).components(separatedBy: "\r\n")
+        XCTAssertTrue(lines[0].hasSuffix("Notes,Markers"))
+        XCTAssertTrue(lines[1].hasSuffix("\"Refrain, neu\",OG 0:42 Hook; OG 1:10"))
+    }
 }
