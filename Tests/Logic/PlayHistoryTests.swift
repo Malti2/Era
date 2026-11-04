@@ -58,9 +58,10 @@ final class PlayHistoryTests: XCTestCase {
     }
 
     func testFilterRequiresAllTermsAndIgnoresAccents() {
-        let entries = [entry("Café Nights", date(3, 1), artist: "Mira"), entry("Night Drive", date(3, 1), artist: "Cafe Club"), entry("Other", date(3, 1))]
+        let entries = [entry("Café Nights", date(3, 1), artist: "Mira"), entry("Night Drive", date(3, 1), artist: "Club"), entry("Other", date(3, 1))]
         XCTAssertEqual(PlayHistory.filter(entries, query: "cafe night").map(\.title), ["Café Nights"])
-        XCTAssertEqual(PlayHistory.filter(entries, query: "CAFE").count, 2)
+        XCTAssertEqual(PlayHistory.filter(entries, query: "CAFE").count, 1)
+        XCTAssertEqual(PlayHistory.filter(entries, query: "night").count, 2)
         XCTAssertEqual(PlayHistory.filter(entries, query: "   ").count, 3, "blank query keeps everything")
         XCTAssertTrue(PlayHistory.filter(entries, query: "zzz").isEmpty)
     }

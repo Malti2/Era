@@ -87,6 +87,7 @@ struct SettingsView: View {
                     LabeledContent("Songs", value: "\(songs.count)")
                     LabeledContent("Versions", value: "\(versions.count)")
                     LabeledContent("Storage Used", value: LibraryFiles.librarySizeText())
+                    NavigationLink { LibraryInsightsView() } label: { Label("Library Overview", systemImage: "square.stack.3d.up") }
                     NavigationLink { TagsView() } label: { Label("Tags", systemImage: "tag") }
                     NavigationLink { LibraryToolsView() } label: { Label("Backup & Maintenance", systemImage: "externaldrive") }
                 }
