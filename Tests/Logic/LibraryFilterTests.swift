@@ -45,6 +45,50 @@ final class LibraryFilterTests: XCTestCase {
     }
 }
 
+final class LibraryFilterAttributeTests: XCTestCase {
+    private let heard = SearchableSong(title: "Heard", versionNames: ["OG"], playCount: 3)
+    private let fresh = SearchableSong(title: "Fresh", versionNames: ["OG", "Demo"], playCount: 0, notes: "Refrain neu")
+    private let blank = SearchableSong(title: "Blank", versionNames: ["OG"], playCount: 0, notes: "  \n ")
+
+    func testNotPlayed() {
+        var filter = LibraryFilter()
+        filter.toggle(.notPlayed)
+        XCTAssertEqual(filter.ids(in: [heard, fresh, blank]), [fresh.id, blank.id])
+    }
+
+    func testNotesIgnoreWhitespaceOnlyText() {
+        var filter = LibraryFilter()
+        filter.toggle(.hasNotes)
+        XCTAssertEqual(filter.ids(in: [heard, fresh, blank]), [fresh.id])
+    }
+
+    func testAttributesCombineWithAnd() {
+        var filter = LibraryFilter()
+        filter.toggle(.multipleVersions)
+        filter.toggle(.notPlayed)
+        XCTAssertEqual(filter.ids(in: [heard, fresh, blank]), [fresh.id])
+        XCTAssertEqual(filter.activeCount, 2)
+        filter.toggle(.notPlayed)
+        filter.toggle(.multipleVersions)
+        XCTAssertFalse(filter.isActive)
+    }
+
+    func testAttributesSurviveEncodingAndOldFiltersStillDecode() {
+        var filter = LibraryFilter()
+        filter.toggle(.hasNotes)
+        XCTAssertEqual(LibraryFilter.decode(filter.encoded), filter)
+        let legacy = LibraryFilter.decode(#"{"favoritesOnly":true,"statuses":["Demo"],"tags":[]}"#)
+        XCTAssertTrue(legacy.favoritesOnly)
+        XCTAssertEqual(legacy.statuses, ["Demo"])
+        XCTAssertTrue(legacy.attributes.isEmpty)
+    }
+
+    func testUnknownAttributeFromNewerVersionIsDropped() {
+        let decoded = LibraryFilter.decode(#"{"favoritesOnly":false,"statuses":[],"tags":[],"attributes":["somethingNew"]}"#)
+        XCTAssertFalse(decoded.isActive)
+    }
+}
+
 final class LibraryFilterPersistenceTests: XCTestCase {
     func testEncodedFilterRoundtrips() {
         var filter = LibraryFilter()

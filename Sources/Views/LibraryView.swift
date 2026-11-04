@@ -310,6 +310,11 @@ struct LibraryView: View {
                     }
                 } label: { Label("Tags", systemImage: "tag") }
             }
+            Menu {
+                ForEach(LibraryFilter.Attribute.allCases, id: \.self) { attribute in
+                    Toggle(attribute.title, isOn: Binding(get: { filter.attributes.contains(attribute) }, set: { _ in filter.toggle(attribute) }))
+                }
+            } label: { Label("Show Only", systemImage: "line.3.horizontal.decrease") }
             if filter.isActive {
                 Button(role: .destructive) { filter = LibraryFilter() } label: { Label("Clear Filters", systemImage: "xmark.circle") }
             }

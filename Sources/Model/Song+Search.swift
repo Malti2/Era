@@ -30,3 +30,13 @@ extension LibrarySort {
         }
     }
 }
+
+extension LibraryFilter.Attribute {
+    var title: LocalizedStringKey {
+        switch self {
+        case .notPlayed: "Not Played Yet"
+        case .hasNotes: "With Notes"
+        case .multipleVersions: "Multiple Versions"
+        }
+    }
+}
