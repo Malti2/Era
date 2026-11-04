@@ -51,4 +51,27 @@ final class LibraryHealthTests: XCTestCase {
         XCTAssertEqual(report.duplicates.count, 1)
         XCTAssertEqual(Set(report.duplicates[0].songIDs), [one.id, two.id])
     }
+
+    func testSimilarTitlesAreHintsNotProblems() {
+        let base = song("Sunrise", artist: "Mira", versions: [("1.m4a", nil)])
+        let demo = song("Sunrise (Demo)", artist: "Mira", versions: [("2.m4a", nil)])
+        let unrelated = song("Moonlight", artist: "Mira", versions: [("3.m4a", nil)])
+        let files = LibraryFilesSnapshot(audio: ["1.m4a": 1, "2.m4a": 1, "3.m4a": 1])
+        let report = LibraryHealth.analyze(songs: [base, demo, unrelated], files: files)
+        XCTAssertTrue(report.isHealthy, "similar titles never make the library unhealthy")
+        XCTAssertTrue(report.duplicates.isEmpty)
+        XCTAssertEqual(report.similar.count, 1)
+        XCTAssertEqual(report.similar[0].title, "Sunrise", "the shortest title names the group")
+        XCTAssertEqual(Set(report.similar[0].songIDs), [base.id, demo.id])
+    }
+
+    func testIgnoredSimilarGroupsAreHidden() {
+        let base = song("Sunrise", versions: [("1.m4a", nil)])
+        let demo = song("Sunrise v2", versions: [("2.m4a", nil)])
+        let report = LibraryHealth.analyze(songs: [base, demo], files: LibraryFilesSnapshot(audio: ["1.m4a": 1, "2.m4a": 1]))
+        XCTAssertEqual(report.visibleSimilar(ignoring: []).count, 1)
+        let key = LibraryHealthReport.groupKey([demo.id, base.id])
+        XCTAssertEqual(key, LibraryHealthReport.groupKey([base.id, demo.id]), "order does not matter")
+        XCTAssertTrue(report.visibleSimilar(ignoring: [key]).isEmpty)
+    }
 }

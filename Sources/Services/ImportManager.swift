@@ -171,6 +171,7 @@ final class ImportManager: ObservableObject {
         holdScopes(for: urls)
         let targets = expandFolders(urls)
         var items: [StagedImport] = []
+        let candidates = songs.map { TitleCandidate(id: $0.id, title: $0.title, artist: $0.artist) }
         for source in targets {
             let name = source.lastPathComponent
             let ext = source.pathExtension.lowercased()
@@ -191,21 +192,14 @@ final class ImportManager: ObservableObject {
                 item.year = meta.year
                 try? FileManager.default.removeItem(at: tmp)
             }
-            item.suggestedSongID = suggestSong(for: item.title, in: songs)?.id
+            if let hit = TitleMatching.suggest(title: item.title, artist: item.artist, in: candidates) {
+                item.suggestedSongID = hit.id
+                if let name = hit.versionName { item.versionName = name }
+            }
             items.append(item)
         }
         staged = items
         if !items.isEmpty { showMassImport = true }
-    }
-
-    // Titel-Aehnlichkeit nur als VORSCHLAG (Spec 11.1): automatisch passiert nichts.
-    private func suggestSong(for title: String, in songs: [Song]) -> Song? {
-        let needle = title.lowercased()
-        guard needle.count >= 3 else { return nil }
-        return songs.first { song in
-            let t = song.title.lowercased()
-            return t == needle || (needle.count >= 4 && (t.contains(needle) || needle.contains(t)))
-        }
     }
 
     func confirmStaged(into store: EraStore, songs: [Song]) async {

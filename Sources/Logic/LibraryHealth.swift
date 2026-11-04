@@ -44,6 +44,15 @@ struct LibraryHealthReport: Equatable {
     var orphanArtworkFiles: [String] = []
     var orphanBytes = 0
     var duplicates: [DuplicateGroup] = []
+    /// Songs mit gleichem Basis-Titel ("Song", "Song (Demo)"): vermutlich Versionen desselben Songs. Reiner Hinweis, kein Fehler.
+    var similar: [DuplicateGroup] = []
+
+    /// Stabiler Schluessel einer Gruppe, damit "Ignorieren" ueber Starts hinweg haelt.
+    static func groupKey(_ ids: [UUID]) -> String { ids.map(\.uuidString).sorted().joined(separator: "+") }
+
+    func visibleSimilar(ignoring ignored: Set<String>) -> [DuplicateGroup] {
+        similar.filter { !ignored.contains(Self.groupKey($0.songIDs)) }
+    }
 
     var isHealthy: Bool {
         missingAudio.isEmpty && emptySongIDs.isEmpty && brokenArtworkVersionIDs.isEmpty
@@ -89,6 +98,16 @@ enum LibraryHealth {
         report.duplicates = groups.values.filter { $0.count > 1 }
             .map { LibraryHealthReport.DuplicateGroup(title: $0[0].title, artist: $0[0].artist, songIDs: $0.map(\.id)) }
             .sorted { $0.title.localizedStandardCompare($1.title) == .orderedAscending }
+
+        let byID = Dictionary(songs.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        let candidates = songs.map { TitleCandidate(id: $0.id, title: $0.title, artist: $0.artist) }
+        report.similar = TitleMatching.similarGroups(candidates).compactMap { ids in
+            // Anzeigename: der kuerzeste Titel ist meist der Basis-Titel
+            let members = ids.compactMap { byID[$0] }
+            guard let shortest = members.min(by: { $0.title.count < $1.title.count }) else { return nil }
+            return LibraryHealthReport.DuplicateGroup(title: shortest.title, artist: shortest.artist, songIDs: ids)
+        }
+        .sorted { $0.title.localizedStandardCompare($1.title) == .orderedAscending }
         return report
     }
 }

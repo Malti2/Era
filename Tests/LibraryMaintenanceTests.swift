@@ -141,4 +141,24 @@ final class LibraryMaintenanceTests: XCTestCase {
         XCTAssertEqual(twins.first?.id, first.id)
         XCTAssertEqual(twins.first?.versions.count, 2)
     }
+
+    func testMergeSimilarKeepsTitlesAndNamesVersionsFromHint() throws {
+        let base = makeSong("Sunrise")
+        let demo = makeSong("Sunrise (Demo)")
+        let v2 = makeSong("Sunrise - v2")
+        XCTAssertEqual(store.mergeSimilar(songIDs: [demo.id, v2.id, base.id]), 2)
+        XCTAssertEqual(try store.allSongs().count, 1)
+        let merged = try XCTUnwrap(try store.allSongs().first)
+        XCTAssertEqual(merged.title, "Sunrise", "the shortest title survives")
+        XCTAssertEqual(Set(merged.versions.map(\.name)), ["OG", "Demo", "V2"])
+        XCTAssertEqual(merged.versions.first { $0.name == "Demo" }?.titleOverride, "Sunrise (Demo)")
+        XCTAssertNil(merged.versions.first { $0.name == "OG" }?.titleOverride)
+    }
+
+    func testMergeSimilarNeedsTwoSongs() throws {
+        let only = makeSong("Solo")
+        XCTAssertEqual(store.mergeSimilar(songIDs: [only.id]), 0)
+        XCTAssertEqual(store.mergeSimilar(songIDs: []), 0)
+        XCTAssertEqual(try store.allSongs().count, 1)
+    }
 }

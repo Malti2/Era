@@ -101,6 +101,32 @@ extension EraStore {
     }
 }
 
+extension EraStore {
+    /// Fuehrt Songs mit gleichem Basis-Titel ("Song", "Song (Demo)") zusammen. Ziel ist der Song mit dem
+    /// kuerzesten Titel (bei Gleichstand der aelteste). Standard-Versionen der anderen Songs bekommen den Namen
+    /// aus ihrem Titel-Zusatz, und der urspruengliche Titel bleibt als Versionstitel erhalten.
+    /// Gibt die Anzahl zusammengefuehrter Songs zurueck.
+    @discardableResult
+    func mergeSimilar(songIDs: [UUID]) -> Int {
+        let songs = ((try? allSongs()) ?? []).filter { songIDs.contains($0.id) }
+            .sorted { ($0.title.count, $0.dateAdded) < ($1.title.count, $1.dateAdded) }
+        guard let target = songs.first, songs.count > 1 else { return 0 }
+        var taken = Set(target.versions.map { $0.name.lowercased() })
+        for source in songs.dropFirst() {
+            let hint = TitleMatching.versionName(for: TitleMatching.parse(source.title).hint)
+            for version in source.versions {
+                if (version.name.isEmpty || version.name == "OG"), let hint, !taken.contains(hint.lowercased()) {
+                    version.name = hint
+                }
+                taken.insert(version.name.lowercased())
+                if source.title != target.title && (version.titleOverride ?? "").isEmpty { version.titleOverride = source.title }
+            }
+            mergeSongAsVersions(source, into: target)
+        }
+        return songs.count - 1
+    }
+}
+
 extension BackupService {
     /// Merges a JSON backup into the current library. Nothing existing is overwritten;
     /// songs only come back when their audio file is still in the app container.

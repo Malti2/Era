@@ -22,6 +22,7 @@ enum AppSettings {
     static let libraryFilterKey = "settings.libraryFilter"
     static let lastBackupKey = "backup.lastExport"
     static let backupSnoozeKey = "backup.snoozedUntil"
+    static let ignoredSimilarKey = "maintenance.ignoredSimilar"
     static let recentSearchesKey = "search.recents"
 
     static let skipIntervals = [5, 10, 15, 30]

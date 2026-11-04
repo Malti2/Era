@@ -13,6 +13,9 @@ struct LibraryToolsView: View {
     @State private var pending: PendingAction?
     @State private var exportFailed = false
     @AppStorage(AppSettings.lastBackupKey) private var lastBackup = 0.0
+    @AppStorage(AppSettings.ignoredSimilarKey) private var ignoredSimilarRaw = ""
+
+    private var ignoredSimilar: Set<String> { Set(ignoredSimilarRaw.split(separator: "\n").map(String.init)) }
 
     private struct ToolAlert: Identifiable {
         let id = UUID()
@@ -21,12 +24,13 @@ struct LibraryToolsView: View {
     }
 
     private enum PendingAction: Identifiable {
-        case removeMissing, deleteOrphans, merge(LibraryHealthReport.DuplicateGroup)
+        case removeMissing, deleteOrphans, merge(LibraryHealthReport.DuplicateGroup), mergeSimilar(LibraryHealthReport.DuplicateGroup)
         var id: String {
             switch self {
             case .removeMissing: "missing"
             case .deleteOrphans: "orphans"
             case .merge(let group): "merge-\(group.songIDs.first?.uuidString ?? "")"
+            case .mergeSimilar(let group): "similar-\(group.songIDs.first?.uuidString ?? "")"
             }
         }
     }
@@ -60,10 +64,11 @@ struct LibraryToolsView: View {
 
             Section {
                 if let report {
-                    if report.isHealthy {
+                    let similar = report.visibleSimilar(ignoring: ignoredSimilar)
+                    if report.isHealthy && similar.isEmpty {
                         Label("Everything looks good.", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
                     } else {
-                        findings(report)
+                        findings(report, similar: similar)
                     }
                 } else {
                     HStack { ProgressView(); Text("Checking…").foregroundStyle(.secondary) }
@@ -88,7 +93,7 @@ struct LibraryToolsView: View {
 
     // MARK: Findings
 
-    @ViewBuilder private func findings(_ report: LibraryHealthReport) -> some View {
+    @ViewBuilder private func findings(_ report: LibraryHealthReport, similar: [LibraryHealthReport.DuplicateGroup]) -> some View {
         if !report.missingAudio.isEmpty {
             finding(String(localized: "\(report.missingAudio.count) missing audio files"), symbol: "exclamationmark.triangle.fill", tint: .orange,
                     detail: report.missingAudio.prefix(3).map { "\($0.title) (\($0.versionName))" }.joined(separator: ", ")
@@ -113,6 +118,23 @@ struct LibraryToolsView: View {
                     detail: String(localized: "\(group.songIDs.count) copies") + (group.artist.isEmpty ? "" : " · \(group.artist)"),
                     action: String(localized: "Merge")) { pending = .merge(group) }
         }
+        ForEach(similar, id: \.songIDs) { group in
+            finding(group.title, symbol: "rectangle.stack", tint: .teal,
+                    detail: String(localized: "Looks like versions of one song · \(group.songIDs.count) songs"),
+                    action: String(localized: "Merge")) { pending = .mergeSimilar(group) }
+                .contextMenu {
+                    Button { ignore(group) } label: { Label("Not the Same Song", systemImage: "eye.slash") }
+                }
+                .swipeActions {
+                    Button { ignore(group) } label: { Label("Not the Same Song", systemImage: "eye.slash") }.tint(.gray)
+                }
+        }
+    }
+
+    private func ignore(_ group: LibraryHealthReport.DuplicateGroup) {
+        let key = LibraryHealthReport.groupKey(group.songIDs)
+        guard !ignoredSimilar.contains(key) else { return }
+        ignoredSimilarRaw = (ignoredSimilarRaw.isEmpty ? "" : ignoredSimilarRaw + "\n") + key
     }
 
     private func finding(_ title: String, symbol: String, tint: Color, detail: String = "", action: String, perform: @escaping () -> Void) -> some View {
@@ -142,6 +164,7 @@ struct LibraryToolsView: View {
         case .removeMissing: store.removeMissingAudio(report.missingAudio)
         case .deleteOrphans: store.deleteOrphans(audio: report.orphanAudioFiles, artwork: report.orphanArtworkFiles)
         case .merge(let group): store.mergeDuplicates(songIDs: group.songIDs)
+        case .mergeSimilar(let group): store.mergeSimilar(songIDs: group.songIDs)
         }
         runCheck()
     }
@@ -151,6 +174,7 @@ struct LibraryToolsView: View {
         case .removeMissing: String(localized: "Remove Missing Entries?")
         case .deleteOrphans: String(localized: "Delete Unused Files?")
         case .merge: String(localized: "Merge Duplicates?")
+        case .mergeSimilar: String(localized: "Merge as Versions?")
         case nil: ""
         }
     }
@@ -158,7 +182,7 @@ struct LibraryToolsView: View {
         switch pending {
         case .removeMissing: String(localized: "Remove")
         case .deleteOrphans: String(localized: "Delete")
-        case .merge: String(localized: "Merge")
+        case .merge, .mergeSimilar: String(localized: "Merge")
         case nil: ""
         }
     }
@@ -167,6 +191,7 @@ struct LibraryToolsView: View {
         case .removeMissing: String(localized: "These versions cannot be played because their audio files are gone. They are removed from your library and playlists.")
         case .deleteOrphans: String(localized: "Files that no song uses are permanently deleted from this device.")
         case .merge: String(localized: "All copies become versions of one song.")
+        case .mergeSimilar: String(localized: "The songs become versions of one song. Each keeps its original title as the version title.")
         case nil: ""
         }
     }
