@@ -140,6 +140,8 @@ struct PacksView: View {
         var parts: [String] = []
         if !labels.include.isEmpty { parts.append(labels.include.joined(separator: rule.matchAny ? " / " : " + ")) }
         if !labels.exclude.isEmpty { parts.append(String(localized: "without \(labels.exclude.joined(separator: ", "))")) }
+        let query = rule.query.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !query.isEmpty { parts.append("“\(query)”") }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 

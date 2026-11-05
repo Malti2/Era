@@ -6,7 +6,7 @@ extension Pack {
     var rule: CollectionRule {
         get {
             CollectionRule(tagIDs: Set(tagIDs), statusNames: Set(statusNames),
-                           excludedTagIDs: Set(excludedTagIDs), excludedStatusNames: Set(excludedStatusNames), matchAny: matchAny)
+                           excludedTagIDs: Set(excludedTagIDs), excludedStatusNames: Set(excludedStatusNames), matchAny: matchAny, query: searchQuery)
         }
         set {
             tagIDs = Array(newValue.tagIDs)
@@ -14,13 +14,14 @@ extension Pack {
             excludedTagIDs = Array(newValue.excludedTagIDs)
             excludedStatusNames = Array(newValue.excludedStatusNames).sorted()
             matchAny = newValue.matchAny
+            searchQuery = newValue.query.trimmingCharacters(in: .whitespacesAndNewlines)
         }
     }
 }
 
 extension Song {
     func matches(_ rule: CollectionRule) -> Bool {
-        rule.matches(tagIDs: Set(tags.map(\.id)), statuses: Set(statusTags.map(\.name)))
+        rule.matches(tagIDs: Set(tags.map(\.id)), statuses: Set(statusTags.map(\.name)), searchable: { searchable })
     }
 }
 

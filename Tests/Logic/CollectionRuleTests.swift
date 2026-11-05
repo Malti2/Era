@@ -108,4 +108,36 @@ final class CollectionRuleTests: XCTestCase {
         XCTAssertEqual(labels.include, ["Demo", "Night"])
         XCTAssertEqual(labels.exclude, ["Leak", "Skit"])
     }
+
+    // MARK: gespeicherte Suche
+
+    func testQueryOnlyRuleIsNotEmptyButBlankQueryIs() {
+        XCTAssertFalse(CollectionRule(query: "era:synth").isEmpty)
+        XCTAssertTrue(CollectionRule(query: "   ").isEmpty)
+        XCTAssertNil(CollectionRule(query: "  ").parsedQuery)
+    }
+
+    func testQueryNarrowsTagAndStatusMatches() {
+        let tag = UUID()
+        let rule = CollectionRule(tagIDs: [tag], query: "plays:0 -era:pop")
+        let fresh = SearchableSong(title: "Fresh", era: "Synth", playCount: 0)
+        let heard = SearchableSong(title: "Heard", era: "Synth", playCount: 3)
+        let pop = SearchableSong(title: "Pop", era: "Pop", playCount: 0)
+        XCTAssertTrue(rule.matches(tagIDs: [tag], statuses: [], searchable: { fresh }))
+        XCTAssertFalse(rule.matches(tagIDs: [tag], statuses: [], searchable: { heard }))
+        XCTAssertFalse(rule.matches(tagIDs: [tag], statuses: [], searchable: { pop }))
+        XCTAssertFalse(rule.matches(tagIDs: [], statuses: [], searchable: { fresh }), "tags still required")
+    }
+
+    func testQueryOnlyRuleWithExclusionMeansEverythingExceptThat() {
+        let rule = CollectionRule(query: "-demo")
+        XCTAssertTrue(rule.matches(tagIDs: [], statuses: [], searchable: { SearchableSong(title: "Finished") }))
+        XCTAssertFalse(rule.matches(tagIDs: [], statuses: [], searchable: { SearchableSong(title: "Demo Take") }))
+    }
+
+    func testSearchableIsOnlyBuiltWhenAQueryIsSet() {
+        var built = 0
+        _ = CollectionRule(statusNames: ["Demo"]).matches(tagIDs: [], statuses: ["Demo"], searchable: { built += 1; return SearchableSong(title: "x") })
+        XCTAssertEqual(built, 0)
+    }
 }

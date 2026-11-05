@@ -198,6 +198,7 @@ extension BackupService {
             pack.excludedTagIDs = (entry.excludedTagIDs ?? []).compactMap { localTag($0)?.id }
             pack.excludedStatusNames = entry.excludedStatusNames ?? []
             pack.matchAny = entry.matchAny ?? false
+            pack.searchQuery = entry.searchQuery ?? ""
             context.insert(pack)
             summary.packs += 1
         }

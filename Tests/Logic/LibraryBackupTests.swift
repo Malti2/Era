@@ -122,4 +122,12 @@ final class LibraryBackupTests: XCTestCase {
         let oldDecoded = try LibraryBackup.decode(from: encoder.encode(backup([], [], packs: [old])))
         XCTAssertNil(oldDecoded.packs.first?.matchAny)
     }
+
+    func testPackSearchQuerySurvivesRoundtrip() throws {
+        let pack = LibraryBackup.PackEntry(id: UUID(), name: "Saved", tagIDs: [], statusNames: [], confirmed: true, searchQuery: "era:synth -fav")
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        let decoded = try LibraryBackup.decode(from: encoder.encode(backup([], [], packs: [pack])))
+        XCTAssertEqual(decoded.packs.first?.searchQuery, "era:synth -fav")
+    }
 }

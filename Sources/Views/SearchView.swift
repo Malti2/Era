@@ -8,6 +8,7 @@ struct SearchView: View {
     @State private var query = ""
     @State private var recents = UserDefaults.standard.stringArray(forKey: AppSettings.recentSearchesKey) ?? []
     @FocusState private var focused: Bool
+    @State private var showSaveCollection = false
 
     private struct Entry: Identifiable {
         let song: Song
@@ -42,6 +43,16 @@ struct SearchView: View {
             .navigationTitle("Search")
             .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Title, artist, album, tag, version")
             .searchFocused($focused)
+            .toolbar {
+                if !query.trimmingCharacters(in: .whitespaces).isEmpty {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button { remember(query); showSaveCollection = true } label: {
+                            Label("Save as Collection", systemImage: "rectangle.stack.badge.plus")
+                        }
+                    }
+                }
+            }
+            .sheet(isPresented: $showSaveCollection) { CollectionEditorView(pack: nil, initialQuery: query.trimmingCharacters(in: .whitespacesAndNewlines)) }
             .onSubmit(of: .search) { remember(query) }
             .onAppear { focused = true }
         }

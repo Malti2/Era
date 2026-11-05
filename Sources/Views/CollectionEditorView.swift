@@ -6,6 +6,8 @@ import SwiftData
 struct CollectionEditorView: View {
     /// nil = neue Sammlung
     let pack: Pack?
+    /// Vorbelegung der gespeicherten Suche (z. B. aus der Suche heraus).
+    var initialQuery = ""
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var store: EraStore
     @Query(sort: \Tag.name) private var tags: [Tag]
@@ -47,6 +49,16 @@ struct CollectionEditorView: View {
                         Text(rule.matchAny ? "A song needs at least one of the chosen statuses or tags." : "A song needs all of the chosen statuses and tags.")
                     }
                 }
+                Section {
+                    TextField("era:synth plays:0 -tag:demo", text: $rule.query)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .font(.body.monospaced())
+                } header: {
+                    Text("Saved Search")
+                } footer: {
+                    Text("Optional. Uses the same words and filters as Search, e.g. has:notes or year:2018-2020. Songs must match this as well.")
+                }
                 if !statusTags.isEmpty {
                     Section("Status") {
                         ForEach(statusTags) { tag in
@@ -67,7 +79,7 @@ struct CollectionEditorView: View {
                     Text("Tap once to include, twice to exclude, a third time to clear.")
                 }
                 Section {
-                    Label(rule.isEmpty ? String(localized: "Choose at least one status or tag.") : String(localized: "\(matchCount) songs match"),
+                    Label(rule.isEmpty ? String(localized: "Choose at least one status, tag or search.") : String(localized: "\(matchCount) songs match"),
                           systemImage: rule.isEmpty ? "hand.point.up.left" : "music.note.list")
                         .foregroundStyle(.secondary)
                 }
@@ -84,6 +96,8 @@ struct CollectionEditorView: View {
                 if let pack, name.isEmpty {
                     name = pack.name
                     rule = pack.rule.pruned(toExistingTagIDs: Set(tags.map(\.id)))
+                } else if pack == nil, rule.query.isEmpty, !initialQuery.isEmpty {
+                    rule.query = initialQuery
                 }
             }
         }

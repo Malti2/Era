@@ -14,21 +14,36 @@ struct CollectionRule: Equatable {
     var excludedStatusNames: Set<String> = []
     /// false: alle gewaehlten Bedingungen muessen passen; true: eine reicht.
     var matchAny = false
+    /// Gespeicherte Suche (Syntax wie in der Suche, z. B. `era:synth plays:0 -tag:demo`); zusaetzlich zu den Tags/Status.
+    var query = ""
 
     init(tagIDs: Set<UUID> = [], statusNames: Set<String> = [],
-         excludedTagIDs: Set<UUID> = [], excludedStatusNames: Set<String> = [], matchAny: Bool = false) {
+         excludedTagIDs: Set<UUID> = [], excludedStatusNames: Set<String> = [], matchAny: Bool = false, query: String = "") {
         self.tagIDs = tagIDs
         self.statusNames = statusNames
         self.excludedTagIDs = excludedTagIDs
         self.excludedStatusNames = excludedStatusNames
         self.matchAny = matchAny
+        self.query = query
     }
 
     /// Eine Regel ohne Bedingung wuerde die ganze Bibliothek enthalten - so etwas legt der Editor nicht an.
-    var isEmpty: Bool { includeCount == 0 && excludedTagIDs.isEmpty && excludedStatusNames.isEmpty }
+    var isEmpty: Bool { includeCount == 0 && excludedTagIDs.isEmpty && excludedStatusNames.isEmpty && parsedQuery == nil }
+    /// Die Suche, falls eine gesetzt ist und etwas bedeutet (nur Leerraum = keine Suche).
+    var parsedQuery: SongSearchQuery? {
+        let parsed = SongSearchQuery(query)
+        return parsed.isEmpty ? nil : parsed
+    }
     var includeCount: Int { tagIDs.count + statusNames.count }
     /// "Alle/Eine"-Auswahl ergibt erst ab zwei positiven Bedingungen einen Unterschied.
     var needsMatchMode: Bool { includeCount >= 2 }
+
+    /// Tags/Status UND gespeicherte Suche. `searchable` wird nur gebaut, wenn eine Suche gesetzt ist.
+    func matches(tagIDs songTagIDs: Set<UUID>, statuses songStatuses: Set<String>, searchable: () -> SearchableSong) -> Bool {
+        guard matches(tagIDs: songTagIDs, statuses: songStatuses) else { return false }
+        guard let parsed = parsedQuery else { return true }
+        return SongSearch.match(searchable(), query: parsed) != nil
+    }
 
     func matches(tagIDs songTagIDs: Set<UUID>, statuses songStatuses: Set<String>) -> Bool {
         guard excludedTagIDs.isDisjoint(with: songTagIDs), excludedStatusNames.isDisjoint(with: songStatuses) else { return false }

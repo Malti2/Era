@@ -405,7 +405,6 @@
 "Songs stay in your library." = "Les morceaux restent dans ta bibliothèque.";
 "A collection with this name already exists." = "Une collection portant ce nom existe déjà.";
 "Add tags to songs first, then use them here." = "Ajoute d’abord des tags aux morceaux, puis utilise-les ici.";
-"Choose at least one status or tag." = "Choisis au moins un statut ou un tag.";
 "%lld songs match" = "%lld morceaux correspondent";
 "A song must have all chosen statuses and tags." = "Un morceau doit avoir tous les statuts et tags choisis.";
 "Match" = "Correspondance";
@@ -466,3 +465,8 @@
 "Eras" = "Époques";
 "No Era" = "Sans époque";
 "Close" = "Fermer";
+"Choose at least one status, tag or search." = "Choisissez au moins un statut, un tag ou une recherche.";
+"Saved Search" = "Recherche enregistrée";
+"era:synth plays:0 -tag:demo" = "era:synth plays:0 -tag:demo";
+"Optional. Uses the same words and filters as Search, e.g. has:notes or year:2018-2020. Songs must match this as well." = "Facultatif. Utilise les mêmes mots et filtres que la recherche, p. ex. has:notes ou year:2018-2020. Les titres doivent aussi y correspondre.";
+"Save as Collection" = "Enregistrer comme collection";

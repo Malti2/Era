@@ -405,7 +405,6 @@
 "Songs stay in your library." = "Songs stay in your library.";
 "A collection with this name already exists." = "A collection with this name already exists.";
 "Add tags to songs first, then use them here." = "Add tags to songs first, then use them here.";
-"Choose at least one status or tag." = "Choose at least one status or tag.";
 "%lld songs match" = "%lld songs match";
 "A song must have all chosen statuses and tags." = "A song must have all chosen statuses and tags.";
 "Match" = "Match";
@@ -466,3 +465,8 @@
 "Eras" = "Eras";
 "No Era" = "No Era";
 "Close" = "Close";
+"Choose at least one status, tag or search." = "Choose at least one status, tag or search.";
+"Saved Search" = "Saved Search";
+"era:synth plays:0 -tag:demo" = "era:synth plays:0 -tag:demo";
+"Optional. Uses the same words and filters as Search, e.g. has:notes or year:2018-2020. Songs must match this as well." = "Optional. Uses the same words and filters as Search, e.g. has:notes or year:2018-2020. Songs must match this as well.";
+"Save as Collection" = "Save as Collection";

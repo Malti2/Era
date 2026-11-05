@@ -52,6 +52,7 @@ struct LibraryBackup: Codable, Equatable {
         var excludedTagIDs: [UUID]? = nil
         var excludedStatusNames: [String]? = nil
         var matchAny: Bool? = nil
+        var searchQuery: String? = nil
     }
     struct PlaylistEntryItem: Codable, Equatable {
         var position: Int

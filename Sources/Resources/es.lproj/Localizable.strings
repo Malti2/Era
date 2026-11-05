@@ -405,7 +405,6 @@
 "Songs stay in your library." = "Las canciones se quedan en tu biblioteca.";
 "A collection with this name already exists." = "Ya existe una colección con este nombre.";
 "Add tags to songs first, then use them here." = "Primero añade etiquetas a las canciones y úsalas aquí.";
-"Choose at least one status or tag." = "Elige al menos un estado o etiqueta.";
 "%lld songs match" = "%lld canciones coinciden";
 "A song must have all chosen statuses and tags." = "Una canción debe tener todos los estados y etiquetas elegidos.";
 "Match" = "Coincidencia";
@@ -466,3 +465,8 @@
 "Eras" = "Eras";
 "No Era" = "Sin era";
 "Close" = "Cerrar";
+"Choose at least one status, tag or search." = "Elige al menos un estado, etiqueta o búsqueda.";
+"Saved Search" = "Búsqueda guardada";
+"era:synth plays:0 -tag:demo" = "era:synth plays:0 -tag:demo";
+"Optional. Uses the same words and filters as Search, e.g. has:notes or year:2018-2020. Songs must match this as well." = "Opcional. Usa las mismas palabras y filtros que la búsqueda, p. ej. has:notes o year:2018-2020. Las canciones también deben cumplirlo.";
+"Save as Collection" = "Guardar como colección";

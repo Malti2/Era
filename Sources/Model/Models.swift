@@ -155,6 +155,8 @@ final class Pack {
     var excludedTagIDs: [UUID] = []
     var excludedStatusNames: [String] = []
     var matchAny: Bool = false
+    // Gespeicherte Suche (Standardwert -> leichte Migration).
+    var searchQuery: String = ""
 
     init(name: String, tagIDs: [UUID] = [], statusNames: [String] = [], confirmed: Bool = false) {
         self.id = UUID()

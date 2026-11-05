@@ -108,4 +108,15 @@ final class CollectionStoreTests: XCTestCase {
         XCTAssertEqual(pack.excludedTagIDs, [other.id])
         XCTAssertTrue(store.unusedTags().isEmpty, "tags used only as exclusions still count as referenced")
     }
+
+    func testSavedSearchCollectionMatchesSongsAndIsTrimmed() throws {
+        let synth = Song(title: "Synth One", era: "Synth Era")
+        let pop = Song(title: "Pop One", era: "Pop Era")
+        let pack = try XCTUnwrap(store.createCollection(named: "Synth Sketches", rule: CollectionRule(query: "  era:synth  ")))
+        XCTAssertEqual(pack.searchQuery, "era:synth")
+        XCTAssertTrue(synth.matches(pack.rule))
+        XCTAssertFalse(pop.matches(pack.rule))
+        XCTAssertTrue(store.updateCollection(pack, name: "Synth Sketches", rule: CollectionRule(query: "era:pop")))
+        XCTAssertTrue(pop.matches(pack.rule))
+    }
 }
