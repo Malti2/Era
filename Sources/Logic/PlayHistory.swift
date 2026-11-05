@@ -41,6 +41,20 @@ enum HistoryDayLabel: Equatable {
 }
 
 enum PlayHistory {
+    /// Songs fuer "ab hier nachspielen": ab dem angetippten Eintrag in der Reihenfolge, in der sie gehoert wurden
+    /// (aelter -> neuer), ohne Wiederholungen und ohne geloeschte Songs. `entries` ist neueste zuerst.
+    static func replayQueue(_ entries: [HistoryEntry], startingAt id: UUID, limit: Int = 100) -> [UUID] {
+        guard let index = entries.firstIndex(where: { $0.id == id }) else { return [] }
+        var seen = Set<UUID>()
+        var result: [UUID] = []
+        for entry in entries[...index].reversed() {
+            guard let songID = entry.songID, seen.insert(songID).inserted else { continue }
+            result.append(songID)
+            if result.count == limit { break }
+        }
+        return result
+    }
+
     /// Gruppiert nach Kalendertag, neueste Tage und Eintraege zuerst. Eintraege in der Zukunft
     /// (Uhr verstellt) werden nicht ausgeblendet - sie landen einfach oben.
     static func days(_ entries: [HistoryEntry], calendar: Calendar = .current) -> [HistoryDay] {
@@ -85,4 +99,9 @@ struct SongRank: Equatable {
         let percent = Int((Double(position) / Double(total) * 100).rounded(.up))
         return total >= 10 && percent <= 10 ? max(percent, 1) : nil
     }
+}
+
+enum PlayCounts {
+    /// Zaehler nach dem Loeschen von `removed` Wiedergaben; faellt nie unter 0.
+    static func afterRemoving(_ removed: Int, from count: Int) -> Int { max(0, count - max(0, removed)) }
 }

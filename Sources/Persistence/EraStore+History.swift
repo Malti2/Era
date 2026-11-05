@@ -9,17 +9,33 @@ extension EraStore {
         guard !ids.isEmpty else { return 0 }
         let wanted = Set(ids)
         let events = ((try? context.fetch(FetchDescriptor<PlayEvent>())) ?? []).filter { wanted.contains($0.id) }
-        for event in events { context.delete(event) }
-        if !events.isEmpty { save() }
+        removeEvents(events)
         return events.count
+    }
+
+    /// Loescht die Wiedergaben und zieht sie von `Song.playCount` ab (nie unter 0), damit Rang,
+    /// "Meistgespielt" und "Nicht gespielt" zum bereinigten Verlauf passen.
+    private func removeEvents(_ events: [PlayEvent]) {
+        guard !events.isEmpty else { return }
+        var removedPerSong: [UUID: Int] = [:]
+        for event in events {
+            if let id = event.songID { removedPerSong[id, default: 0] += 1 }
+            context.delete(event)
+        }
+        if !removedPerSong.isEmpty {
+            for song in (try? context.fetch(FetchDescriptor<Song>())) ?? [] {
+                guard let removed = removedPerSong[song.id] else { continue }
+                song.playCount = PlayCounts.afterRemoving(removed, from: song.playCount)
+            }
+        }
+        save()
     }
 
     /// Loescht den Verlauf eines Songs, oder - ohne `songID` - die gesamte Hoerhistorie.
     @discardableResult
     func clearPlayHistory(songID: UUID? = nil) -> Int {
         let events = ((try? context.fetch(FetchDescriptor<PlayEvent>())) ?? []).filter { songID == nil || $0.songID == songID }
-        for event in events { context.delete(event) }
-        if !events.isEmpty { save() }
+        removeEvents(events)
         return events.count
     }
 

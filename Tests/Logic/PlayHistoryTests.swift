@@ -88,3 +88,28 @@ final class PlayHistoryTests: XCTestCase {
         XCTAssertNil(SongRank(position: 1, total: 5).topPercent, "tiny libraries do not get a badge")
     }
 }
+
+final class ReplayQueueTests: XCTestCase {
+    func testReplayGoesFromTappedEntryTowardsNewerOnes() {
+        let a = UUID(), b = UUID(), c = UUID()
+        let old = HistoryEntry(date: Date(timeIntervalSince1970: 100), seconds: 1, title: "A", songID: a)
+        let mid = HistoryEntry(date: Date(timeIntervalSince1970: 200), seconds: 1, title: "B", songID: b)
+        let again = HistoryEntry(date: Date(timeIntervalSince1970: 250), seconds: 1, title: "A2", songID: a)
+        let gone = HistoryEntry(date: Date(timeIntervalSince1970: 275), seconds: 1, title: "X", songID: nil)
+        let new = HistoryEntry(date: Date(timeIntervalSince1970: 300), seconds: 1, title: "C", songID: c)
+        let newestFirst = [new, gone, again, mid, old]
+        XCTAssertEqual(PlayHistory.replayQueue(newestFirst, startingAt: old.id), [a, b, c])
+        XCTAssertEqual(PlayHistory.replayQueue(newestFirst, startingAt: mid.id), [b, a, c])
+        XCTAssertEqual(PlayHistory.replayQueue(newestFirst, startingAt: new.id), [c])
+        XCTAssertTrue(PlayHistory.replayQueue(newestFirst, startingAt: UUID()).isEmpty)
+        XCTAssertEqual(PlayHistory.replayQueue(newestFirst, startingAt: old.id, limit: 2), [a, b])
+    }
+}
+
+final class PlayCountsTests: XCTestCase {
+    func testCountNeverDropsBelowZero() {
+        XCTAssertEqual(PlayCounts.afterRemoving(2, from: 5), 3)
+        XCTAssertEqual(PlayCounts.afterRemoving(9, from: 5), 0)
+        XCTAssertEqual(PlayCounts.afterRemoving(-3, from: 5), 5)
+    }
+}

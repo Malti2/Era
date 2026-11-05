@@ -1,7 +1,7 @@
 import SwiftUI
 import SwiftData
 
-// Hoerverlauf: jede Wiedergabe nach Tagen gruppiert (gesamt oder fuer einen Song). Tippen spielt den Song erneut,
+// Hoerverlauf: jede Wiedergabe nach Tagen gruppiert (gesamt oder fuer einen Song). Tippen spielt den Song und danach die Songs, die damals folgten,
 // Wischen loescht einzelne Eintraege. Basis ist dieselbe lokale PlayEvent-Historie wie in der Statistik.
 struct HistoryView: View {
     var songID: UUID?
@@ -91,9 +91,7 @@ struct HistoryView: View {
 
     private func row(_ entry: HistoryEntry) -> some View {
         let song = entry.songID.flatMap(findSong)
-        return Button {
-            if let version = song?.primaryVersion { player.play(version, from: [version]) }
-        } label: {
+        return Button { replay(from: entry, song: song) } label: {
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(entry.title).lineLimit(1)
@@ -115,6 +113,14 @@ struct HistoryView: View {
         .disabled(song?.primaryVersion == nil)
         .accessibilityElement(children: .combine)
         .accessibilityHint(song == nil ? "" : String(localized: "Plays this song again"))
+    }
+
+    /// Spielt den Eintrag und danach die Songs, die damals auf ihn folgten (nur sichtbar gefilterte Eintraege).
+    private func replay(from entry: HistoryEntry, song: Song?) {
+        guard let version = song?.primaryVersion else { return }
+        let visible = PlayHistory.filter(entries, query: query)
+        let queue = PlayHistory.replayQueue(visible, startingAt: entry.id).compactMap { findSong($0)?.primaryVersion }
+        player.play(version, from: queue.isEmpty ? [version] : queue)
     }
 
     private func findSong(_ id: UUID) -> Song? {

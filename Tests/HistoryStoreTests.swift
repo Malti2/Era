@@ -54,4 +54,19 @@ final class HistoryStoreTests: XCTestCase {
         XCTAssertEqual(store.songsPlayedMore(than: 5), 0)
         XCTAssertEqual(store.songsPlayedMore(than: 0), 3)
     }
+
+    func testDeletingEventsLowersThePlayCountButNotBelowZero() {
+        let song = Song(title: "Counted")
+        song.playCount = 3
+        context.insert(song)
+        let events = [addEvent(song.id), addEvent(song.id)]
+        XCTAssertEqual(store.deletePlayEvents(ids: [events[0].id]), 1)
+        XCTAssertEqual(song.playCount, 2)
+        XCTAssertEqual(store.clearPlayHistory(songID: song.id), 1)
+        XCTAssertEqual(song.playCount, 1)
+        song.playCount = 0
+        _ = addEvent(song.id)
+        XCTAssertEqual(store.clearPlayHistory(), 1)
+        XCTAssertEqual(song.playCount, 0)
+    }
 }
