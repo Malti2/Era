@@ -463,3 +463,5 @@
 "With Notes" = "Con notas";
 "Multiple Versions" = "Varias versiones";
 "Tip: combine words, or use tag:, status:, year:2018-2020, version: and fav. Prefix with - to exclude, e.g. -tag:demo. Also try has:notes, plays:>5 and unplayed." = "Consejo: combina palabras o usa tag:, status:, year:2018-2020, version: y fav. Con - delante se excluye, p. ej. -tag:demo. También: has:notes, plays:>5 y unplayed.";
+"Eras" = "Eras";
+"No Era" = "Sin era";

@@ -3,13 +3,14 @@ import SwiftData
 import UniformTypeIdentifiers
 
 enum LibrarySection: String, CaseIterable, Identifiable {
-    case songs = "Songs", artists = "Artists", albums = "Albums", playlists = "Playlists", versions = "Versions"
+    case songs = "Songs", artists = "Artists", albums = "Albums", eras = "Eras", playlists = "Playlists", versions = "Versions"
     var id: String { rawValue }
     var icon: String {
         switch self {
         case .songs: return "music.note"
         case .artists: return "person.fill"
         case .albums: return "square.stack"
+        case .eras: return "calendar"
         case .playlists: return "music.note.list"
         case .versions: return "opticaldisc"
         }
@@ -219,7 +220,16 @@ struct LibraryView: View {
     private var sort: LibrarySort { LibrarySort(rawValue: sortRaw) ?? .recent }
     private var songsByID: [UUID: Song] { Dictionary(songs.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first }) }
 
-    private var selectedSection: LibrarySection { LibrarySection(rawValue: sectionRaw) ?? .songs }
+    private var selectedSection: LibrarySection {
+        let section = LibrarySection(rawValue: sectionRaw) ?? .songs
+        return section == .eras && !hasEras ? .songs : section
+    }
+
+    /// "Eras" erscheint erst, wenn mindestens ein Song eine Era hat - sonst bleibt die Leiste ruhig.
+    private var hasEras: Bool { songs.contains { !$0.era.trimmingCharacters(in: .whitespaces).isEmpty } }
+    private var visibleSections: [LibrarySection] {
+        hasEras ? [.songs, .albums, .eras, .artists, .playlists] : [.songs, .albums, .artists, .playlists]
+    }
 
     @ViewBuilder private var content: some View {
         if demoSectionOnly {
@@ -227,12 +237,13 @@ struct LibraryView: View {
         } else {
             VStack(spacing: 0) {
                 Picker("Library View", selection: $sectionRaw) {
-                    ForEach([LibrarySection.songs, .albums, .artists, .playlists]) { Text(LocalizedStringKey($0.rawValue)).tag($0.rawValue) }
+                    ForEach(visibleSections) { Text(LocalizedStringKey($0.rawValue)).tag($0.rawValue) }
                 }
                 .pickerStyle(.segmented).padding(.horizontal).padding(.bottom, 8)
                 switch selectedSection {
                 case .songs: List { songsSection }.listStyle(.plain)
                 case .albums: albumList
+                case .eras: eraList
                 case .artists: artistList
                 case .playlists: List { playlistsSection }.listStyle(.plain)
                 case .versions: List { versionsSection }.listStyle(.plain)
@@ -257,6 +268,40 @@ struct LibraryView: View {
                 }
             }
         }.listStyle(.plain)
+    }
+
+    private var eraList: some View {
+        let byID = songsByID
+        let groups = EraTimeline.groups(of: filteredSongs.map(\.eraSong))
+        return List {
+            filterSummary
+            ForEach(groups) { group in
+                let members = group.ids.compactMap { byID[$0] }
+                let name = group.name.isEmpty ? String(localized: "No Era") : group.name
+                NavigationLink { CollectionDetailView(title: name, songs: members, kind: .era, showNowPlaying: $showNowPlaying) } label: {
+                    HStack(spacing: 14) {
+                        Artwork(song: members.first, radius: 8).scaledSquare(64)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(name)
+                            Text(eraSubtitle(group)).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
+                            if let mix = eraStatusText(group) {
+                                Text(mix).font(.caption).foregroundStyle(.tertiary).lineLimit(1)
+                            }
+                        }
+                    }
+                }
+            }
+        }.listStyle(.plain)
+    }
+
+    private func eraSubtitle(_ group: EraGroup) -> String {
+        [group.yearText, String(localized: "\(group.ids.count) tracks")].compactMap { $0 }.joined(separator: " · ")
+    }
+
+    /// "2 Demo · 1 Leak" - die drei haeufigsten Stati der Era.
+    private func eraStatusText(_ group: EraGroup) -> String? {
+        let parts = group.statusCounts.prefix(3).map { "\($0.count) \($0.name)" }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
     private var albumList: some View {
@@ -597,7 +642,7 @@ struct SongListView: View {
     }
 }
 
-enum CollectionKind { case artist, album }
+enum CollectionKind { case artist, album, era }
 
 struct CollectionDetailView: View {
     let title: String
@@ -686,6 +731,9 @@ struct CollectionDetailView: View {
                     .shadow(color: .black.opacity(0.25), radius: 22, y: 12)
             }
             Text(title).font(.largeTitle.bold()).multilineTextAlignment(.center)
+            if kind == .era, let years = EraTimeline.groups(of: songs.map(\.eraSong)).first?.yearText {
+                Text(years).font(.title3).foregroundStyle(.tint)
+            }
             if kind == .album {
                 Text(songs.first?.displayArtist ?? "").font(.title3).foregroundStyle(.tint)
                 Text([songs.first?.era, songs.first?.year.map(String.init)].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · "))

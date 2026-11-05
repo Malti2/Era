@@ -14,6 +14,12 @@ extension Song {
 }
 
 extension Song {
+    var eraSong: EraSong {
+        EraSong(id: id, era: era, year: year, duration: duration, statuses: statusTags.map(\.name))
+    }
+}
+
+extension Song {
     var sortRow: SortRow {
         SortRow(id: id, title: title, artist: artist, year: year, playCount: playCount, dateAdded: dateAdded, duration: duration)
     }
