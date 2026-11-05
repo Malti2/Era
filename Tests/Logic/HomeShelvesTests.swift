@@ -28,4 +28,21 @@ final class HomeShelvesTests: XCTestCase {
         let result = HomeShelves.rediscover([recent, rare, never, often, fav], now: now)
         XCTAssertEqual(result, [fav.id, often.id, rare.id])
     }
+
+    func testThrowbackFindsSongsAddedAroundThisTimeInEarlierYears() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC")!
+        let now = calendar.date(from: DateComponents(year: 2026, month: 11, day: 5, hour: 12))!
+        func added(_ y: Int, _ m: Int, _ d: Int) -> Date { calendar.date(from: DateComponents(year: y, month: m, day: d, hour: 12))! }
+        let lastYearNear = ShelfSong(id: UUID(), dateAdded: added(2025, 11, 4))
+        let lastYearFar = ShelfSong(id: UUID(), dateAdded: added(2025, 11, 12))
+        let tooFar = ShelfSong(id: UUID(), dateAdded: added(2025, 9, 1))
+        let twoYears = ShelfSong(id: UUID(), dateAdded: added(2024, 11, 5))
+
+        let result = HomeShelves.throwback([tooFar, lastYearFar, twoYears, lastYearNear], now: now, calendar: calendar)
+        XCTAssertEqual(result, HomeShelves.Throwback(yearsAgo: 1, ids: [lastYearNear.id, lastYearFar.id]))
+        XCTAssertEqual(HomeShelves.throwback([twoYears, tooFar], now: now, calendar: calendar)?.yearsAgo, 2)
+        XCTAssertNil(HomeShelves.throwback([tooFar], now: now, calendar: calendar))
+        XCTAssertNil(HomeShelves.throwback([], now: now, calendar: calendar))
+    }
 }

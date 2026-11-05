@@ -28,6 +28,10 @@ struct HomeView: View {
     }
     private var mostPlayed: [Song] { songs.filter { $0.playCount > 0 }.sorted { $0.playCount > $1.playCount } }
 
+    private func throwbackTitle(_ years: Int) -> String {
+        years == 1 ? String(localized: "This Time Last Year") : String(localized: "\(years) Years Ago")
+    }
+
     private var backupDue: Bool {
         BackupReminder.isDue(
             songCount: songs.count,
@@ -86,6 +90,10 @@ struct HomeView: View {
                             if rediscover.count >= 3 { shelf(String(localized: "Rediscover"), songs: rediscover) }
                             let unheard = resolveSongs(HomeShelves.neverPlayed(shelfSongs, limit: 12))
                             if unheard.count >= 3 { shelf(String(localized: "Not Played Yet"), songs: unheard) }
+                            if let throwback = HomeShelves.throwback(shelfSongs) {
+                                let older = resolveSongs(throwback.ids)
+                                if !older.isEmpty { shelf(throwbackTitle(throwback.yearsAgo), songs: older) }
+                            }
                             shelf(String(localized: "Recently Imported"), songs: Array(songs.prefix(10)))
                             if !suggestions.isEmpty { suggestionsRow }
                         }

@@ -470,3 +470,5 @@
 "era:synth plays:0 -tag:demo" = "era:synth plays:0 -tag:demo";
 "Optional. Uses the same words and filters as Search, e.g. has:notes or year:2018-2020. Songs must match this as well." = "Optional. Nutzt dieselben Wörter und Filter wie die Suche, z. B. has:notes oder year:2018-2020. Songs müssen zusätzlich dazu passen.";
 "Save as Collection" = "Als Sammlung sichern";
+"This Time Last Year" = "Vor einem Jahr";
+"%lld Years Ago" = "Vor %lld Jahren";

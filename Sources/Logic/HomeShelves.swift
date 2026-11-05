@@ -47,4 +47,27 @@ enum HomeShelves {
             .prefix(limit)
             .map(\.id)
     }
+
+    struct Throwback: Equatable {
+        var yearsAgo: Int
+        var ids: [UUID]
+    }
+
+    /// Songs, die vor 1, 2, ... Jahren um diese Jahreszeit (+-`windowDays` Tage) in die Bibliothek kamen.
+    /// Das juengste Jahr mit Treffern gewinnt; innerhalb davon zuerst die, die dem heutigen Datum am naechsten sind.
+    static func throwback(_ songs: [ShelfSong], now: Date = Date(), windowDays: Int = 10, maxYears: Int = 15,
+                          limit: Int = 12, calendar: Calendar = .current) -> Throwback? {
+        for years in 1...max(1, maxYears) {
+            guard let anchor = calendar.date(byAdding: .year, value: -years, to: now) else { continue }
+            let window = Double(windowDays) * 86_400
+            var hits: [(id: UUID, added: Date, distance: Double)] = []
+            for song in songs {
+                let distance = abs(song.dateAdded.timeIntervalSince(anchor))
+                if distance <= window { hits.append((song.id, song.dateAdded, distance)) }
+            }
+            hits.sort { $0.distance != $1.distance ? $0.distance < $1.distance : $0.added < $1.added }
+            if !hits.isEmpty { return Throwback(yearsAgo: years, ids: hits.prefix(limit).map { $0.id }) }
+        }
+        return nil
+    }
 }
