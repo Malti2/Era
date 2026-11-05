@@ -15,22 +15,22 @@ struct SearchView: View {
         var id: UUID { song.id }
     }
 
-    private var results: [Entry] {
-        let hits = SongSearch.search(query, in: songs.map(\.searchable))
+    private func results(in snapshot: [SearchableSong]) -> [Entry] {
+        let hits = SongSearch.search(query, in: snapshot)
         let byID = Dictionary(songs.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         return hits.compactMap { hit in byID[hit.id].map { Entry(song: $0, hit: hit) } }
     }
 
-    private var suggestions: [SearchSuggestion] { SearchSuggestions.make(from: songs.map(\.searchable)) }
-    private var completions: [SearchSuggestion] { SearchCompletion.make(for: query, songs: songs.map(\.searchable)) }
 
     var body: some View {
-        NavigationStack {
+        // Ein Schnappschuss pro Render: Treffer, Vorschlaege und Vervollstaendigung teilen sich ihn (grosse Bibliotheken).
+        let snapshot = songs.map(\.searchable)
+        return NavigationStack {
             Group {
                 if query.trimmingCharacters(in: .whitespaces).isEmpty {
-                    idleState
+                    idleState(SearchSuggestions.make(from: snapshot))
                 } else {
-                    let found = results
+                    let found = results(in: snapshot)
                     if found.isEmpty {
                         ContentUnavailableView.search(text: query)
                     } else {
@@ -38,7 +38,7 @@ struct SearchView: View {
                     }
                 }
             }
-            .safeAreaInset(edge: .top, spacing: 0) { completionBar }
+            .safeAreaInset(edge: .top, spacing: 0) { completionBar(SearchCompletion.make(for: query, songs: snapshot)) }
             .navigationTitle("Search")
             .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Title, artist, album, tag, version")
             .searchFocused($focused)
@@ -60,8 +60,7 @@ struct SearchView: View {
     }
 
     /// Antippbare Ergaenzungen fuer das letzte Wort (`ta` -> `tag:`, `tag:sy` -> `tag:synth`).
-    @ViewBuilder private var completionBar: some View {
-        let options = completions
+    @ViewBuilder private func completionBar(_ options: [SearchSuggestion]) -> some View {
         if !options.isEmpty {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
@@ -123,7 +122,7 @@ struct SearchView: View {
         return String(localized: "Found in \(names.joined(separator: ", "))")
     }
 
-    @ViewBuilder private var idleState: some View {
+    @ViewBuilder private func idleState(_ suggestions: [SearchSuggestion]) -> some View {
         if songs.isEmpty {
             ContentUnavailableView {
                 Label("Search Your Library", systemImage: "magnifyingglass")

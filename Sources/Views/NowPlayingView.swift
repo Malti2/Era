@@ -132,6 +132,7 @@ struct NowPlayingView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button { dismiss() } label: { Image(systemName: "chevron.down") }
+                        .accessibilityLabel("Close")
                 }
             }
             .sensoryFeedback(.success, trigger: markerFeedback) { _, _ in haptics }
