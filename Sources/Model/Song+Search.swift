@@ -7,7 +7,8 @@ extension Song {
             id: id, title: title, artist: artist, album: album, era: era, year: year,
             tags: personalTags.map(\.name), statuses: statusTags.map(\.name),
             versionNames: versions.map(\.name), isFavorite: isFavorite, playCount: playCount,
-            notes: notes, markerLabels: versions.flatMap { $0.markers.map(\.label).filter { !$0.isEmpty } }
+            notes: notes, markerLabels: versions.flatMap { $0.markers.map(\.label).filter { !$0.isEmpty } },
+            markerCount: versions.reduce(0) { $0 + $1.markers.count }
         )
     }
 }

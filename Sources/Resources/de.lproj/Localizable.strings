@@ -266,7 +266,6 @@
 "Recent Searches" = "Zuletzt gesucht";
 "Clear" = "Löschen";
 "Quick Filters" = "Schnellfilter";
-"Tip: combine words, or use tag:, status:, year:2018-2020, version: and fav." = "Tipp: Mehrere Wörter kombinieren oder tag:, status:, year:2018-2020, version: und fav nutzen.";
 "Found in %@" = "Gefunden in %@";
 "Add to Playlist" = "Zur Playlist hinzufügen";
 "More" = "Mehr";
@@ -463,3 +462,4 @@
 "Show Only" = "Nur anzeigen";
 "With Notes" = "Mit Notizen";
 "Multiple Versions" = "Mehrere Versionen";
+"Tip: combine words, or use tag:, status:, year:2018-2020, version: and fav. Prefix with - to exclude, e.g. -tag:demo. Also try has:notes, plays:>5 and unplayed." = "Tipp: Mehrere Wörter kombinieren oder tag:, status:, year:2018-2020, version: und fav nutzen. Mit - davor ausschließen, z. B. -tag:demo. Auch möglich: has:notes, plays:>5 und unplayed.";

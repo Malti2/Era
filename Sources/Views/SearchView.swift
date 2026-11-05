@@ -22,6 +22,7 @@ struct SearchView: View {
     }
 
     private var suggestions: [SearchSuggestion] { SearchSuggestions.make(from: songs.map(\.searchable)) }
+    private var completions: [SearchSuggestion] { SearchCompletion.make(for: query, songs: songs.map(\.searchable)) }
 
     var body: some View {
         NavigationStack {
@@ -37,6 +38,7 @@ struct SearchView: View {
                     }
                 }
             }
+            .safeAreaInset(edge: .top, spacing: 0) { completionBar }
             .navigationTitle("Search")
             .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Title, artist, album, tag, version")
             .searchFocused($focused)
@@ -47,8 +49,40 @@ struct SearchView: View {
 
     private func resultList(_ found: [Entry]) -> some View {
         let queue = found.compactMap(\.song.primaryVersion)
-        return List(found) { entry in
-            let song = entry.song
+        return List {
+            Section {
+                ForEach(found) { entry in resultRow(entry, queue: queue) }
+            } header: {
+                Text("\(found.count) songs").textCase(nil)
+            }
+        }
+        .listStyle(.plain)
+    }
+
+    /// Antippbare Ergaenzungen fuer das letzte Wort (`ta` -> `tag:`, `tag:sy` -> `tag:synth`).
+    @ViewBuilder private var completionBar: some View {
+        let options = completions
+        if !options.isEmpty {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(options) { option in
+                        Button { query = option.query.hasSuffix(":") ? option.query : option.query + " " } label: {
+                            Text(option.label).font(.subheadline)
+                                .padding(.horizontal, 12).padding(.vertical, 6)
+                                .background(.thinMaterial, in: Capsule())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal).padding(.vertical, 6)
+            }
+            .background(.bar)
+        }
+    }
+
+    private func resultRow(_ entry: Entry, queue: [SongVersion]) -> some View {
+        let song = entry.song
+        return Group {
             HStack(spacing: 10) {
                 Button {
                     remember(query)
@@ -71,7 +105,6 @@ struct SearchView: View {
             }
             .contextMenu { SongContextMenu(song: song, showNowPlaying: $showNowPlaying) }
         }
-        .listStyle(.plain)
     }
 
     /// Ausschnitt aus Notiz/Marker, wenn der Treffer nur dort liegt.
@@ -136,7 +169,7 @@ struct SearchView: View {
                     }
                 }
                 Section {
-                    Text("Tip: combine words, or use tag:, status:, year:2018-2020, version: and fav.")
+                    Text("Tip: combine words, or use tag:, status:, year:2018-2020, version: and fav. Prefix with - to exclude, e.g. -tag:demo. Also try has:notes, plays:>5 and unplayed.")
                         .font(.footnote).foregroundStyle(.secondary)
                 }
             }

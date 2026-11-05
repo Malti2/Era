@@ -20,10 +20,12 @@ struct SearchableSong: Equatable {
     /// Freie Notiz am Song plus Marker-Beschriftungen - nur ein schwacher Treffer, aber so findet man "das mit dem Gitarrenriff".
     var notes: String
     var markerLabels: [String]
+    /// Anzahl gesetzter Marker ueber alle Versionen (fuer `has:markers`).
+    var markerCount: Int
 
     init(id: UUID = UUID(), title: String, artist: String = "", album: String = "", era: String = "",
          year: Int? = nil, tags: [String] = [], statuses: [String] = [], versionNames: [String] = [],
-         isFavorite: Bool = false, playCount: Int = 0, notes: String = "", markerLabels: [String] = []) {
+         isFavorite: Bool = false, playCount: Int = 0, notes: String = "", markerLabels: [String] = [], markerCount: Int? = nil) {
         self.id = id
         self.title = title
         self.artist = artist
@@ -37,6 +39,7 @@ struct SearchableSong: Equatable {
         self.playCount = playCount
         self.notes = notes
         self.markerLabels = markerLabels
+        self.markerCount = markerCount ?? markerLabels.count
     }
 }
 
@@ -50,7 +53,42 @@ struct SearchHit: Equatable {
     let matchedFields: Set<SearchField>
 }
 
-enum SearchFilter: Equatable {
+/// Zahlenvergleich fuer `plays:>5`, `versions:2`, `plays:<=1`.
+struct CountComparison: Equatable {
+    enum Op: Equatable { case equal, greater, less, atLeast, atMost }
+    var op: Op
+    var value: Int
+
+    init(op: Op, value: Int) {
+        self.op = op
+        self.value = value
+    }
+
+    /// "5", ">5", ">=5", "<5", "<=5"; alles andere ist kein Vergleich.
+    init?(_ text: String) {
+        var rest = Substring(text)
+        var parsed = Op.equal
+        for (prefix, op) in [(">=", Op.atLeast), ("<=", .atMost), (">", .greater), ("<", .less), ("=", .equal)] where rest.hasPrefix(prefix) {
+            parsed = op
+            rest = rest.dropFirst(prefix.count)
+            break
+        }
+        guard let number = Int(rest), number >= 0 else { return nil }
+        self.init(op: parsed, value: number)
+    }
+
+    func matches(_ count: Int) -> Bool {
+        switch op {
+        case .equal: count == value
+        case .greater: count > value
+        case .less: count < value
+        case .atLeast: count >= value
+        case .atMost: count <= value
+        }
+    }
+}
+
+indirect enum SearchFilter: Equatable {
     case tag(String)
     case status(String)
     case version(String)
@@ -58,19 +96,39 @@ enum SearchFilter: Equatable {
     case album(String)
     case year(ClosedRange<Int>)
     case favorite
+    case era(String)
+    case hasNotes
+    case hasMarkers
+    case unplayed
+    case plays(CountComparison)
+    case versionCount(CountComparison)
+    /// `-tag:demo`, `-fav`: Songs, die den Filter NICHT erfuellen.
+    case not(SearchFilter)
 }
 
 struct SongSearchQuery: Equatable {
     var terms: [String] = []
+    /// `-wort`: Songs, die dieses Wort irgendwo enthalten, fallen heraus.
+    var excludedTerms: [String] = []
     var filters: [SearchFilter] = []
 
-    var isEmpty: Bool { terms.isEmpty && filters.isEmpty }
+    var isEmpty: Bool { terms.isEmpty && filters.isEmpty && excludedTerms.isEmpty }
+    /// Nur Ausschluesse (z.B. `-demo`) sind keine sinnvolle Suche - sonst waere "alles ausser ..." die ganze Bibliothek.
+    var isOnlyExclusions: Bool { terms.isEmpty && filters.isEmpty && !excludedTerms.isEmpty }
 
     /// Zerlegt die Eingabe in Begriffe und Filter. Anfuehrungszeichen halten
     /// Phrasen zusammen ("blue hour", tag:"late night").
     init(_ raw: String) {
         for token in SongSearchQuery.tokenize(raw) {
-            if let filter = SongSearchQuery.filter(from: token) {
+            if token.hasPrefix("-"), token.count > 1, !token.hasPrefix("--") {
+                let body = String(token.dropFirst())
+                if let filter = SongSearchQuery.filter(from: body) {
+                    filters.append(.not(filter))
+                } else {
+                    let term = SongSearch.fold(body.replacingOccurrences(of: "\"", with: ""))
+                    if !term.isEmpty { excludedTerms.append(term) }
+                }
+            } else if let filter = SongSearchQuery.filter(from: token) {
                 filters.append(filter)
             } else {
                 let term = SongSearch.fold(token.replacingOccurrences(of: "\"", with: ""))
@@ -100,6 +158,7 @@ struct SongSearchQuery: Equatable {
     private static func filter(from token: String) -> SearchFilter? {
         let lowered = token.lowercased()
         if lowered == "fav" || lowered == "favorite" || lowered == "is:fav" || lowered == "is:favorite" { return .favorite }
+        if lowered == "unplayed" || lowered == "is:unplayed" { return .unplayed }
         guard let colon = token.firstIndex(of: ":") else { return nil }
         let key = token[..<colon].lowercased()
         let value = SongSearch.fold(String(token[token.index(after: colon)...]).replacingOccurrences(of: "\"", with: ""))
@@ -111,6 +170,21 @@ struct SongSearchQuery: Equatable {
         case "artist": return .artist(value)
         case "album": return .album(value)
         case "year": return yearRange(value).map(SearchFilter.year)
+        case "era": return .era(value)
+        case "plays": return CountComparison(value).map(SearchFilter.plays)
+        case "versions": return CountComparison(value).map(SearchFilter.versionCount)
+        case "has":
+            switch value {
+            case "notes", "note": return .hasNotes
+            case "markers", "marker": return .hasMarkers
+            default: return nil
+            }
+        case "is":
+            switch value {
+            case "fav", "favorite": return .favorite
+            case "unplayed": return .unplayed
+            default: return nil
+            }
         default: return nil
         }
     }
@@ -133,7 +207,7 @@ enum SongSearch {
     /// Treffer fuer die Eingabe, beste zuerst. Leere Eingabe liefert nichts.
     static func search(_ raw: String, in songs: [SearchableSong]) -> [SearchHit] {
         let query = SongSearchQuery(raw)
-        guard !query.isEmpty else { return [] }
+        guard !query.isEmpty, !query.isOnlyExclusions else { return [] }
         var hits: [(hit: SearchHit, song: SearchableSong)] = []
         for song in songs {
             guard let hit = match(song, query: query) else { continue }
@@ -186,6 +260,7 @@ enum SongSearch {
             score += best
             fields.formUnion(termFields)
         }
+        for excluded in query.excludedTerms where song.contains(folded: excluded) { return nil }
         if song.isFavorite { score += 2 }
         return SearchHit(id: song.id, score: score, matchedFields: fields)
     }
@@ -208,7 +283,29 @@ enum SongSearch {
             return fold(song.artist).contains(value) ? [.artist] : nil
         case .album(let value):
             return fold(song.album).contains(value) ? [.album] : nil
+        case .era(let value):
+            return fold(song.era).contains(value) ? [.era] : nil
+        case .hasNotes:
+            return song.notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : [.note]
+        case .hasMarkers:
+            return song.markerCount > 0 ? [.note] : nil
+        case .unplayed:
+            return song.playCount == 0 ? [] : nil
+        case .plays(let comparison):
+            return comparison.matches(song.playCount) ? [] : nil
+        case .versionCount(let comparison):
+            return comparison.matches(song.versionNames.count) ? [.version] : nil
+        case .not(let inner):
+            return apply(inner, to: song) == nil ? [] : nil
         }
+    }
+}
+
+extension SearchableSong {
+    /// Kommt der (bereits gefaltete) Begriff in irgendeinem Textfeld vor? Fuer `-wort`.
+    fileprivate func contains(folded term: String) -> Bool {
+        let fields = [title, artist, album, era, notes] + tags + statuses + versionNames + markerLabels
+        return fields.contains { SongSearch.fold($0).contains(term) }
     }
 }
 
@@ -259,5 +356,88 @@ enum RecentSearches {
         var result = existing.filter { SongSearch.fold($0) != key }
         result.insert(trimmed, at: 0)
         return Array(result.prefix(limit))
+    }
+}
+
+// MARK: - Vervollstaendigung waehrend des Tippens
+
+/// Schlaegt fuer das letzte Wort der Eingabe Operatoren (`ta` -> `tag:`) und, nach dem Doppelpunkt,
+/// vorhandene Werte (`tag:sy` -> `tag:synth`) vor. `query` ist jeweils die komplette neue Eingabe.
+enum SearchCompletion {
+    static let operators = ["tag:", "status:", "year:", "version:", "artist:", "album:", "era:", "has:", "plays:", "versions:", "is:"]
+    private static let fixedValues: [String: [String]] = [
+        "has": ["notes", "markers"],
+        "is": ["fav", "unplayed"],
+    ]
+
+    static func make(for raw: String, songs: [SearchableSong], limit: Int = 6) -> [SearchSuggestion] {
+        // Nur das letzte Wort wird ergaenzt; offene Anfuehrungszeichen bedeuten "gerade eine Phrase".
+        guard !raw.hasSuffix(" "), raw.filter({ $0 == "\"" }).count % 2 == 0 else { return [] }
+        let head: String
+        var last: String
+        if let space = raw.lastIndex(of: " ") {
+            head = String(raw[...space])
+            last = String(raw[raw.index(after: space)...])
+        } else {
+            head = ""
+            last = raw
+        }
+        let negated = last.hasPrefix("-")
+        if negated { last.removeFirst() }
+        let prefix = negated ? "-" : ""
+        guard !last.isEmpty else { return [] }
+
+        func suggestion(_ token: String, label: String, count: Int = 0) -> SearchSuggestion {
+            SearchSuggestion(query: head + prefix + token, label: label, count: count)
+        }
+
+        guard let colon = last.firstIndex(of: ":") else {
+            let typed = last.lowercased()
+            guard typed.count >= 2 else { return [] }
+            return operators.filter { $0.hasPrefix(typed) && $0 != typed }.prefix(limit).map { suggestion($0, label: $0) }
+        }
+
+        let key = last[..<colon].lowercased()
+        let typed = SongSearch.fold(String(last[last.index(after: colon)...]).replacingOccurrences(of: "\"", with: ""))
+        func quoted(_ name: String) -> String { name.contains(" ") ? "\"\(name)\"" : name }
+
+        var candidates: [(name: String, count: Int)] = []
+        if let fixed = fixedValues[key] {
+            candidates = fixed.map { ($0, 0) }
+        } else {
+            let keyPath: KeyPath<SearchableSong, [String]>?
+            switch key {
+            case "tag": keyPath = \.tags
+            case "status": keyPath = \.statuses
+            case "version", "v": keyPath = \.versionNames
+            default: keyPath = nil
+            }
+            if let keyPath {
+                var counts: [String: (name: String, n: Int)] = [:]
+                for song in songs {
+                    for name in Set(song[keyPath: keyPath]) where !name.isEmpty {
+                        let folded = SongSearch.fold(name)
+                        counts[folded] = (counts[folded]?.name ?? name, (counts[folded]?.n ?? 0) + 1)
+                    }
+                }
+                candidates = counts.values.sorted { $0.n != $1.n ? $0.n > $1.n : $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+                    .map { ($0.name, $0.n) }
+            } else if key == "artist" || key == "album" || key == "era" {
+                var counts: [String: (name: String, n: Int)] = [:]
+                for song in songs {
+                    let name = key == "artist" ? song.artist : (key == "album" ? song.album : song.era)
+                    guard !name.isEmpty else { continue }
+                    let folded = SongSearch.fold(name)
+                    counts[folded] = (counts[folded]?.name ?? name, (counts[folded]?.n ?? 0) + 1)
+                }
+                candidates = counts.values.sorted { $0.n != $1.n ? $0.n > $1.n : $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+                    .map { ($0.name, $0.n) }
+            }
+        }
+        return candidates
+            .filter { typed.isEmpty || SongSearch.fold($0.name).hasPrefix(typed) }
+            .filter { SongSearch.fold($0.name) != typed }
+            .prefix(limit)
+            .map { suggestion("\(key):\(quoted($0.name))", label: $0.name, count: $0.count) }
     }
 }

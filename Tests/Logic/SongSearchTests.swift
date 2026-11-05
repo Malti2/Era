@@ -107,4 +107,75 @@ final class SongSearchTests: XCTestCase {
         XCTAssertTrue(hits[1].matchedFields.contains(.note))
         XCTAssertEqual(SongSearch.search("drop", in: [withNote, withMarker]).map(\.id), [withMarker.id])
     }
+
+    // MARK: Search v2: Ausschluesse, Zusatzfilter, Vervollstaendigung
+
+    private let extra: [SearchableSong] = [
+        SearchableSong(title: "Sketch One", artist: "Neon", era: "Synth Era", tags: ["demo"], statuses: ["Demo"], versionNames: ["OG"], playCount: 0, notes: "Riff aus dem Proberaum"),
+        SearchableSong(title: "Sketch Two", artist: "Neon", era: "Pop Era", tags: ["demo", "synth"], statuses: ["Demo"], versionNames: ["OG", "v2", "v3"], playCount: 9, markerLabels: ["Hook"]),
+        SearchableSong(title: "Finished", artist: "Aurora Lane", era: "Pop Era", statuses: ["Released"], versionNames: ["OG"], isFavorite: true, playCount: 2),
+    ]
+
+    private func extraTitles(_ raw: String) -> [String] {
+        SongSearch.search(raw, in: extra).compactMap { hit in extra.first { $0.id == hit.id }?.title }.sorted()
+    }
+
+    func testMinusExcludesTermsAndFilters() {
+        XCTAssertEqual(extraTitles("sketch -two"), ["Sketch One"])
+        XCTAssertEqual(extraTitles("neon -tag:synth"), ["Sketch One"])
+        XCTAssertEqual(extraTitles("status:demo -fav"), ["Sketch One", "Sketch Two"])
+        XCTAssertEqual(extraTitles("pop -is:unplayed"), ["Finished", "Sketch Two"])
+    }
+
+    func testOnlyExclusionsFindNothing() {
+        XCTAssertTrue(extraTitles("-demo").isEmpty)
+        XCTAssertEqual(SongSearchQuery("-demo").excludedTerms, ["demo"])
+    }
+
+    func testHasNotesMarkersAndUnplayed() {
+        XCTAssertEqual(extraTitles("has:notes"), ["Sketch One"])
+        XCTAssertEqual(extraTitles("has:markers"), ["Sketch Two"])
+        XCTAssertEqual(extraTitles("unplayed"), ["Sketch One"])
+        XCTAssertEqual(extraTitles("is:unplayed"), ["Sketch One"])
+        XCTAssertEqual(extraTitles("neon -has:notes"), ["Sketch Two"])
+    }
+
+    func testCountComparisons() {
+        XCTAssertEqual(extraTitles("plays:>1"), ["Finished", "Sketch Two"])
+        XCTAssertEqual(extraTitles("plays:<=2"), ["Finished", "Sketch One"])
+        XCTAssertEqual(extraTitles("plays:0"), ["Sketch One"])
+        XCTAssertEqual(extraTitles("versions:>=3"), ["Sketch Two"])
+        XCTAssertEqual(extraTitles("versions:1 neon"), ["Sketch One"])
+        XCTAssertNil(CountComparison("abc"))
+        XCTAssertNil(CountComparison(">"))
+        XCTAssertEqual(CountComparison(">=4"), CountComparison(op: .atLeast, value: 4))
+    }
+
+    func testEraFilter() {
+        XCTAssertEqual(extraTitles("era:pop"), ["Finished", "Sketch Two"])
+        XCTAssertEqual(extraTitles("era:\"synth era\""), ["Sketch One"])
+    }
+
+    func testUnknownOperatorStaysATerm() {
+        let query = SongSearchQuery("has:wings")
+        XCTAssertTrue(query.filters.isEmpty)
+        XCTAssertEqual(query.terms, ["has:wings"])
+    }
+
+    func testCompletionSuggestsOperators() {
+        XCTAssertEqual(SearchCompletion.make(for: "ta", songs: extra).map(\.query), ["tag:"])
+        XCTAssertEqual(SearchCompletion.make(for: "neon ver", songs: extra).map(\.query), ["neon version:", "neon versions:"])
+        XCTAssertTrue(SearchCompletion.make(for: "t", songs: extra).isEmpty, "one letter is too noisy")
+        XCTAssertTrue(SearchCompletion.make(for: "tag:", songs: extra).isEmpty == false)
+        XCTAssertTrue(SearchCompletion.make(for: "neon ", songs: extra).isEmpty)
+    }
+
+    func testCompletionSuggestsLibraryValues() {
+        XCTAssertEqual(SearchCompletion.make(for: "tag:s", songs: extra).map(\.query), ["tag:synth"])
+        XCTAssertEqual(SearchCompletion.make(for: "-tag:d", songs: extra).map(\.query), ["-tag:demo"])
+        XCTAssertEqual(SearchCompletion.make(for: "era:", songs: extra).map(\.query), ["era:\"Pop Era\"", "era:\"Synth Era\""])
+        XCTAssertEqual(SearchCompletion.make(for: "has:", songs: extra).map(\.query), ["has:notes", "has:markers"])
+        XCTAssertTrue(SearchCompletion.make(for: "tag:synth", songs: extra).isEmpty, "already complete")
+        XCTAssertTrue(SearchCompletion.make(for: "tag:\"late n", songs: extra).isEmpty, "open quote = phrase in progress")
+    }
 }
