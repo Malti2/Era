@@ -100,7 +100,7 @@ final class ImportManager: ObservableObject {
     enum StoreOutcome { case imported, duplicate, relinked }
 
     @discardableResult
-    func storeOne(data: Data, ext: String, name: String, into store: EraStore, linkTo song: Song?, versionName: String, year: Int? = nil, statusName: String? = nil, tagNames: [String] = []) async throws -> StoreOutcome {
+    func storeOne(data: Data, ext: String, name: String, into store: EraStore, linkTo song: Song?, versionName: String, versionTitle: String? = nil, year: Int? = nil, statusName: String? = nil, tagNames: [String] = []) async throws -> StoreOutcome {
         // Hash vor dem Kopieren (Spec 13.2)
         let tmp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + "." + ext)
         try data.write(to: tmp, options: .atomic)
@@ -131,6 +131,7 @@ final class ImportManager: ObservableObject {
         let version = SongVersion(name: versionName, fileName: fileName, pcmHash: hashed.hash, duration: hashed.duration, year: year ?? meta.year)
         version.id = versionID
         version.artworkFile = artworkFile
+        if song != nil { version.titleOverride = versionTitle }
 
         let target: Song
         if let song {
@@ -213,7 +214,7 @@ final class ImportManager: ObservableObject {
             do {
                 let data = try Data(contentsOf: item.sourceURL)
                 let link = item.linkToSongID.flatMap { id in songs.first { $0.id == id } }
-                let outcome = try await storeOne(data: data, ext: item.sourceURL.pathExtension.lowercased(), name: item.name, into: store, linkTo: link, versionName: item.versionName, year: item.year, statusName: item.statusName, tagNames: item.tagNames)
+                let outcome = try await storeOne(data: data, ext: item.sourceURL.pathExtension.lowercased(), name: item.name, into: store, linkTo: link, versionName: item.versionName, versionTitle: link.flatMap { TitleMatching.versionTitle(importing: item.title, songTitle: $0.title) }, year: item.year, statusName: item.statusName, tagNames: item.tagNames)
                 switch outcome {
                 case .imported:
                     imported += 1

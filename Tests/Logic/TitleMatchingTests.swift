@@ -75,4 +75,10 @@ final class TitleMatchingTests: XCTestCase {
         XCTAssertTrue(TitleMatching.similarGroups([cand("Solo"), cand("Duo")]).isEmpty)
         XCTAssertTrue(TitleMatching.similarGroups([]).isEmpty)
     }
+
+    func testImportedTitleBecomesVersionTitleOnlyWhenDifferent() {
+        XCTAssertEqual(TitleMatching.versionTitle(importing: " Sunrise (Demo) ", songTitle: "Sunrise"), "Sunrise (Demo)")
+        XCTAssertNil(TitleMatching.versionTitle(importing: "SUNRISE", songTitle: "Sunrise"))
+        XCTAssertNil(TitleMatching.versionTitle(importing: "  ", songTitle: "Sunrise"))
+    }
 }

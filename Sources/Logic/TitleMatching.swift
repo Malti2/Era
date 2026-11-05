@@ -88,6 +88,14 @@ enum TitleMatching {
         return String(hint.trimmingCharacters(in: .whitespaces).prefix(24))
     }
 
+    /// Eigener Versionstitel, wenn eine importierte Datei an einen Song mit anderem Titel gehaengt wird
+    /// ("Sunrise (Demo)" an "Sunrise"); gleicher oder leerer Titel braucht keinen Override.
+    static func versionTitle(importing title: String, songTitle: String) -> String? {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, SongSearch.fold(trimmed) != SongSearch.fold(songTitle) else { return nil }
+        return trimmed
+    }
+
     private static func artistsCompatible(_ a: String, _ b: String) -> Bool {
         let x = SongSearch.fold(a), y = SongSearch.fold(b)
         return x.isEmpty || y.isEmpty || x == y
