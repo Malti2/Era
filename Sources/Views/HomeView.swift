@@ -16,6 +16,12 @@ struct HomeView: View {
     }
     private var suggestions: [Pack] { packs.filter { !$0.confirmed } }
     private var favorites: [Song] { songs.filter(\.isFavorite) }
+    private var rediscover: [Song] {
+        let byID = Dictionary(songs.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        let candidates = songs.map { HomeShelves.Candidate(id: $0.id, playCount: $0.playCount, lastPlayedAt: $0.lastPlayedAt, dateAdded: $0.dateAdded, isFavorite: $0.isFavorite) }
+        return HomeShelves.rediscover(candidates).compactMap { byID[$0] }
+    }
+    private var unreleased: [Song] { songs.filter { song in song.statusTags.contains { $0.name == "Unreleased" } } }
     private var mostPlayed: [Song] { songs.filter { $0.playCount > 0 }.sorted { $0.playCount > $1.playCount } }
 
     var body: some View {
@@ -39,6 +45,8 @@ struct HomeView: View {
                             if !favorites.isEmpty { shelf(String(localized: "Favorites"), songs: favorites) }
                             if mostPlayed.count > 1 { shelf(String(localized: "Most Played"), songs: mostPlayed) }
                             shelf(String(localized: "Recently Imported"), songs: Array(songs.prefix(10)))
+                            if !rediscover.isEmpty { shelf(String(localized: "Rediscover"), songs: rediscover) }
+                            if !unreleased.isEmpty { shelf(String(localized: "Unreleased"), songs: unreleased) }
                             if !suggestions.isEmpty { suggestionsRow }
                         }
                         .padding(.vertical)
@@ -93,12 +101,23 @@ struct HomeView: View {
 
     private func shelf(_ title: String, songs: [Song]) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(title).font(.title2.bold()).padding(.horizontal)
+            HStack {
+                Text(title).font(.title2.bold()).accessibilityAddTraits(.isHeader)
+                Spacer()
+                Button {
+                    player.playShuffled(songs.compactMap(\.primaryVersion))
+                } label: {
+                    Image(systemName: "shuffle").font(.subheadline.weight(.semibold))
+                }
+                .accessibilityLabel(Text("Shuffle \(title)"))
+            }
+            .padding(.horizontal)
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 14) {
                     ForEach(songs) { song in
                         Button {
-                            if let v = song.primaryVersion { player.play(v, from: [v]) }
+                            // The whole shelf becomes the queue, so "next" keeps going.
+                            if let v = song.primaryVersion { player.play(v, from: songs.compactMap(\.primaryVersion)) }
                         } label: {
                             VStack(alignment: .leading, spacing: 6) {
                                 Artwork(song: song, radius: 12).frame(width: 150, height: 150)

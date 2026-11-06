@@ -18,7 +18,9 @@ enum LibrarySection: String, CaseIterable, Identifiable {
 
 enum LibrarySort: String, CaseIterable, Identifiable {
     case recent = "Recently Added", title = "Title", artist = "Artist"
+    case mostPlayed = "Most Played", lastPlayed = "Recently Played", duration = "Duration"
     var id: String { rawValue }
+    var label: LocalizedStringKey { LocalizedStringKey(rawValue) }
 }
 
 struct LibraryView: View {
@@ -31,7 +33,8 @@ struct LibraryView: View {
     @Query private var playlists: [Playlist]
 
     @AppStorage(AppSettings.librarySectionKey) private var sectionRaw = LibrarySection.songs.rawValue
-    @State private var sort: LibrarySort = .recent
+    @AppStorage("settings.librarySort") private var sortRaw = LibrarySort.recent.rawValue
+    private var sort: LibrarySort { LibrarySort(rawValue: sortRaw) ?? .recent }
     @State private var showImporter = false
     @State private var showFolderImporter = false
     @State private var showSettings = false
@@ -84,8 +87,8 @@ struct LibraryView: View {
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
-                        Picker("Sort", selection: $sort) {
-                            ForEach(LibrarySort.allCases) { Text($0.rawValue).tag($0) }
+                        Picker("Sort", selection: $sortRaw) {
+                            ForEach(LibrarySort.allCases) { Text($0.label).tag($0.rawValue) }
                         }
                     } label: {
                         Image(systemName: "arrow.up.arrow.down")
@@ -221,6 +224,11 @@ struct LibraryView: View {
         switch sort {
         case .recent: return songs
         case .title: return songs.sorted { $0.title.localizedStandardCompare($1.title) == .orderedAscending }
+        case .mostPlayed: return songs.sorted {
+            $0.playCount != $1.playCount ? $0.playCount > $1.playCount : $0.title.localizedStandardCompare($1.title) == .orderedAscending
+        }
+        case .lastPlayed: return songs.sorted { ($0.lastPlayedAt ?? .distantPast) > ($1.lastPlayedAt ?? .distantPast) }
+        case .duration: return songs.sorted { $0.duration > $1.duration }
         case .artist: return songs.sorted {
             let a = $0.displayArtist.localizedStandardCompare($1.displayArtist)
             return a == .orderedSame ? $0.title.localizedStandardCompare($1.title) == .orderedAscending : a == .orderedAscending

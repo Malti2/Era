@@ -9,15 +9,14 @@ struct SearchView: View {
     @FocusState private var focused: Bool
 
     private var results: [Song] {
-        guard !query.isEmpty else { return [] }
-        return songs.filter { song in
-            song.title.localizedCaseInsensitiveContains(query)
-            || song.displayArtist.localizedCaseInsensitiveContains(query)
-            || song.album.localizedCaseInsensitiveContains(query)
-            || song.era.localizedCaseInsensitiveContains(query)
-            || song.tags.contains { $0.name.localizedCaseInsensitiveContains(query) }
-            || song.versions.contains { $0.name.localizedCaseInsensitiveContains(query) }
+        let trimmed = query.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return [] }
+        let byID = Dictionary(songs.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        let documents = songs.map { song in
+            LibrarySearch.Document(id: song.id, title: song.title, artist: song.displayArtist, album: song.album, era: song.era,
+                                   tags: song.tags.map(\.name), versions: song.versions.map(\.name))
         }
+        return LibrarySearch.search(documents, query: trimmed).compactMap { byID[$0] }
     }
 
     var body: some View {
