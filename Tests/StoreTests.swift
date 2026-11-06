@@ -89,4 +89,65 @@ final class StoreTests: XCTestCase {
         XCTAssertEqual(backup.songs.first?.isFavorite, true)
         XCTAssertEqual(backup.versions.first?.songID, song.id)
     }
+
+    func testBackupIncludesPlayEvents() throws {
+        _ = makeSong("Heard")
+        store.context.insert(PlayEvent(date: Date(), seconds: 90, songID: nil, title: "Heard", artist: "X"))
+        store.save()
+        let backup = try BackupService.makeBackup(store: store)
+        XCTAssertEqual(backup.formatVersion, LibraryBackup.currentFormatVersion)
+        XCTAssertEqual(backup.playEvents?.count, 1)
+    }
+
+    func testDecodeRejectsForeignAndNewerFiles() throws {
+        XCTAssertThrowsError(try BackupService.decode(Data("{\"hello\":1}".utf8)))
+        var future = try BackupService.makeBackup(store: store)
+        future.formatVersion = 99
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        XCTAssertThrowsError(try BackupService.decode(try encoder.encode(future)))
+    }
+
+    func testRestoreRebuildsLibraryIntoEmptyStoreWhenAudioExists() throws {
+        let song = makeSong("Round Trip")
+        song.isFavorite = true
+        song.tags.append(store.makeTag(named: "keeper"))
+        let playlist = Playlist(name: "Mix")
+        store.insertPlaylist(playlist)
+        store.appendEntry(song: song, version: song.primaryVersion, to: playlist)
+        store.context.insert(PlayEvent(date: Date(), seconds: 60, songID: song.id, title: "Round Trip", artist: ""))
+        store.save()
+        let backup = try BackupService.makeBackup(store: store)
+
+        let fresh = EraStore(context: ModelContext(Persistence.makeContainer(inMemory: true)))
+        let summary = try BackupService.restore(backup, into: fresh, audioExists: { _ in true })
+
+        XCTAssertEqual(summary.songsAdded, 1)
+        XCTAssertEqual(summary.versionsAdded, 1)
+        XCTAssertEqual(summary.playlistsAdded, 1)
+        XCTAssertEqual(summary.eventsAdded, 1)
+        let restored = try XCTUnwrap(try fresh.allSongs().first)
+        XCTAssertEqual(restored.id, song.id)
+        XCTAssertTrue(restored.isFavorite)
+        XCTAssertEqual(restored.tags.map(\.name), ["keeper"])
+        XCTAssertEqual(restored.primaryVersionID, song.primaryVersionID)
+        XCTAssertEqual(try fresh.allPlaylists().first?.entries.count, 1)
+    }
+
+    func testRestoreIsIdempotentAndSkipsMissingAudio() throws {
+        _ = makeSong("Once")
+        let backup = try BackupService.makeBackup(store: store)
+
+        // Same store: everything already exists.
+        let again = try BackupService.restore(backup, into: store, audioExists: { _ in true })
+        XCTAssertEqual(again.songsAdded, 0)
+        XCTAssertEqual(try store.allSongs().count, 1)
+
+        // Empty store without audio files: song is skipped, not restored as a broken entry.
+        let fresh = EraStore(context: ModelContext(Persistence.makeContainer(inMemory: true)))
+        let skipped = try BackupService.restore(backup, into: fresh, audioExists: { _ in false })
+        XCTAssertEqual(skipped.songsAdded, 0)
+        XCTAssertEqual(skipped.songsSkippedMissingAudio, 1)
+        XCTAssertTrue(try fresh.allSongs().isEmpty)
+    }
 }
