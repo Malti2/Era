@@ -5,6 +5,7 @@ import Charts
 // Bibliotheks-Uebersicht: was ist in der Sammlung, in welchem Zustand (Status), aus welchen Eras, wie schnell waechst sie.
 struct LibraryInsightsView: View {
     @Query private var songs: [Song]
+    @State private var storage: StorageReport?
 
     private var insights: LibraryInsights {
         LibraryInsights.make(from: songs.map { song in
@@ -45,10 +46,67 @@ struct LibraryInsightsView: View {
                     }
                 }
                 if insights.addedPerYear.count > 1 { growthSection(insights) }
+                if let storage, !storage.isEmpty { storageSections(storage) }
             }
         }
         .navigationTitle("Library Overview")
         .navigationBarTitleDisplayMode(.inline)
+        .task(id: songs.count) { storage = await loadStorage() }
+    }
+
+    /// File sizes are read off the main thread; large libraries have thousands of files.
+    private func loadStorage() async -> StorageReport {
+        let snapshot = songs.flatMap { song in
+            song.versions.map { (id: $0.id, songID: song.id, title: song.title, name: $0.name, file: $0.fileName) }
+        }
+        return await Task.detached(priority: .utility) {
+            let root = LibraryFiles.root
+            let items = snapshot.map { entry -> StorageItem in
+                let url = root.appendingPathComponent(entry.file)
+                let size = (try? url.resourceValues(forKeys: [.fileSizeKey]))?.fileSize
+                return StorageItem(id: entry.id, songID: entry.songID, title: entry.title, versionName: entry.name,
+                                   fileExtension: url.pathExtension, bytes: size.map(Int64.init))
+            }
+            return StorageReport.make(from: items)
+        }.value
+    }
+
+    private func sizeText(_ bytes: Int64) -> String { ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file) }
+
+    @ViewBuilder private func storageSections(_ report: StorageReport) -> some View {
+        Section("Storage") {
+            LabeledContent("Audio Files", value: sizeText(report.totalBytes))
+            LabeledContent("Average File Size", value: sizeText(report.averageBytes))
+            if report.missingCount > 0 {
+                Label("\(report.missingCount) missing audio files", systemImage: "exclamationmark.triangle")
+                    .foregroundStyle(.orange)
+            }
+            ForEach(report.formats) { format in
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text(format.name)
+                        Spacer()
+                        Text("\(format.count) · \(sizeText(format.bytes))").foregroundStyle(.secondary).monospacedDigit()
+                    }
+                    ProgressView(value: report.share(of: format.bytes)).tint(.accentColor)
+                }
+                .accessibilityElement(children: .combine)
+            }
+        }
+        if !report.largest.isEmpty {
+            Section("Largest Files") {
+                ForEach(report.largest) { item in
+                    LabeledContent {
+                        Text(sizeText(item.bytes ?? 0)).monospacedDigit()
+                    } label: {
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(item.title).lineLimit(1)
+                            Text(item.versionName).font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private func statusSection(_ insights: LibraryInsights) -> some View {

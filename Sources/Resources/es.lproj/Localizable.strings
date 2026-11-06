@@ -472,3 +472,11 @@
 "Save as Collection" = "Guardar como colección";
 "This Time Last Year" = "Hace un año";
 "%lld Years Ago" = "Hace %lld años";
+"Storage" = "Almacenamiento";
+"Audio Files" = "Archivos de audio";
+"Average File Size" = "Tamaño medio de archivo";
+"Largest Files" = "Archivos más grandes";
+"Most played: %@ (%lld×)" = "Más reproducida: %@ (%lld×)";
+"Pinned Searches" = "Búsquedas fijadas";
+"Pin Search" = "Fijar búsqueda";
+"Unpin Search" = "Quitar búsqueda fijada";

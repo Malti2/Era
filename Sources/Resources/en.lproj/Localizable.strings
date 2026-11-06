@@ -472,3 +472,11 @@
 "Save as Collection" = "Save as Collection";
 "This Time Last Year" = "This Time Last Year";
 "%lld Years Ago" = "%lld Years Ago";
+"Storage" = "Storage";
+"Audio Files" = "Audio Files";
+"Average File Size" = "Average File Size";
+"Largest Files" = "Largest Files";
+"Most played: %@ (%lld×)" = "Most played: %@ (%lld×)";
+"Pinned Searches" = "Pinned Searches";
+"Pin Search" = "Pin Search";
+"Unpin Search" = "Unpin Search";

@@ -242,5 +242,21 @@
 			<string>%lld plays</string>
 		</dict>
 	</dict>
+	<key>%lld tracks up next</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld track up next</string>
+			<key>other</key>
+			<string>%lld tracks up next</string>
+		</dict>
+	</dict>
 </dict>
 </plist>

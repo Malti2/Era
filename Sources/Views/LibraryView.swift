@@ -740,6 +740,7 @@ struct CollectionDetailView: View {
                     .font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
             }
             Text(totalDurationText).font(.footnote).foregroundStyle(.secondary)
+            profileStrip
             HStack(spacing: 18) {
                 Button { player.playShuffled(songs.compactMap(\.primaryVersion)) } label: {
                     Image(systemName: "shuffle").font(.title2).frame(width: 52, height: 52).background(.thinMaterial, in: .circle)
@@ -755,6 +756,39 @@ struct CollectionDetailView: View {
             }.buttonStyle(.plain)
         }
         .padding(.horizontal, 18).padding(.vertical, 20)
+    }
+
+    private var profile: CollectionProfile {
+        CollectionProfile.make(from: songs.map {
+            ProfileSong(title: $0.title, playCount: $0.playCount, isFavorite: $0.isFavorite, versionCount: $0.versions.count)
+        })
+    }
+
+    /// Quiet facts under the title: plays, versions, favorites and the most played track.
+    @ViewBuilder private var profileStrip: some View {
+        let profile = profile
+        if profile.plays > 0 || profile.favorites > 0 || profile.versions > profile.songs {
+            VStack(spacing: 6) {
+                HStack(spacing: 22) {
+                    profileFact(value: profile.plays, label: String(localized: "Plays"))
+                    profileFact(value: profile.versions, label: String(localized: "Versions"))
+                    profileFact(value: profile.favorites, label: String(localized: "Favorites"))
+                }
+                if let top = profile.mostPlayed {
+                    Text("Most played: \(top.title) (\(top.plays)×)")
+                        .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                }
+            }
+            .padding(.vertical, 4)
+        }
+    }
+
+    private func profileFact(value: Int, label: String) -> some View {
+        VStack(spacing: 1) {
+            Text("\(value)").font(.headline.monospacedDigit())
+            Text(label).font(.caption2).foregroundStyle(.secondary)
+        }
+        .accessibilityElement(children: .combine)
     }
 
     @ViewBuilder private func row(index: Int, song: Song) -> some View {

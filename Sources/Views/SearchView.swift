@@ -7,6 +7,7 @@ struct SearchView: View {
     @Query private var songs: [Song]
     @State private var query = ""
     @State private var recents = UserDefaults.standard.stringArray(forKey: AppSettings.recentSearchesKey) ?? []
+    @State private var pinned = SavedSearches.decode(UserDefaults.standard.data(forKey: AppSettings.savedSearchesKey))
     @FocusState private var focused: Bool
     @State private var showSaveCollection = false
 
@@ -45,6 +46,12 @@ struct SearchView: View {
             .searchFocused($focused)
             .toolbar {
                 if !query.trimmingCharacters(in: .whitespaces).isEmpty {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        let isPinned = SavedSearches.contains(query, in: pinned)
+                        Button { togglePin(query) } label: {
+                            Label(isPinned ? "Unpin Search" : "Pin Search", systemImage: isPinned ? "pin.slash" : "pin")
+                        }
+                    }
                     ToolbarItem(placement: .topBarTrailing) {
                         Button { remember(query); showSaveCollection = true } label: {
                             Label("Save as Collection", systemImage: "rectangle.stack.badge.plus")
@@ -142,6 +149,19 @@ struct SearchView: View {
             }
         } else {
             List {
+                if !pinned.isEmpty {
+                    Section("Pinned Searches") {
+                        ForEach(pinned) { saved in
+                            Button { query = saved.query } label: {
+                                Label(saved.query, systemImage: "pin.fill").foregroundStyle(.primary)
+                            }
+                        }
+                        .onDelete { offsets in
+                            pinned.remove(atOffsets: offsets)
+                            persistPinned()
+                        }
+                    }
+                }
                 if !recents.isEmpty {
                     Section {
                         ForEach(recents, id: \.self) { recent in
@@ -184,6 +204,15 @@ struct SearchView: View {
                 }
             }
         }
+    }
+
+    private func togglePin(_ text: String) {
+        pinned = SavedSearches.toggling(text, in: pinned)
+        persistPinned()
+    }
+
+    private func persistPinned() {
+        if let data = SavedSearches.encode(pinned) { UserDefaults.standard.set(data, forKey: AppSettings.savedSearchesKey) }
     }
 
     private func remember(_ text: String) {

@@ -402,10 +402,24 @@ struct NowPlayingView: View {
         .accessibilityLabel(label)
     }
 
+    /// "5 tracks up next · 18 min" (nil when nothing is left).
+    private var queueSummary: String? {
+        let summary = QueueSummary.make(durations: player.queue.map(\.duration),
+                                        currentIndex: player.queue.firstIndex { $0.id == player.current?.id },
+                                        currentTime: player.currentTime)
+        guard summary.upNextCount > 0 else { return nil }
+        return String(localized: "\(summary.upNextCount) tracks up next") + " · " + TimeFormatting.spoken(summary.remainingSeconds)
+    }
+
     // "Up Next" mit nativem Bearbeiten: Verschieben, Entfernen, Leeren.
     private var queueSheet: some View {
         NavigationStack {
             List {
+                if let summary = queueSummary {
+                    Section {
+                        Label(summary, systemImage: "clock").font(.subheadline).foregroundStyle(.secondary)
+                    }
+                }
                 ForEach(player.queue, id: \.id) { v in
                     HStack {
                         if let song = v.song { SongRow(song: song, version: v, isCurrent: player.current?.id == v.id) }

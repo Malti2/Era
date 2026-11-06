@@ -24,6 +24,7 @@ enum AppSettings {
     static let backupSnoozeKey = "backup.snoozedUntil"
     static let ignoredSimilarKey = "maintenance.ignoredSimilar"
     static let recentSearchesKey = "search.recents"
+    static let savedSearchesKey = "search.saved"
 
     static let skipIntervals = [5, 10, 15, 30]
     static let rates: [Double] = [0.75, 1.0, 1.25, 1.5, 2.0]
