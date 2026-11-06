@@ -7,6 +7,7 @@ struct HomeView: View {
     @EnvironmentObject private var store: EraStore
     @Query(sort: \Song.dateAdded, order: .reverse) private var songs: [Song]
     @Query private var packs: [Pack]
+    @Query(sort: \PlayEvent.date, order: .reverse) private var events: [PlayEvent]
     @EnvironmentObject private var importer: ImportManager
     @State private var showStats = ProcessInfo.processInfo.arguments.contains("--era-stats")
     @State private var showImporter = false
@@ -30,6 +31,65 @@ struct HomeView: View {
 
     private func throwbackTitle(_ years: Int) -> String {
         years == 1 ? String(localized: "This Time Last Year") : String(localized: "\(years) Years Ago")
+    }
+
+    /// Events are sorted newest first, so only the last two weeks need to be mapped.
+    private var weeklyRecap: WeeklyRecap {
+        let cutoff = Calendar.current.date(byAdding: .day, value: -15, to: Date()) ?? .distantPast
+        let recent = events.prefix { $0.date >= cutoff }
+            .map { PlayRecord(date: $0.date, seconds: $0.seconds, title: $0.title, artist: $0.artist) }
+        return WeeklyRecap.make(from: recent)
+    }
+
+    private func recapCard(_ recap: WeeklyRecap) -> some View {
+        Button { showStats = true } label: {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("This Week").font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
+                    Spacer()
+                    if recap.streak > 1 {
+                        Label("\(recap.streak) days", systemImage: "flame.fill")
+                            .font(.caption.weight(.semibold)).foregroundStyle(.orange)
+                            .labelStyle(.titleAndIcon)
+                    }
+                }
+                HStack(alignment: .bottom, spacing: 16) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(TimeFormatting.spoken(recap.seconds)).font(.title.weight(.bold)).monospacedDigit()
+                        trendText(recap.trend)
+                    }
+                    Spacer(minLength: 8)
+                    HStack(alignment: .bottom, spacing: 5) {
+                        ForEach(recap.days) { day in
+                            Capsule()
+                                .fill(day.seconds > 0 ? Color.accentColor : Color(.tertiarySystemFill))
+                                .frame(width: 9, height: max(6, 44 * recap.barHeight(for: day)))
+                        }
+                    }
+                    .frame(height: 44, alignment: .bottom)
+                    .accessibilityHidden(true)
+                }
+                if let top = recap.topTrack {
+                    Text("Top track: \(top.title)").font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                }
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .padding(.horizontal)
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityHint(Text("Opens listening stats"))
+    }
+
+    @ViewBuilder private func trendText(_ trend: WeeklyRecap.Trend) -> some View {
+        switch trend {
+        case .firstWeek: Text("\(weeklyRecap.plays) plays").font(.footnote).foregroundStyle(.secondary)
+        case .same: Text("Same as last week").font(.footnote).foregroundStyle(.secondary)
+        case .up(let percent): Text("\(percent)% more than last week").font(.footnote).foregroundStyle(.green)
+        case .down(let percent): Text("\(percent)% less than last week").font(.footnote).foregroundStyle(.secondary)
+        }
     }
 
     private var backupDue: Bool {
@@ -83,6 +143,8 @@ struct HomeView: View {
                             if let resume = lastPlayed.first {
                                 resumeCard(resume)
                             }
+                            let recap = weeklyRecap
+                            if recap.hasActivity { recapCard(recap) }
                             if !lastPlayed.isEmpty { shelf(String(localized: "Recently Played"), songs: lastPlayed, linksToHistory: true) }
                             if !favorites.isEmpty { shelf(String(localized: "Favorites"), songs: favorites) }
                             if mostPlayed.count > 1 { shelf(String(localized: "Most Played"), songs: mostPlayed) }

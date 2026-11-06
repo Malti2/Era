@@ -480,3 +480,9 @@
 "Pinned Searches" = "Angepinnte Suchen";
 "Pin Search" = "Suche anpinnen";
 "Unpin Search" = "Suche lösen";
+"This Week" = "Diese Woche";
+"Top track: %@" = "Top-Titel: %@";
+"Same as last week" = "Wie letzte Woche";
+"%lld%% more than last week" = "%lld%% mehr als letzte Woche";
+"%lld%% less than last week" = "%lld%% weniger als letzte Woche";
+"Opens listening stats" = "Öffnet die Hörstatistik";

@@ -480,3 +480,9 @@
 "Pinned Searches" = "Recherches épinglées";
 "Pin Search" = "Épingler la recherche";
 "Unpin Search" = "Désépingler la recherche";
+"This Week" = "Cette semaine";
+"Top track: %@" = "Titre favori : %@";
+"Same as last week" = "Comme la semaine dernière";
+"%lld%% more than last week" = "%lld%% de plus que la semaine dernière";
+"%lld%% less than last week" = "%lld%% de moins que la semaine dernière";
+"Opens listening stats" = "Ouvre les statistiques d’écoute";

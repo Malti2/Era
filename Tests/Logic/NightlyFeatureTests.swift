@@ -96,3 +96,45 @@ final class QueueSummaryTests: XCTestCase {
         XCTAssertEqual(QueueSummary.make(durations: [90], currentIndex: 5, currentTime: 0).upNextCount, 1)
     }
 }
+
+final class WeeklyRecapTests: XCTestCase {
+    private var calendar: Calendar = {
+        var c = Calendar(identifier: .gregorian)
+        c.timeZone = TimeZone(secondsFromGMT: 0)!
+        return c
+    }()
+    private let now = Date(timeIntervalSince1970: 1_773_835_200) // 12:00 UTC
+
+    private func play(_ daysAgo: Int, _ seconds: Double = 600, title: String = "T") -> PlayRecord {
+        PlayRecord(date: calendar.date(byAdding: .day, value: -daysAgo, to: now)!, seconds: seconds, title: title, artist: "A")
+    }
+
+    func testWindowsAndZeroFilledDays() {
+        let recap = WeeklyRecap.make(from: [play(0), play(0, 300), play(6), play(7), play(13), play(14)], now: now, calendar: calendar)
+        XCTAssertEqual(recap.days.count, 7)
+        XCTAssertEqual(recap.plays, 3)
+        XCTAssertEqual(recap.seconds, 1_500)
+        XCTAssertEqual(recap.previousPlays, 2)
+        XCTAssertEqual(recap.days.last?.plays, 2)
+        XCTAssertEqual(recap.days.first?.plays, 1)
+        XCTAssertEqual(recap.days.filter { $0.plays == 0 }.count, 5)
+        XCTAssertEqual(recap.barHeight(for: recap.days.last!), 1, accuracy: 0.0001)
+    }
+
+    func testTrend() {
+        XCTAssertEqual(WeeklyRecap.make(from: [play(0)], now: now, calendar: calendar).trend, .firstWeek)
+        XCTAssertEqual(WeeklyRecap.make(from: [play(0, 600), play(8, 600)], now: now, calendar: calendar).trend, .same)
+        XCTAssertEqual(WeeklyRecap.make(from: [play(0, 900), play(8, 600)], now: now, calendar: calendar).trend, .up(percent: 50))
+        XCTAssertEqual(WeeklyRecap.make(from: [play(0, 300), play(8, 600)], now: now, calendar: calendar).trend, .down(percent: 50))
+    }
+
+    func testTopTrackStreakAndEmpty() {
+        let recap = WeeklyRecap.make(from: [play(0, title: "X"), play(1, title: "X"), play(2, title: "Y")], now: now, calendar: calendar)
+        XCTAssertEqual(recap.topTrack?.title, "X")
+        XCTAssertEqual(recap.streak, 3)
+        let empty = WeeklyRecap.make(from: [], now: now, calendar: calendar)
+        XCTAssertFalse(empty.hasActivity)
+        XCTAssertEqual(empty.days.count, 7)
+        XCTAssertEqual(empty.barHeight(for: empty.days[0]), 0)
+    }
+}

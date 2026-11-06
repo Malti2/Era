@@ -480,3 +480,9 @@
 "Pinned Searches" = "Pinned Searches";
 "Pin Search" = "Pin Search";
 "Unpin Search" = "Unpin Search";
+"This Week" = "This Week";
+"Top track: %@" = "Top track: %@";
+"Same as last week" = "Same as last week";
+"%lld%% more than last week" = "%lld%% more than last week";
+"%lld%% less than last week" = "%lld%% less than last week";
+"Opens listening stats" = "Opens listening stats";
