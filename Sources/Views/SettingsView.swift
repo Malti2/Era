@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import UniformTypeIdentifiers
 
 // Apple-Stil: App-Icon + Versionsnummer, gruppierte Liste, nur echte Einstellungen.
 struct SettingsView: View {
@@ -22,6 +23,9 @@ struct SettingsView: View {
     @State private var spotlightRebuilt = false
     @State private var backupItem: ShareItem?
     @State private var backupError = false
+    @State private var showRestorePicker = false
+    @State private var restoreMessage: String?
+    @State private var showDuplicates = false
     @State private var showOnboarding = false
     @State private var confirmReset = false
     @State private var resetDone = false
@@ -100,6 +104,12 @@ struct SettingsView: View {
                     } label: {
                         Label("Export Library (JSON)", systemImage: "square.and.arrow.up.on.square")
                     }
+                    Button { showRestorePicker = true } label: {
+                        Label("Restore from Backup", systemImage: "square.and.arrow.down.on.square")
+                    }
+                    NavigationLink { DuplicatesView() } label: {
+                        Label("Find Duplicates", systemImage: "square.on.square")
+                    }
                 }
                 Section("Search & Siri") {
                     Toggle(isOn: $spotlightEnabled) {
@@ -141,6 +151,16 @@ struct SettingsView: View {
             .sheet(item: $backupItem) { item in ShareSheet(items: [item.url]) }
             .sheet(item: $updateShareItem) { item in ShareSheet(items: [item.url]) }
             .sheet(isPresented: $showOnboarding) { OnboardingView() }
+            .sheet(isPresented: $showRestorePicker) {
+                DocumentPicker(contentTypes: [.json]) { urls in
+                    showRestorePicker = false
+                    guard let url = urls.first else { return }
+                    restoreMessage = restore(from: url)
+                } onCancel: { showRestorePicker = false }
+            }
+            .alert("Restore from Backup", isPresented: Binding(get: { restoreMessage != nil }, set: { if !$0 { restoreMessage = nil } })) {
+                Button("OK", role: .cancel) { restoreMessage = nil }
+            } message: { Text(restoreMessage ?? "") }
             .alert("Backup Failed", isPresented: $backupError) {
                 Button("OK", role: .cancel) {}
             }
@@ -153,6 +173,21 @@ struct SettingsView: View {
             } message: {
                 Text("Songs, versions, playlists, tags, packs, settings, and local audio files will be permanently deleted.")
             }
+        }
+    }
+
+    private func restore(from url: URL) -> String {
+        do {
+            let backup = try BackupService.decode(Data(contentsOf: url))
+            let r = try BackupService.restore(backup, into: store)
+            if r.isEmpty && r.songsSkippedMissingAudio == 0 { return String(localized: "Everything in this backup is already in your library.") }
+            var lines = [String(localized: "\(r.songsAdded) songs, \(r.playlistsAdded) playlists and \(r.eventsAdded) plays restored.")]
+            if r.songsSkippedMissingAudio > 0 {
+                lines.append(String(localized: "\(r.songsSkippedMissingAudio) songs skipped because their audio files are not on this device."))
+            }
+            return lines.joined(separator: "\n")
+        } catch {
+            return error.localizedDescription
         }
     }
 
