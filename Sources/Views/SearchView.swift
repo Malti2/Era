@@ -10,6 +10,7 @@ struct SearchView: View {
     @State private var pinned = SavedSearches.decode(UserDefaults.standard.data(forKey: AppSettings.savedSearchesKey))
     @FocusState private var focused: Bool
     @State private var showSaveCollection = false
+    @State private var showHelp = false
 
     private struct Entry: Identifiable {
         let song: Song
@@ -45,7 +46,11 @@ struct SearchView: View {
             .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Title, artist, album, tag, version")
             .searchFocused($focused)
             .toolbar {
-                if !query.trimmingCharacters(in: .whitespaces).isEmpty {
+                if query.trimmingCharacters(in: .whitespaces).isEmpty {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button { showHelp = true } label: { Label("Search Tips", systemImage: "questionmark.circle") }
+                    }
+                } else {
                     ToolbarItem(placement: .topBarTrailing) {
                         let isPinned = SavedSearches.contains(query, in: pinned)
                         Button { togglePin(query) } label: {
@@ -59,6 +64,7 @@ struct SearchView: View {
                     }
                 }
             }
+            .sheet(isPresented: $showHelp) { SearchHelpView { query = $0 } }
             .sheet(isPresented: $showSaveCollection) { CollectionEditorView(pack: nil, initialQuery: query.trimmingCharacters(in: .whitespacesAndNewlines)) }
             .onSubmit(of: .search) { remember(query) }
             .onAppear { focused = true }
@@ -199,8 +205,11 @@ struct SearchView: View {
                     }
                 }
                 Section {
-                    Text("Tip: combine words, or use tag:, status:, year:2018-2020, version: and fav. Prefix with - to exclude, e.g. -tag:demo. Also try has:notes, plays:>5 and unplayed.")
-                        .font(.footnote).foregroundStyle(.secondary)
+                    Button { showHelp = true } label: {
+                        Label("Search Tips", systemImage: "questionmark.circle").foregroundStyle(.primary)
+                    }
+                } footer: {
+                    Text("Filters like tag:, added:7d or length:>5m, and - to leave things out.")
                 }
             }
         }

@@ -47,7 +47,9 @@ enum MixBuilder {
 
     static func daySeed(for date: Date = Date(), calendar: Calendar = .current) -> UInt64 {
         let parts = calendar.dateComponents([.year, .month, .day], from: date)
-        return UInt64((parts.year ?? 0) * 10_000 + (parts.month ?? 0) * 100 + (parts.day ?? 0))
+        let year = parts.year ?? 0, month = parts.month ?? 0, day = parts.day ?? 0
+        let value: Int = year * 10_000 + month * 100 + day
+        return UInt64(max(0, value))
     }
 
     static func make(_ kind: MixKind, from songs: [MixCandidate], now: Date = Date(), seed: UInt64? = nil,

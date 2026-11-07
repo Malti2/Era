@@ -8,7 +8,8 @@ extension Song {
             tags: personalTags.map(\.name), statuses: statusTags.map(\.name),
             versionNames: versions.map(\.name), isFavorite: isFavorite, playCount: playCount,
             notes: notes, markerLabels: versions.flatMap { $0.markers.map(\.label).filter { !$0.isEmpty } },
-            markerCount: versions.reduce(0) { $0 + $1.markers.count }
+            markerCount: versions.reduce(0) { $0 + $1.markers.count },
+            dateAdded: dateAdded, lastPlayedAt: lastPlayedAt, duration: duration
         )
     }
 }

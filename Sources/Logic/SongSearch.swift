@@ -22,10 +22,15 @@ struct SearchableSong: Equatable {
     var markerLabels: [String]
     /// Anzahl gesetzter Marker ueber alle Versionen (fuer `has:markers`).
     var markerCount: Int
+    /// Fuer `added:`, `played:` und `length:`.
+    var dateAdded: Date?
+    var lastPlayedAt: Date?
+    var duration: Double
 
     init(id: UUID = UUID(), title: String, artist: String = "", album: String = "", era: String = "",
          year: Int? = nil, tags: [String] = [], statuses: [String] = [], versionNames: [String] = [],
-         isFavorite: Bool = false, playCount: Int = 0, notes: String = "", markerLabels: [String] = [], markerCount: Int? = nil) {
+         isFavorite: Bool = false, playCount: Int = 0, notes: String = "", markerLabels: [String] = [], markerCount: Int? = nil,
+         dateAdded: Date? = nil, lastPlayedAt: Date? = nil, duration: Double = 0) {
         self.id = id
         self.title = title
         self.artist = artist
@@ -40,6 +45,9 @@ struct SearchableSong: Equatable {
         self.notes = notes
         self.markerLabels = markerLabels
         self.markerCount = markerCount ?? markerLabels.count
+        self.dateAdded = dateAdded
+        self.lastPlayedAt = lastPlayedAt
+        self.duration = duration
     }
 }
 
@@ -88,6 +96,82 @@ struct CountComparison: Equatable {
     }
 }
 
+/// Zeitbedingung fuer `added:` und `played:`: `7d` / `<2w` (innerhalb), `>3m` (aelter als), `2024` oder `2022-2024` (Kalenderjahr).
+enum DateCondition: Equatable {
+    case within(days: Int)
+    case olderThan(days: Int)
+    case years(ClosedRange<Int>)
+
+    /// Einheiten: d = Tage, w = Wochen, m = Monate (30 Tage), y = Jahre (365 Tage).
+    init?(_ text: String) {
+        var rest = Substring(text)
+        var older = false
+        if rest.hasPrefix(">=") { older = true; rest = rest.dropFirst(2) }
+        else if rest.hasPrefix("<=") { rest = rest.dropFirst(2) }
+        else if rest.hasPrefix(">") { older = true; rest = rest.dropFirst() }
+        else if rest.hasPrefix("<") { rest = rest.dropFirst() }
+        if let unit = rest.last, "dwmy".contains(unit), let number = Int(rest.dropLast()), number >= 0 {
+            let factor: [Character: Int] = ["d": 1, "w": 7, "m": 30, "y": 365]
+            let days = number * (factor[unit] ?? 1)
+            self = older ? .olderThan(days: days) : .within(days: days)
+            return
+        }
+        guard !older, !text.hasPrefix("<") else { return nil }
+        let parts = rest.split(separator: "-", omittingEmptySubsequences: false).compactMap { Int($0) }
+        let valid = parts.allSatisfy { (1900...2999).contains($0) }
+        if parts.count == 1, valid { self = .years(parts[0]...parts[0]); return }
+        if parts.count == 2, valid, rest.split(separator: "-", omittingEmptySubsequences: false).count == 2 {
+            self = .years(min(parts[0], parts[1])...max(parts[0], parts[1]))
+            return
+        }
+        return nil
+    }
+
+    func matches(_ date: Date, now: Date, calendar: Calendar = .current) -> Bool {
+        switch self {
+        case .within(let days): return date >= now.addingTimeInterval(-Double(days) * 86_400)
+        case .olderThan(let days): return date < now.addingTimeInterval(-Double(days) * 86_400)
+        case .years(let range): return range.contains(calendar.component(.year, from: date))
+        }
+    }
+}
+
+/// Laenge fuer `length:>5m`, `length:<=90s`, `length:2m-4m` (Zahl ohne Einheit = Minuten, auch `2.5m`).
+struct DurationComparison: Equatable {
+    var lower: Double?
+    var upper: Double?
+    var lowerInclusive = true
+    var upperInclusive = true
+
+    init?(_ text: String) {
+        func seconds(_ raw: Substring) -> Double? {
+            var number = raw
+            var factor = 60.0
+            if raw.hasSuffix("s") { factor = 1; number = raw.dropLast() }
+            else if raw.hasSuffix("m") { number = raw.dropLast() }
+            guard let value = Double(number), value >= 0 else { return nil }
+            return value * factor
+        }
+        var rest = Substring(text)
+        for (prefix, lowerBound, inclusive) in [(">=", true, true), ("<=", false, true), (">", true, false), ("<", false, false)] where rest.hasPrefix(prefix) {
+            rest = rest.dropFirst(prefix.count)
+            guard let value = seconds(rest) else { return nil }
+            if lowerBound { lower = value; lowerInclusive = inclusive } else { upper = value; upperInclusive = inclusive }
+            return
+        }
+        let parts = rest.split(separator: "-", omittingEmptySubsequences: false)
+        guard parts.count == 2, let a = seconds(parts[0]), let b = seconds(parts[1]) else { return nil }
+        lower = min(a, b)
+        upper = max(a, b)
+    }
+
+    func matches(_ seconds: Double) -> Bool {
+        if let lower, !(lowerInclusive ? seconds >= lower : seconds > lower) { return false }
+        if let upper, !(upperInclusive ? seconds <= upper : seconds < upper) { return false }
+        return true
+    }
+}
+
 indirect enum SearchFilter: Equatable {
     case tag(String)
     case status(String)
@@ -102,6 +186,9 @@ indirect enum SearchFilter: Equatable {
     case unplayed
     case plays(CountComparison)
     case versionCount(CountComparison)
+    case added(DateCondition)
+    case played(DateCondition)
+    case length(DurationComparison)
     /// `-tag:demo`, `-fav`: Songs, die den Filter NICHT erfuellen.
     case not(SearchFilter)
 }
@@ -173,6 +260,9 @@ struct SongSearchQuery: Equatable {
         case "era": return .era(value)
         case "plays": return CountComparison(value).map(SearchFilter.plays)
         case "versions": return CountComparison(value).map(SearchFilter.versionCount)
+        case "added": return DateCondition(value).map(SearchFilter.added)
+        case "played": return DateCondition(value).map(SearchFilter.played)
+        case "length", "len": return DurationComparison(value).map(SearchFilter.length)
         case "has":
             switch value {
             case "notes", "note": return .hasNotes
@@ -205,12 +295,12 @@ enum SongSearch {
     }
 
     /// Treffer fuer die Eingabe, beste zuerst. Leere Eingabe liefert nichts.
-    static func search(_ raw: String, in songs: [SearchableSong]) -> [SearchHit] {
+    static func search(_ raw: String, in songs: [SearchableSong], now: Date = Date()) -> [SearchHit] {
         let query = SongSearchQuery(raw)
         guard !query.isEmpty, !query.isOnlyExclusions else { return [] }
         var hits: [(hit: SearchHit, song: SearchableSong)] = []
         for song in songs {
-            guard let hit = match(song, query: query) else { continue }
+            guard let hit = match(song, query: query, now: now) else { continue }
             hits.append((hit, song))
         }
         hits.sort { lhs, rhs in
@@ -221,11 +311,11 @@ enum SongSearch {
         return hits.map(\.hit)
     }
 
-    static func match(_ song: SearchableSong, query: SongSearchQuery) -> SearchHit? {
+    static func match(_ song: SearchableSong, query: SongSearchQuery, now: Date = Date()) -> SearchHit? {
         var fields = Set<SearchField>()
         var score = 0
         for filter in query.filters {
-            guard let matched = apply(filter, to: song) else { return nil }
+            guard let matched = apply(filter, to: song, now: now) else { return nil }
             fields.formUnion(matched)
             score += 5
         }
@@ -266,7 +356,7 @@ enum SongSearch {
     }
 
     /// nil = Filter passt nicht; sonst die Felder, in denen er getroffen hat.
-    private static func apply(_ filter: SearchFilter, to song: SearchableSong) -> Set<SearchField>? {
+    private static func apply(_ filter: SearchFilter, to song: SearchableSong, now: Date) -> Set<SearchField>? {
         switch filter {
         case .favorite:
             return song.isFavorite ? [] : nil
@@ -295,8 +385,16 @@ enum SongSearch {
             return comparison.matches(song.playCount) ? [] : nil
         case .versionCount(let comparison):
             return comparison.matches(song.versionNames.count) ? [.version] : nil
+        case .added(let condition):
+            guard let date = song.dateAdded, condition.matches(date, now: now) else { return nil }
+            return []
+        case .played(let condition):
+            guard let date = song.lastPlayedAt, condition.matches(date, now: now) else { return nil }
+            return []
+        case .length(let comparison):
+            return song.duration > 0 && comparison.matches(song.duration) ? [] : nil
         case .not(let inner):
-            return apply(inner, to: song) == nil ? [] : nil
+            return apply(inner, to: song, now: now) == nil ? [] : nil
         }
     }
 }
@@ -364,10 +462,13 @@ enum RecentSearches {
 /// Schlaegt fuer das letzte Wort der Eingabe Operatoren (`ta` -> `tag:`) und, nach dem Doppelpunkt,
 /// vorhandene Werte (`tag:sy` -> `tag:synth`) vor. `query` ist jeweils die komplette neue Eingabe.
 enum SearchCompletion {
-    static let operators = ["tag:", "status:", "year:", "version:", "artist:", "album:", "era:", "has:", "plays:", "versions:", "is:"]
+    static let operators = ["tag:", "status:", "year:", "version:", "artist:", "album:", "era:", "has:", "plays:", "versions:", "is:", "added:", "played:", "length:"]
     private static let fixedValues: [String: [String]] = [
         "has": ["notes", "markers"],
         "is": ["fav", "unplayed"],
+        "added": ["7d", "30d", ">1y"],
+        "played": ["7d", "30d", ">90d"],
+        "length": [">5m", "<1m", "2m-4m"],
     ]
 
     static func make(for raw: String, songs: [SearchableSong], limit: Int = 6) -> [SearchSuggestion] {
