@@ -5,11 +5,12 @@ import SwiftData
 // Hoerhistorie, mit teilbarer Karte. Alles bleibt auf dem Geraet.
 struct YearReviewView: View {
     @Query(sort: \PlayEvent.date, order: .reverse) private var events: [PlayEvent]
+    @Query private var songs: [Song]
     @State private var year: Int?
     @State private var shareItem: ShareItem?
 
     private var records: [PlayRecord] {
-        events.map { PlayRecord(date: $0.date, seconds: $0.seconds, title: $0.title, artist: $0.artist) }
+        events.map { PlayRecord(date: $0.date, seconds: $0.seconds, title: $0.title, artist: $0.artist, songID: $0.songID) }
     }
 
     var body: some View {
@@ -33,6 +34,8 @@ struct YearReviewView: View {
                     }
                     if !review.topTracks.isEmpty { rankedCard("Top Tracks", rows: review.topTracks.map { ($0.title, artistName($0.artist), $0.plays) }) }
                     if !review.topArtists.isEmpty { rankedCard("Top Artists", rows: review.topArtists.map { (artistName($0.name), nil, $0.plays) }) }
+                    let albums = topAlbums(in: selected, from: all)
+                    if albums.count > 0 { rankedCard("Top Albums", rows: albums.map { ($0.name, nil, $0.plays) }) }
                 }
             }
             .padding()
@@ -57,6 +60,16 @@ struct YearReviewView: View {
             }
         }
         .sheet(item: $shareItem) { ShareSheet(items: [$0.url]) }
+    }
+
+    /// Albums of the year by plays; songs without an album are left out.
+    private func topAlbums(in year: Int, from all: [PlayRecord]) -> [ListeningShare] {
+        let inYear = all.filter { Calendar.current.component(.year, from: $0.date) == year }
+        let snapshot = Dictionary(songs.map { ($0.id, ListeningSong(album: $0.album)) }, uniquingKeysWith: { first, _ in first })
+        return ListeningBreakdown.make(.album, records: inYear, songs: snapshot, limit: 6, unknownName: "")
+            .filter { !$0.name.isEmpty }
+            .sorted { $0.plays != $1.plays ? $0.plays > $1.plays : $0.seconds > $1.seconds }
+            .prefix(5).map { $0 }
     }
 
     private func artistName(_ name: String) -> String {
