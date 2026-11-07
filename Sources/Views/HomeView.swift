@@ -1,6 +1,12 @@
 import SwiftUI
 import SwiftData
 
+private struct HomeMix: Identifiable {
+    let kind: MixKind
+    let songs: [Song]
+    var id: String { kind.rawValue }
+}
+
 struct HomeView: View {
     @Binding var showNowPlaying: Bool
     @EnvironmentObject private var player: PlayerEngine
@@ -27,6 +33,20 @@ struct HomeView: View {
         let byID = Dictionary(songs.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         return ids.compactMap { byID[$0] }
     }
+    private var mixCandidates: [MixCandidate] {
+        songs.map { MixCandidate(id: $0.id, artist: $0.artist, playCount: $0.playCount, lastPlayedAt: $0.lastPlayedAt,
+                                 dateAdded: $0.dateAdded, isFavorite: $0.isFavorite) }
+    }
+
+    /// Mixes that are big enough to be worth a tile, each resolved to songs.
+    private func mixes() -> [HomeMix] {
+        let candidates = mixCandidates
+        return MixKind.allCases.compactMap { kind in
+            let list = resolveSongs(MixBuilder.make(kind, from: candidates)).filter { $0.primaryVersion != nil }
+            return list.count >= MixBuilder.minimumSize ? HomeMix(kind: kind, songs: list) : nil
+        }
+    }
+
     private var mostPlayed: [Song] { songs.filter { $0.playCount > 0 }.sorted { $0.playCount > $1.playCount } }
 
     private func throwbackTitle(_ years: Int) -> String {
@@ -39,6 +59,74 @@ struct HomeView: View {
         let recent = events.prefix { $0.date >= cutoff }
             .map { PlayRecord(date: $0.date, seconds: $0.seconds, title: $0.title, artist: $0.artist) }
         return WeeklyRecap.make(from: recent)
+    }
+
+    private func mixTitle(_ kind: MixKind) -> String {
+        switch kind {
+        case .daily: String(localized: "Daily Mix")
+        case .deepCuts: String(localized: "Deep Cuts")
+        case .fresh: String(localized: "Fresh Imports")
+        }
+    }
+
+    private func mixSubtitle(_ kind: MixKind) -> String {
+        switch kind {
+        case .daily: String(localized: "Favorites and forgotten songs")
+        case .deepCuts: String(localized: "Rarely played")
+        case .fresh: String(localized: "New in your library")
+        }
+    }
+
+    private func mixSymbol(_ kind: MixKind) -> String {
+        switch kind {
+        case .daily: "sun.max.fill"
+        case .deepCuts: "circle.dotted.circle"
+        case .fresh: "sparkles"
+        }
+    }
+
+    private func mixTint(_ kind: MixKind) -> Color {
+        switch kind {
+        case .daily: .orange
+        case .deepCuts: .indigo
+        case .fresh: .teal
+        }
+    }
+
+    private func mixesRow(_ mixes: [HomeMix]) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Mixes").font(.title2.bold()).padding(.horizontal)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 12) {
+                    ForEach(mixes) { mix in
+                        Button {
+                            if let first = mix.songs.first?.primaryVersion {
+                                player.play(first, from: mix.songs.compactMap(\.primaryVersion))
+                            }
+                        } label: {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Image(systemName: mixSymbol(mix.kind)).font(.title2).foregroundStyle(.white.opacity(0.95))
+                                Spacer(minLength: 6)
+                                Text(mixTitle(mix.kind)).font(.headline).foregroundStyle(.white)
+                                Text(mixSubtitle(mix.kind)).font(.caption).foregroundStyle(.white.opacity(0.85)).lineLimit(2)
+                                Text("\(mix.songs.count) songs · \(TimeFormatting.spoken(mix.songs.reduce(0) { $0 + $1.duration }))")
+                                    .font(.caption2).foregroundStyle(.white.opacity(0.75))
+                            }
+                            .padding(14)
+                            .frame(width: 170, height: 130, alignment: .leading)
+                            .background(
+                                LinearGradient(colors: [mixTint(mix.kind), mixTint(mix.kind).opacity(0.6)], startPoint: .topLeading, endPoint: .bottomTrailing),
+                                in: RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityElement(children: .combine)
+                        .accessibilityHint(Text("Plays this mix"))
+                    }
+                }
+                .padding(.horizontal)
+            }
+        }
     }
 
     private func recapCard(_ recap: WeeklyRecap) -> some View {
@@ -145,6 +233,8 @@ struct HomeView: View {
                             }
                             let recap = weeklyRecap
                             if recap.hasActivity { recapCard(recap) }
+                            let mixList = mixes()
+                            if !mixList.isEmpty { mixesRow(mixList) }
                             if !lastPlayed.isEmpty { shelf(String(localized: "Recently Played"), songs: lastPlayed, linksToHistory: true) }
                             if !favorites.isEmpty { shelf(String(localized: "Favorites"), songs: favorites) }
                             if mostPlayed.count > 1 { shelf(String(localized: "Most Played"), songs: mostPlayed) }

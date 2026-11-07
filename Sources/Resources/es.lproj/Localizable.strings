@@ -497,3 +497,12 @@
 "Delete %lld · %@" = "Eliminar %lld · %@";
 "Delete Versions?" = "¿Eliminar versiones?";
 "The audio files of the selected versions are removed from this device. The songs stay in your library." = "Los archivos de audio de las versiones elegidas se eliminan de este dispositivo. Las canciones permanecen en tu biblioteca.";
+"Mixes" = "Mixes";
+"Daily Mix" = "Mix del día";
+"Deep Cuts" = "Joyas ocultas";
+"Fresh Imports" = "Recién importadas";
+"Favorites and forgotten songs" = "Favoritas y olvidadas";
+"Rarely played" = "Poco escuchadas";
+"New in your library" = "Nuevo en tu biblioteca";
+"%lld songs · %@" = "%lld canciones · %@";
+"Plays this mix" = "Reproduce este mix";
