@@ -535,3 +535,7 @@
 "Leave out songs with this tag" = "Excluir canciones con esta etiqueta";
 "Leave out songs containing a word" = "Excluir canciones que contengan una palabra";
 "Everything combined: all conditions must match" = "Todo combinado: se deben cumplir todas las condiciones";
+"What You Listen To" = "Lo que escuchas";
+"Group By" = "Agrupar por";
+"Not enough plays yet." = "Aún hay pocas reproducciones.";
+"%lld%% · %@" = "%lld%% · %@";

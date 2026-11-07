@@ -6,11 +6,13 @@ import Charts
 struct StatsView: View {
     @Environment(\.dismiss) private var dismiss
     @Query(sort: \PlayEvent.date, order: .reverse) private var events: [PlayEvent]
+    @Query private var songs: [Song]
     var showsDoneButton = true
     @State private var period: StatsCalculator.Period = .month
+    @State private var dimension: ListeningDimension = .status
 
     private var records: [PlayRecord] {
-        events.map { PlayRecord(date: $0.date, seconds: $0.seconds, title: $0.title, artist: $0.artist) }
+        events.map { PlayRecord(date: $0.date, seconds: $0.seconds, title: $0.title, artist: $0.artist, songID: $0.songID) }
     }
 
     private func artistName(_ name: String) -> String {
@@ -62,6 +64,7 @@ struct StatsView: View {
                     }
                 }
                 if !scoped.isEmpty { patternSection(scoped) }
+                if !scoped.isEmpty { breakdownSection(scoped) }
                 let tracks = StatsCalculator.topTracks(scoped, limit: 10)
                 if !tracks.isEmpty {
                     Section("Top Tracks") {
@@ -117,6 +120,50 @@ struct StatsView: View {
     private func weekdayName(at index: Int) -> String {
         let calendar = Calendar.current
         return calendar.weekdaySymbols[(calendar.firstWeekday - 1 + index) % 7]
+    }
+
+    private func dimensionName(_ dimension: ListeningDimension) -> LocalizedStringKey {
+        switch dimension {
+        case .status: "Status"
+        case .era: "Era"
+        case .tag: "Tags"
+        case .album: "Albums"
+        }
+    }
+
+    /// Where the listening time goes: by status, era, tag or album (follows the period picker above).
+    @ViewBuilder private func breakdownSection(_ scoped: [PlayRecord]) -> some View {
+        let snapshot = Dictionary(songs.map { song in
+            (song.id, ListeningSong(album: song.album, era: song.era, tags: song.personalTags.map(\.name), statuses: song.statusTags.map(\.name)))
+        }, uniquingKeysWith: { first, _ in first })
+        let available = ListeningBreakdown.availableDimensions(songs: Array(snapshot.values))
+        if !available.isEmpty {
+            let current = available.contains(dimension) ? dimension : available[0]
+            let shares = ListeningBreakdown.make(current, records: scoped, songs: snapshot, unknownName: String(localized: "Unknown"))
+            Section("What You Listen To") {
+                if available.count > 1 {
+                    Picker("Group By", selection: Binding(get: { current }, set: { dimension = $0 })) {
+                        ForEach(available) { Text(dimensionName($0)).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                }
+                if shares.isEmpty {
+                    Text("Not enough plays yet.").font(.footnote).foregroundStyle(.secondary)
+                }
+                ForEach(shares) { item in
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            Text(item.name).lineLimit(1)
+                            Spacer()
+                            Text("\(Int((item.share * 100).rounded()))% · \(TimeFormatting.spoken(item.seconds))")
+                                .font(.footnote).foregroundStyle(.secondary).monospacedDigit()
+                        }
+                        ProgressView(value: item.share).tint(.accentColor)
+                    }
+                    .accessibilityElement(children: .combine)
+                }
+            }
+        }
     }
 
     private func patternSection(_ scoped: [PlayRecord]) -> some View {

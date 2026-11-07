@@ -535,3 +535,7 @@
 "Leave out songs with this tag" = "Leave out songs with this tag";
 "Leave out songs containing a word" = "Leave out songs containing a word";
 "Everything combined: all conditions must match" = "Everything combined: all conditions must match";
+"What You Listen To" = "What You Listen To";
+"Group By" = "Group By";
+"Not enough plays yet." = "Not enough plays yet.";
+"%lld%% · %@" = "%lld%% · %@";

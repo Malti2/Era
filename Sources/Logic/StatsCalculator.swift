@@ -6,6 +6,8 @@ struct PlayRecord: Equatable {
     let seconds: Double
     let title: String
     let artist: String
+    /// Song, zu dem die Wiedergabe gehoert (nil bei alten/geloeschten Eintraegen).
+    var songID: UUID? = nil
 }
 
 enum StatsCalculator {
