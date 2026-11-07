@@ -40,6 +40,21 @@ struct EraNextIntent: AppIntent {
     }
 }
 
+struct EraPlayMixIntent: AppIntent {
+    static var title: LocalizedStringResource = "Play Daily Mix"
+    static var description = IntentDescription("Plays today's mix of favorites and forgotten songs from your library.")
+    static var openAppWhenRun: Bool = true
+
+    @MainActor
+    func perform() async throws -> some IntentResult {
+        let player = PlayerEngine.shared
+        guard let store = player.store, let library = try? store.allSongs() else { return .result() }
+        let queue = MixPlaylist.songs(.daily, in: library).compactMap(\.primaryVersion)
+        if let first = queue.first { player.play(first, from: queue) }
+        return .result()
+    }
+}
+
 struct EraShortcuts: AppShortcutsProvider {
     static var shortcutTileColor: ShortcutTileColor = .grape
 
@@ -71,6 +86,15 @@ struct EraShortcuts: AppShortcutsProvider {
             ],
             shortTitle: "Next track",
             systemImageName: "forward.fill"
+        )
+        AppShortcut(
+            intent: EraPlayMixIntent(),
+            phrases: [
+                "Play my daily mix with \(.applicationName)",
+                "Play a mix in \(.applicationName)"
+            ],
+            shortTitle: "Daily Mix",
+            systemImageName: "sun.max.fill"
         )
     }
 }

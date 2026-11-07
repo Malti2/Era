@@ -506,3 +506,5 @@
 "New in your library" = "Nuevo en tu biblioteca";
 "%lld songs · %@" = "%lld canciones · %@";
 "Plays this mix" = "Reproduce este mix";
+"Play Daily Mix" = "Reproducir mix del día";
+"Plays today's mix of favorites and forgotten songs from your library." = "Reproduce el mix de hoy con favoritas y canciones olvidadas de tu biblioteca.";

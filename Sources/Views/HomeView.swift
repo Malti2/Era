@@ -33,16 +33,10 @@ struct HomeView: View {
         let byID = Dictionary(songs.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         return ids.compactMap { byID[$0] }
     }
-    private var mixCandidates: [MixCandidate] {
-        songs.map { MixCandidate(id: $0.id, artist: $0.artist, playCount: $0.playCount, lastPlayedAt: $0.lastPlayedAt,
-                                 dateAdded: $0.dateAdded, isFavorite: $0.isFavorite) }
-    }
-
     /// Mixes that are big enough to be worth a tile, each resolved to songs.
     private func mixes() -> [HomeMix] {
-        let candidates = mixCandidates
-        return MixKind.allCases.compactMap { kind in
-            let list = resolveSongs(MixBuilder.make(kind, from: candidates)).filter { $0.primaryVersion != nil }
+        MixKind.allCases.compactMap { kind in
+            let list = MixPlaylist.songs(kind, in: songs)
             return list.count >= MixBuilder.minimumSize ? HomeMix(kind: kind, songs: list) : nil
         }
     }
