@@ -486,3 +486,14 @@
 "%lld%% more than last week" = "%lld%% de plus que la semaine dernière";
 "%lld%% less than last week" = "%lld%% de moins que la semaine dernière";
 "Opens listening stats" = "Ouvre les statistiques d’écoute";
+"Free Up Space" = "Libérer de l’espace";
+"Alternate versions you could remove. Main versions are never touched." = "Versions alternatives que tu peux supprimer. Les versions principales ne sont jamais touchées.";
+"Nothing to Clean Up" = "Rien à nettoyer";
+"Your songs have no alternate versions." = "Tes morceaux n’ont pas de versions alternatives.";
+"Main versions are never listed. Deleted files cannot be restored, back up first if unsure." = "Les versions principales ne sont jamais listées. Les fichiers supprimés sont irrécupérables, fais d’abord une sauvegarde en cas de doute.";
+"Select Large Files" = "Sélectionner les gros fichiers";
+"Select None" = "Tout désélectionner";
+"Select" = "Sélectionner";
+"Delete %lld · %@" = "Supprimer %lld · %@";
+"Delete Versions?" = "Supprimer les versions ?";
+"The audio files of the selected versions are removed from this device. The songs stay in your library." = "Les fichiers audio des versions choisies sont supprimés de cet appareil. Les morceaux restent dans ta bibliothèque.";

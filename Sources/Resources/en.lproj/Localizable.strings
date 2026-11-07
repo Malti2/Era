@@ -486,3 +486,14 @@
 "%lld%% more than last week" = "%lld%% more than last week";
 "%lld%% less than last week" = "%lld%% less than last week";
 "Opens listening stats" = "Opens listening stats";
+"Free Up Space" = "Free Up Space";
+"Alternate versions you could remove. Main versions are never touched." = "Alternate versions you could remove. Main versions are never touched.";
+"Nothing to Clean Up" = "Nothing to Clean Up";
+"Your songs have no alternate versions." = "Your songs have no alternate versions.";
+"Main versions are never listed. Deleted files cannot be restored, back up first if unsure." = "Main versions are never listed. Deleted files cannot be restored, back up first if unsure.";
+"Select Large Files" = "Select Large Files";
+"Select None" = "Select None";
+"Select" = "Select";
+"Delete %lld · %@" = "Delete %lld · %@";
+"Delete Versions?" = "Delete Versions?";
+"The audio files of the selected versions are removed from this device. The songs stay in your library." = "The audio files of the selected versions are removed from this device. The songs stay in your library.";

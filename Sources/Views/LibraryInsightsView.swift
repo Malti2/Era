@@ -5,6 +5,7 @@ import Charts
 // Bibliotheks-Uebersicht: was ist in der Sammlung, in welchem Zustand (Status), aus welchen Eras, wie schnell waechst sie.
 struct LibraryInsightsView: View {
     @Query private var songs: [Song]
+    @State private var storageItems: [StorageItem] = []
     @State private var storage: StorageReport?
 
     private var insights: LibraryInsights {
@@ -51,23 +52,30 @@ struct LibraryInsightsView: View {
         }
         .navigationTitle("Library Overview")
         .navigationBarTitleDisplayMode(.inline)
-        .task(id: songs.count) { storage = await loadStorage() }
+        .task(id: songs.map { $0.versions.count }.reduce(0, +)) { await refreshStorage() }
+    }
+
+    private func refreshStorage() async {
+        let items = await loadStorageItems()
+        storageItems = items
+        storage = StorageReport.make(from: items)
     }
 
     /// File sizes are read off the main thread; large libraries have thousands of files.
-    private func loadStorage() async -> StorageReport {
+    private func loadStorageItems() async -> [StorageItem] {
         let snapshot = songs.flatMap { song in
-            song.versions.map { (id: $0.id, songID: song.id, title: song.title, name: $0.name, file: $0.fileName) }
+            song.versions.map { (id: $0.id, songID: song.id, title: song.title, name: $0.name, file: $0.fileName,
+                                 primary: song.primaryVersion?.id == $0.id, siblings: song.versions.count) }
         }
         return await Task.detached(priority: .utility) {
             let root = LibraryFiles.root
-            let items = snapshot.map { entry -> StorageItem in
+            return snapshot.map { entry -> StorageItem in
                 let url = root.appendingPathComponent(entry.file)
                 let size = (try? url.resourceValues(forKeys: [.fileSizeKey]))?.fileSize
                 return StorageItem(id: entry.id, songID: entry.songID, title: entry.title, versionName: entry.name,
-                                   fileExtension: url.pathExtension, bytes: size.map(Int64.init))
+                                   fileExtension: url.pathExtension, bytes: size.map(Int64.init),
+                                   isPrimary: entry.primary, siblingCount: entry.siblings)
             }
-            return StorageReport.make(from: items)
         }.value
     }
 
@@ -91,6 +99,18 @@ struct LibraryInsightsView: View {
                     ProgressView(value: report.share(of: format.bytes)).tint(.accentColor)
                 }
                 .accessibilityElement(children: .combine)
+            }
+        }
+        let cleanup = StorageCleanup.make(from: storageItems)
+        if !cleanup.isEmpty {
+            Section {
+                NavigationLink {
+                    StorageCleanupView(items: storageItems) { Task { await refreshStorage() } }
+                } label: {
+                    LabeledContent("Free Up Space", value: sizeText(cleanup.reclaimableBytes))
+                }
+            } footer: {
+                Text("Alternate versions you could remove. Main versions are never touched.")
             }
         }
         if !report.largest.isEmpty {

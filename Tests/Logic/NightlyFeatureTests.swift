@@ -138,3 +138,32 @@ final class WeeklyRecapTests: XCTestCase {
         XCTAssertEqual(empty.barHeight(for: empty.days[0]), 0)
     }
 }
+
+final class StorageCleanupTests: XCTestCase {
+    private func item(_ title: String, _ bytes: Int64?, primary: Bool, siblings: Int = 2) -> StorageItem {
+        StorageItem(id: UUID(), songID: UUID(), title: title, versionName: "v", fileExtension: "wav", bytes: bytes,
+                    isPrimary: primary, siblingCount: siblings)
+    }
+
+    func testOnlyAlternateVersionsWithFilesAreOffered() {
+        let items = [item("Main", 90_000, primary: true), item("Alt small", 1_000, primary: false),
+                     item("Alt big", 50_000, primary: false), item("Missing", nil, primary: false),
+                     item("Lonely", 5_000, primary: false, siblings: 1)]
+        let cleanup = StorageCleanup.make(from: items)
+        XCTAssertEqual(cleanup.candidates.map(\.title), ["Alt big", "Alt small"])
+        XCTAssertEqual(cleanup.reclaimableBytes, 51_000)
+        XCTAssertFalse(cleanup.isEmpty)
+    }
+
+    func testSelectionSizeAndThreshold() {
+        let big = item("Big", 30_000, primary: false), small = item("Small", 2_000, primary: false)
+        let cleanup = StorageCleanup.make(from: [big, small])
+        XCTAssertEqual(cleanup.bytes(of: [small.id]), 2_000)
+        XCTAssertEqual(cleanup.bytes(of: []), 0)
+        XCTAssertEqual(cleanup.ids(atLeast: 10_000), [big.id])
+    }
+
+    func testEmptyWhenEverythingIsPrimary() {
+        XCTAssertTrue(StorageCleanup.make(from: [item("A", 10, primary: true)]).isEmpty)
+    }
+}

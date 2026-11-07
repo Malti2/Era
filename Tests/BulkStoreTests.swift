@@ -129,3 +129,32 @@ final class BulkStoreTests: XCTestCase {
         XCTAssertEqual(version.name, "OG")
     }
 }
+
+@MainActor
+final class StorageCleanupStoreTests: XCTestCase {
+    func testDeleteAlternateVersionsKeepsPrimaryAndLastVersion() throws {
+        let store = EraStore(context: ModelContext(Persistence.makeContainer(inMemory: true)))
+        let song = Song(title: "Multi")
+        var versions: [SongVersion] = []
+        for name in ["OG", "Demo", "V2"] {
+            let v = SongVersion(name: name, fileName: "\(UUID().uuidString).m4a", pcmHash: UUID().uuidString, duration: 100)
+            v.song = song
+            song.versions.append(v)
+            versions.append(v)
+        }
+        song.primaryVersionID = versions[0].id
+        store.insertSong(song)
+        let single = Song(title: "Single")
+        let only = SongVersion(name: "OG", fileName: "\(UUID().uuidString).m4a", pcmHash: UUID().uuidString, duration: 60)
+        only.song = single
+        single.versions.append(only)
+        single.primaryVersionID = only.id
+        store.insertSong(single)
+
+        let removed = store.deleteAlternateVersions(ids: [versions[0].id, versions[1].id, only.id])
+        XCTAssertEqual(removed, 1, "primary (OG) and the last version of a song stay")
+        let left = try store.allSongs().first { $0.title == "Multi" }
+        XCTAssertEqual(Set(left?.versions.map(\.name) ?? []), ["OG", "V2"])
+        XCTAssertEqual(store.deleteAlternateVersions(ids: []), 0)
+    }
+}

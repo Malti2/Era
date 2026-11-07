@@ -11,6 +11,10 @@ struct StorageItem: Equatable, Identifiable {
     var fileExtension: String
     /// nil = Datei fehlt auf dem Geraet
     var bytes: Int64?
+    /// Hauptversion des Songs (wird beim Aufraeumen nie vorgeschlagen).
+    var isPrimary = true
+    /// Wie viele Versionen der Song insgesamt hat.
+    var siblingCount = 1
 }
 
 struct StorageReport: Equatable {
@@ -56,5 +60,34 @@ struct StorageReport: Equatable {
     /// Anteil von `bytes` an der Gesamtgroesse (0...1), fuer Balken.
     func share(of bytes: Int64) -> Double {
         totalBytes > 0 ? Double(bytes) / Double(totalBytes) : 0
+    }
+}
+
+/// Aufraeum-Vorschlaege: alternative Versionen (nicht die Hauptversion), groesste zuerst.
+/// Die Hauptversion und der letzte verbleibende Titel eines Songs werden nie angeboten.
+struct StorageCleanup: Equatable {
+    var candidates: [StorageItem] = []
+
+    var reclaimableBytes: Int64 { candidates.reduce(0) { $0 + ($1.bytes ?? 0) } }
+    var isEmpty: Bool { candidates.isEmpty }
+
+    static func make(from items: [StorageItem]) -> StorageCleanup {
+        let list = items.filter { !$0.isPrimary && $0.siblingCount > 1 && ($0.bytes ?? 0) > 0 }
+            .sorted {
+                let l = $0.bytes ?? 0, r = $1.bytes ?? 0
+                if l != r { return l > r }
+                let order = $0.title.localizedStandardCompare($1.title)
+                return order != .orderedSame ? order == .orderedAscending : $0.versionName < $1.versionName
+            }
+        return StorageCleanup(candidates: list)
+    }
+
+    func bytes(of ids: Set<UUID>) -> Int64 {
+        candidates.filter { ids.contains($0.id) }.reduce(0) { $0 + ($1.bytes ?? 0) }
+    }
+
+    /// Alle Kandidaten, die mindestens `minBytes` gross sind (fuer "Grosse Alternativen auswaehlen").
+    func ids(atLeast minBytes: Int64) -> Set<UUID> {
+        Set(candidates.filter { ($0.bytes ?? 0) >= minBytes }.map(\.id))
     }
 }

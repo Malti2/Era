@@ -258,5 +258,53 @@
 			<string>%lld titres à suivre</string>
 		</dict>
 	</dict>
+	<key>Removed %lld versions.</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld version supprimée.</string>
+			<key>other</key>
+			<string>%lld versions supprimées.</string>
+		</dict>
+	</dict>
+	<key>%lld alternate versions</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld version alternative</string>
+			<key>other</key>
+			<string>%lld versions alternatives</string>
+		</dict>
+	</dict>
+	<key>Delete %lld Versions</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>Supprimer %lld version</string>
+			<key>other</key>
+			<string>Supprimer %lld versions</string>
+		</dict>
+	</dict>
 </dict>
 </plist>
