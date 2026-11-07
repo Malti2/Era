@@ -69,19 +69,19 @@ struct UpdatePromptView: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
-            .frame(height: 44)
+            .frame(minHeight: 44)
         case .downloaded:
             Label("Downloaded - use the share sheet to open it in your sideloading app.", systemImage: "checkmark.circle.fill")
                 .font(.footnote)
                 .foregroundStyle(.green)
                 .multilineTextAlignment(.center)
-                .frame(height: 44)
+                .frame(minHeight: 44)
         case .failed(let message):
             VStack(spacing: 8) {
                 Text(message).font(.footnote).foregroundStyle(.red)
                 Button("Try Again") { Task { await updater.download(release) } }
             }
-            .frame(height: 44)
+            .frame(minHeight: 44)
         default:
             VStack(spacing: 10) {
                 Button {

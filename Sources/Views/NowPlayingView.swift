@@ -426,6 +426,7 @@ struct NowPlayingView: View {
                     }
                     .contentShape(Rectangle())
                     .onTapGesture { player.play(v, from: player.queue) }
+                    .accessibilityAddTraits(.isButton)
                 }
                 .onMove { player.moveInQueue(from: $0, to: $1) }
                 .onDelete { player.removeFromQueue(at: $0) }

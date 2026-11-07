@@ -169,7 +169,7 @@ struct PlaylistDetailView: View {
                     if let first = queue.first { player.play(first, from: queue); showNowPlaying = true }
                 } label: {
                     Label("Wiedergeben", systemImage: "play.fill")
-                        .font(.headline).padding(.horizontal, 25).frame(height: 52)
+                        .font(.headline).padding(.horizontal, 25).frame(minHeight: 52)
                         .background(Color.accentColor, in: .capsule).foregroundStyle(.white)
                 }
             }
@@ -301,7 +301,7 @@ struct PlaylistEntryRow: View {
         .onTapGesture {
             if isSelected != nil { toggle() } else if let v = version { player.play(v, from: queue) }
         }
-        .accessibilityAddTraits(isSelected == true ? .isSelected : [])
+        .accessibilityAddTraits(isSelected == true ? [.isSelected, .isButton] : .isButton)
         .sheet(isPresented: $showDrawer) { VersionDrawer(song: song) }
     }
 }

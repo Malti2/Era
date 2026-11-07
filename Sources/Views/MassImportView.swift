@@ -36,6 +36,7 @@ struct MassImportView: View {
                             Button {
                                 applyBulk()
                             } label: { Image(systemName: "arrow.down.circle.fill") }
+                            .accessibilityLabel("Apply to All")
                             .disabled(bulkTag.trimmingCharacters(in: .whitespaces).isEmpty && bulkStatus.isEmpty)
                         }
                     }

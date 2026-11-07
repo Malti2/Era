@@ -527,6 +527,7 @@ struct LibraryView: View {
                     }
                     .contentShape(Rectangle())
                     .onTapGesture { player.play(version, from: [version]) }
+                    .accessibilityAddTraits(.isButton)
                 }
             }
         }
@@ -750,7 +751,7 @@ struct CollectionDetailView: View {
                     let versions = songs.compactMap(\.primaryVersion)
                     if let first = versions.first { player.play(first, from: versions); showNowPlaying = true }
                 } label: {
-                    Label("Play", systemImage: "play.fill").font(.headline).padding(.horizontal, 25).frame(height: 52)
+                    Label("Play", systemImage: "play.fill").font(.headline).padding(.horizontal, 25).frame(minHeight: 52)
                         .background(Color.accentColor, in: .capsule).foregroundStyle(.white)
                 }
             }.buttonStyle(.plain)
@@ -822,6 +823,7 @@ struct CollectionDetailView: View {
             .padding(.horizontal, 18).padding(.vertical, 10)
             .contentShape(Rectangle())
             .onTapGesture { if let v = song.primaryVersion { player.play(v, from: songs.compactMap(\.primaryVersion)) } }
+            .accessibilityAddTraits(.isButton)
             .contextMenu { SongContextMenu(song: song, showNowPlaying: $showNowPlaying) }
         }
     }

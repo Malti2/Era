@@ -98,6 +98,7 @@ struct MiniPlayer: View {
             .eraGlassRect(18)
             .contentShape(Rectangle())
             .onTapGesture(perform: open)
+            .accessibilityAddTraits(.isButton)
         }
     }
 }

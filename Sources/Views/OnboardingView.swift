@@ -80,6 +80,7 @@ struct OnboardingView: View {
             Spacer()
             Image(systemName: "lock.shield.fill")
                 .font(.system(size: 64))
+                .accessibilityHidden(true)
                 .foregroundStyle(.tint)
                 .symbolRenderingMode(.hierarchical)
             Text("Your Music Stays With You")

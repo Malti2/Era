@@ -81,10 +81,12 @@ struct SongDetailView: View {
                             .onTapGesture {
                                 player.play(version, from: [version])
                             }
+                            .accessibilityAddTraits(.isButton)
                             .contextMenu { versionMenu(version) }
                         Menu { versionMenu(version) } label: {
                             Image(systemName: "ellipsis").frame(width: 44, height: 44)
                         }
+                        .accessibilityLabel("More")
                     }
                 }
             }

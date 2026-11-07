@@ -145,10 +145,12 @@ struct ContentView: View {
                 .padding(.horizontal, 16).padding(.top, 6)
                 .transition(.move(edge: .top).combined(with: .opacity))
                 .task(id: message) {
-                    try? await Task.sleep(for: .seconds(4))
+                    try? await Task.sleep(for: .seconds(8))
                     withAnimation { player.playbackError = nil }
                 }
                 .onTapGesture { withAnimation { player.playbackError = nil } }
+                .accessibilityAddTraits(.isButton)
+                .accessibilityHint(Text("Dismiss"))
                 .accessibilityAddTraits(.updatesFrequently)
         }
     }
