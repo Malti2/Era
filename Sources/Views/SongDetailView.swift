@@ -52,6 +52,7 @@ struct SongDetailView: View {
                     Button { song.isFavorite.toggle(); store.save() } label: { Image(systemName: song.isFavorite ? "heart.fill" : "heart").frame(width: 44, height: 44) }
                         .buttonStyle(.bordered).accessibilityLabel(song.isFavorite ? "Remove Favorite" : "Add to Favorites")
                 }
+                StarRatingRow(rating: song.rating) { song.rating = $0; store.save() }
             }
 
             Section("Manage") {
@@ -304,6 +305,12 @@ struct SongContextMenu: View {
             Button { song.isFavorite.toggle(); store.save() } label: {
                 Label(song.isFavorite ? "Remove Favorite" : "Favorite", systemImage: song.isFavorite ? "heart.slash" : "heart")
             }
+            Menu {
+                Picker("Rating", selection: Binding(get: { song.rating }, set: { song.rating = $0; store.save() })) {
+                    Text("Not Rated").tag(0)
+                    ForEach(Array(SongRating.range), id: \.self) { Text(SongRating.stars($0)).tag($0) }
+                }
+            } label: { Label("Rating", systemImage: "star") }
             if let v = song.primaryVersion {
                 let url = LibraryFiles.url(for: v)
                 if FileManager.default.fileExists(atPath: url.path) {

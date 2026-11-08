@@ -161,3 +161,37 @@ struct ShareSheet: UIViewControllerRepresentable {
     }
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
+
+/// Fuenf antippbare Sterne; Tippen auf den gesetzten Stern loescht die Bewertung.
+struct StarRatingRow: View {
+    let rating: Int
+    let onChange: (Int) -> Void
+
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(Array(SongRating.range), id: \.self) { star in
+                Button {
+                    onChange(SongRating.toggled(current: rating, tapped: star))
+                } label: {
+                    Image(systemName: star <= rating ? "star.fill" : "star")
+                        .font(.title3)
+                        .foregroundStyle(star <= rating ? Color.yellow : Color.secondary)
+                        .frame(minWidth: 40, minHeight: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text("Rating"))
+        .accessibilityValue(rating == 0 ? Text("Not Rated") : Text("\(rating) of 5"))
+        .accessibilityAdjustableAction { direction in
+            switch direction {
+            case .increment: onChange(SongRating.adjusted(rating, by: 1))
+            case .decrement: onChange(SongRating.adjusted(rating, by: -1))
+            @unknown default: break
+            }
+        }
+    }
+}

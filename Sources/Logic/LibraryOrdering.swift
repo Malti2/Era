@@ -10,9 +10,10 @@ struct SortRow: Equatable {
     var playCount: Int
     var dateAdded: Date
     var duration: Double
+    var rating: Int
 
     init(id: UUID = UUID(), title: String, artist: String = "", year: Int? = nil, playCount: Int = 0,
-         dateAdded: Date = Date(timeIntervalSince1970: 0), duration: Double = 0) {
+         dateAdded: Date = Date(timeIntervalSince1970: 0), duration: Double = 0, rating: Int = 0) {
         self.id = id
         self.title = title
         self.artist = artist
@@ -20,11 +21,12 @@ struct SortRow: Equatable {
         self.playCount = playCount
         self.dateAdded = dateAdded
         self.duration = duration
+        self.rating = rating
     }
 }
 
 enum LibrarySort: String, CaseIterable, Identifiable {
-    case recent, title, artist, year, mostPlayed, longest
+    case recent, title, artist, year, mostPlayed, longest, rating
     var id: String { rawValue }
 
     /// Ids in der Reihenfolge dieser Sortierung; Gleichstaende fallen auf Titel zurueck.
@@ -60,6 +62,9 @@ enum LibrarySort: String, CaseIterable, Identifiable {
             sorted = rows.sorted { $0.playCount != $1.playCount ? $0.playCount > $1.playCount : byTitle($0, $1) }
         case .longest:
             sorted = rows.sorted { $0.duration != $1.duration ? $0.duration > $1.duration : byTitle($0, $1) }
+        case .rating:
+            // Bewertete zuerst (beste oben), unbewertete ans Ende
+            sorted = rows.sorted { $0.rating != $1.rating ? $0.rating > $1.rating : byTitle($0, $1) }
         }
         return sorted.map(\.id)
     }

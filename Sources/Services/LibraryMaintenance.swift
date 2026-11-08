@@ -168,6 +168,7 @@ extension BackupService {
             song.isFavorite = entry.isFavorite
             song.resumePosition = entry.resumePosition
             song.notes = entry.notes ?? ""
+            song.rating = SongRating.clamp(entry.rating ?? 0)
             for tagID in entry.tagIDs {
                 if let tag = localTag(tagID), !song.tags.contains(where: { $0.id == tag.id }) { song.tags.append(tag) }
             }

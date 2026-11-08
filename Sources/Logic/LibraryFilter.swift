@@ -11,13 +11,14 @@ struct LibraryFilter: Equatable, Codable {
 
     /// Eigenschaften, die sich aus dem Song selbst ergeben - hilft beim Aufraeumen ("Was habe ich noch nie gehoert?").
     enum Attribute: String, Codable, CaseIterable, Hashable {
-        case notPlayed, hasNotes, multipleVersions
+        case notPlayed, hasNotes, multipleVersions, topRated
 
         func matches(_ song: SearchableSong) -> Bool {
             switch self {
             case .notPlayed: song.playCount == 0
             case .hasNotes: !song.notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             case .multipleVersions: song.versionNames.count > 1
+            case .topRated: song.rating >= SongRating.topRatedMinimum
             }
         }
     }

@@ -19,6 +19,8 @@ final class Song {
     var primaryVersionID: UUID?
     /// Freie Notiz (Lyrics-Ideen, Session-Infos, Herkunft). Neues Feld mit Default -> leichtgewichtige Migration.
     var notes: String = ""
+    /// 0 = nicht bewertet, 1...5 Sterne (siehe SongRating).
+    var rating: Int = 0
 
     @Relationship(deleteRule: .cascade, inverse: \SongVersion.song)
     var versions: [SongVersion] = []

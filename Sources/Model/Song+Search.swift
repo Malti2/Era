@@ -9,7 +9,7 @@ extension Song {
             versionNames: versions.map(\.name), isFavorite: isFavorite, playCount: playCount,
             notes: notes, markerLabels: versions.flatMap { $0.markers.map(\.label).filter { !$0.isEmpty } },
             markerCount: versions.reduce(0) { $0 + $1.markers.count },
-            dateAdded: dateAdded, lastPlayedAt: lastPlayedAt, duration: duration
+            dateAdded: dateAdded, lastPlayedAt: lastPlayedAt, duration: duration, rating: rating
         )
     }
 }
@@ -22,7 +22,7 @@ extension Song {
 
 extension Song {
     var sortRow: SortRow {
-        SortRow(id: id, title: title, artist: artist, year: year, playCount: playCount, dateAdded: dateAdded, duration: duration)
+        SortRow(id: id, title: title, artist: artist, year: year, playCount: playCount, dateAdded: dateAdded, duration: duration, rating: rating)
     }
 }
 
@@ -35,6 +35,7 @@ extension LibrarySort {
         case .year: "Year"
         case .mostPlayed: "Most Played"
         case .longest: "Longest"
+        case .rating: "Rating"
         }
     }
 }
@@ -45,6 +46,7 @@ extension LibraryFilter.Attribute {
         case .notPlayed: "Not Played Yet"
         case .hasNotes: "With Notes"
         case .multipleVersions: "Multiple Versions"
+        case .topRated: "Top Rated"
         }
     }
 }

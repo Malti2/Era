@@ -19,7 +19,8 @@ enum BackupService {
                     playCount: song.playCount, lastPlayedAt: song.lastPlayedAt,
                     isFavorite: song.isFavorite, resumePosition: song.resumePosition,
                     primaryVersionID: song.primaryVersionID, tagIDs: song.tags.map(\.id),
-                    notes: song.notes.isEmpty ? nil : song.notes
+                    notes: song.notes.isEmpty ? nil : song.notes,
+                    rating: song.rating == 0 ? nil : song.rating
                 )
             },
             versions: versions.map { v in
@@ -62,7 +63,7 @@ enum BackupService {
 
 // CSV-Export der Bibliothek (eine Zeile pro Song) fuer Tabellenkalkulationen.
 enum CSVExport {
-    static let header = ["Title", "Artist", "Album", "Era", "Year", "Duration", "Versions", "Status", "Tags", "Plays", "Favorite", "Date Added", "Notes", "Markers"]
+    static let header = ["Title", "Artist", "Album", "Era", "Year", "Duration", "Versions", "Status", "Tags", "Plays", "Rating", "Favorite", "Date Added", "Notes", "Markers"]
 
     /// RFC 4180: Felder mit Komma, Anfuehrungszeichen oder Zeilenumbruch werden gequotet.
     static func escape(_ field: String) -> String {
@@ -91,6 +92,7 @@ enum CSVExport {
                 song.statusTags.map(\.name).joined(separator: "; "),
                 song.personalTags.map(\.name).joined(separator: "; "),
                 String(song.playCount),
+                song.rating > 0 ? String(song.rating) : "",
                 song.isFavorite ? "yes" : "no",
                 dateFormatter.string(from: song.dateAdded),
                 song.notes,

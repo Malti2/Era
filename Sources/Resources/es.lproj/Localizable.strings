@@ -548,3 +548,9 @@
 "Era saves a backup on this device about once a day and keeps the last five. They survive a database reset." = "Era guarda una copia en este dispositivo aproximadamente una vez al día y conserva las cinco últimas. Sobreviven a un restablecimiento de la base de datos.";
 "Restore this backup?" = "¿Restaurar esta copia?";
 "Missing songs are added back. Nothing existing is overwritten." = "Se añaden de nuevo las canciones que faltan. No se sobrescribe nada.";
+"Rating" = "Valoración";
+"Not Rated" = "Sin valorar";
+"%lld of 5" = "%lld de 5";
+"Top Rated" = "Mejor valoradas";
+"Rated four stars or more" = "Valoradas con cuatro estrellas o más";
+"Songs you have not rated" = "Canciones sin valorar";

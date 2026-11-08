@@ -548,3 +548,9 @@
 "Era saves a backup on this device about once a day and keeps the last five. They survive a database reset." = "Era saves a backup on this device about once a day and keeps the last five. They survive a database reset.";
 "Restore this backup?" = "Restore this backup?";
 "Missing songs are added back. Nothing existing is overwritten." = "Missing songs are added back. Nothing existing is overwritten.";
+"Rating" = "Rating";
+"Not Rated" = "Not Rated";
+"%lld of 5" = "%lld of 5";
+"Top Rated" = "Top Rated";
+"Rated four stars or more" = "Rated four stars or more";
+"Songs you have not rated" = "Songs you have not rated";
