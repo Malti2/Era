@@ -203,7 +203,9 @@ extension EraStore: SongRepository {
 
     func version(matchingHash hash: String, duration: Double) throws -> SongVersion? {
         // Hash ist der Primaerabgleich, Dauer das zweite Kriterium (Spec 13.3)
-        try allVersions().first { $0.pcmHash == hash && abs($0.duration - duration) < 0.5 }
+        // Nur die Treffer mit gleichem Hash laden statt der ganzen Bibliothek (Import ruft das pro Datei auf).
+        let candidates = try context.fetch(FetchDescriptor<SongVersion>(predicate: #Predicate { $0.pcmHash == hash }))
+        return candidates.first { abs($0.duration - duration) < 0.5 }
     }
 }
 
