@@ -18,6 +18,7 @@ struct ContentView: View {
     @State private var showUpdatePrompt = false
     @AppStorage(AppSettings.hasOnboardedKey) private var hasOnboarded = false
     @State private var showResetNotice = false
+    @State private var restoreMessage: String?
     @Environment(\.modelContext) private var modelContext
     @Environment(\.scenePhase) private var scenePhase
 
@@ -97,11 +98,34 @@ struct ContentView: View {
         }
         .sheet(isPresented: $showOnboarding) { OnboardingView() }
         .overlay(alignment: .top) { playbackErrorToast.animation(.easeInOut(duration: 0.25), value: player.playbackError) }
-        .onChange(of: scenePhase) { _, phase in if phase != .active { player.persistSession() } }
+        .onChange(of: scenePhase) { _, phase in
+            if phase != .active {
+                player.persistSession()
+                AutoBackupService.runIfDue(store: store)
+            }
+        }
         .alert(String(localized: "Library Was Reset"), isPresented: $showResetNotice) {
+            if let latest = AutoBackupService.files().first {
+                Button(String(localized: "Restore Latest Backup")) {
+                    UserDefaults.standard.set(false, forKey: "persistence.libraryWasReset")
+                    do {
+                        let summary = try AutoBackupService.restore(latest, into: store)
+                        restoreMessage = LibraryToolsView.message(for: summary)
+                    } catch let error as BackupError {
+                        restoreMessage = LibraryToolsView.message(for: error)
+                    } catch {
+                        restoreMessage = error.localizedDescription
+                    }
+                }
+            }
             Button(String(localized: "OK")) { UserDefaults.standard.set(false, forKey: "persistence.libraryWasReset") }
         } message: {
             Text(String(localized: "Your library database could not be migrated and was reset. A backup of the old database was kept in the app container. Your audio files are still in Files and can be re-imported."))
+        }
+        .alert(String(localized: "Restore Finished"), isPresented: Binding(get: { restoreMessage != nil }, set: { if !$0 { restoreMessage = nil } })) {
+            Button(String(localized: "OK")) { restoreMessage = nil }
+        } message: {
+            Text(restoreMessage ?? "")
         }
         .alert(String(localized: "Saving Failed"), isPresented: Binding(get: { store.saveError != nil }, set: { if !$0 { store.saveError = nil } })) {
             Button(String(localized: "OK")) { store.saveError = nil }

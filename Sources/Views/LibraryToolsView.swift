@@ -12,6 +12,8 @@ struct LibraryToolsView: View {
     @State private var alert: ToolAlert?
     @State private var pending: PendingAction?
     @State private var exportFailed = false
+    @State private var autoBackups: [AutoBackupFile] = []
+    @State private var pendingAutoRestore: AutoBackupFile?
     @AppStorage(AppSettings.lastBackupKey) private var lastBackup = 0.0
     @AppStorage(AppSettings.ignoredSimilarKey) private var ignoredSimilarRaw = ""
 
@@ -62,6 +64,28 @@ struct LibraryToolsView: View {
                 Text("Backups contain your library data, not the audio files. Restoring adds songs back whose audio is still on this device and never overwrites anything.")
             }
 
+            if !autoBackups.isEmpty {
+                Section {
+                    ForEach(autoBackups) { file in
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(file.date.formatted(date: .abbreviated, time: .shortened))
+                                Text(ByteCountFormatter.string(fromByteCount: file.size, countStyle: .file))
+                                    .font(.caption).foregroundStyle(.secondary)
+                            }
+                            Spacer(minLength: 8)
+                            Button("Restore") { pendingAutoRestore = file }
+                                .buttonStyle(.bordered).controlSize(.small)
+                        }
+                        .accessibilityElement(children: .combine)
+                    }
+                } header: {
+                    Text("Automatic Backups")
+                } footer: {
+                    Text("Era saves a backup on this device about once a day and keeps the last five. They survive a database reset.")
+                }
+            }
+
             Section {
                 if let report {
                     let similar = report.visibleSimilar(ignoring: ignoredSimilar)
@@ -80,9 +104,27 @@ struct LibraryToolsView: View {
         }
         .navigationTitle("Backup & Maintenance")
         .navigationBarTitleDisplayMode(.inline)
-        .task { if report == nil { runCheck() } }
+        .task {
+            autoBackups = AutoBackupService.files()
+            if report == nil { runCheck() }
+        }
         .sheet(item: $shareItem) { ShareSheet(items: [$0.url]) }
-        .fileImporter(isPresented: $showRestorePicker, allowedContentTypes: [.json]) { result in restore(result) }
+        // UIKit-Picker statt .fileImporter: Letzterer schliesst auf Geraeten oft nicht (siehe DocumentPicker).
+        .sheet(isPresented: $showRestorePicker) {
+            DocumentPicker(contentTypes: [.json], onPicked: { urls in
+                showRestorePicker = false
+                if let url = urls.first { restore(.success(url)) }
+            }, onCancel: { showRestorePicker = false })
+        }
+        .confirmationDialog("Restore this backup?", isPresented: Binding(get: { pendingAutoRestore != nil }, set: { if !$0 { pendingAutoRestore = nil } }), titleVisibility: .visible) {
+            Button("Restore") {
+                if let file = pendingAutoRestore { restoreAuto(file) }
+                pendingAutoRestore = nil
+            }
+            Button("Cancel", role: .cancel) { pendingAutoRestore = nil }
+        } message: {
+            Text("Missing songs are added back. Nothing existing is overwritten.")
+        }
         .alert(item: $alert) { Alert(title: Text($0.title), message: Text($0.message), dismissButton: .default(Text("OK"))) }
         .alert("Backup Failed", isPresented: $exportFailed) { Button("OK", role: .cancel) {} }
         .confirmationDialog(confirmTitle, isPresented: Binding(get: { pending != nil }, set: { if !$0 { pending = nil } }), titleVisibility: .visible) {
@@ -202,6 +244,18 @@ struct LibraryToolsView: View {
         defer { if scoped { url.stopAccessingSecurityScopedResource() } }
         do {
             let summary = try BackupService.restore(from: try Data(contentsOf: url), into: store)
+            alert = ToolAlert(title: String(localized: "Restore Finished"), message: Self.message(for: summary))
+            runCheck()
+        } catch let error as BackupError {
+            alert = ToolAlert(title: String(localized: "Restore Failed"), message: Self.message(for: error))
+        } catch {
+            alert = ToolAlert(title: String(localized: "Restore Failed"), message: error.localizedDescription)
+        }
+    }
+
+    private func restoreAuto(_ file: AutoBackupFile) {
+        do {
+            let summary = try AutoBackupService.restore(file, into: store)
             alert = ToolAlert(title: String(localized: "Restore Finished"), message: Self.message(for: summary))
             runCheck()
         } catch let error as BackupError {

@@ -542,3 +542,9 @@
 "Apply to All" = "Appliquer à tous";
 "Dismiss" = "Fermer";
 "Top Albums" = "Albums les plus écoutés";
+"Restore Latest Backup" = "Restaurer la dernière sauvegarde";
+"Automatic Backups" = "Sauvegardes automatiques";
+"Restore" = "Restaurer";
+"Era saves a backup on this device about once a day and keeps the last five. They survive a database reset." = "Era enregistre une sauvegarde sur cet appareil environ une fois par jour et conserve les cinq dernières. Elles survivent à une réinitialisation de la base de données.";
+"Restore this backup?" = "Restaurer cette sauvegarde ?";
+"Missing songs are added back. Nothing existing is overwritten." = "Les titres manquants sont ajoutés de nouveau. Rien n’est écrasé.";

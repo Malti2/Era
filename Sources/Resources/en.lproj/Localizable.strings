@@ -542,3 +542,9 @@
 "Apply to All" = "Apply to All";
 "Dismiss" = "Dismiss";
 "Top Albums" = "Top Albums";
+"Restore Latest Backup" = "Restore Latest Backup";
+"Automatic Backups" = "Automatic Backups";
+"Restore" = "Restore";
+"Era saves a backup on this device about once a day and keeps the last five. They survive a database reset." = "Era saves a backup on this device about once a day and keeps the last five. They survive a database reset.";
+"Restore this backup?" = "Restore this backup?";
+"Missing songs are added back. Nothing existing is overwritten." = "Missing songs are added back. Nothing existing is overwritten.";

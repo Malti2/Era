@@ -16,6 +16,7 @@ struct EraApp: App {
         LegacyMigration.migrateIfNeeded(store: store)
         DemoSeed.seedIfNeeded(store: store)
         store.suggestPacksFromLibrary()
+        if !ProcessInfo.processInfo.arguments.contains("--era-demo") { AutoBackupService.runIfDue(store: store) }
         if AppSettings.bool(AppSettings.spotlightEnabledKey),
            let songs = try? store.allSongs(), !songs.isEmpty {
             SpotlightIndexer.reindex(songs: songs)
