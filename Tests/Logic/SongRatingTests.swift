@@ -62,4 +62,11 @@ final class SongRatingTests: XCTestCase {
         let backup = LibraryBackup(songs: [entry], versions: [], tags: [], packs: [], playlists: [])
         XCTAssertEqual(try LibraryBackup.decode(from: encoder.encode(backup)).songs.first?.rating, 4)
     }
+
+    func testTopRatedShelfOrdersByRatingThenPlays() {
+        let a = ShelfSong(playCount: 1, rating: 5), b = ShelfSong(playCount: 9, rating: 4), c = ShelfSong(playCount: 3, rating: 4)
+        let low = ShelfSong(playCount: 50, rating: 3), none = ShelfSong(playCount: 50)
+        XCTAssertEqual(HomeShelves.topRated([none, low, c, b, a]), [a.id, b.id, c.id])
+        XCTAssertEqual(HomeShelves.topRated([a, b, c], limit: 2), [a.id, b.id])
+    }
 }

@@ -27,7 +27,7 @@ struct HomeView: View {
     private var suggestions: [Pack] { packs.filter { !$0.confirmed } }
     private var favorites: [Song] { songs.filter(\.isFavorite) }
     private var shelfSongs: [ShelfSong] {
-        songs.map { ShelfSong(id: $0.id, playCount: $0.playCount, lastPlayedAt: $0.lastPlayedAt, dateAdded: $0.dateAdded, isFavorite: $0.isFavorite) }
+        songs.map { ShelfSong(id: $0.id, playCount: $0.playCount, lastPlayedAt: $0.lastPlayedAt, dateAdded: $0.dateAdded, isFavorite: $0.isFavorite, rating: $0.rating) }
     }
     private func resolveSongs(_ ids: [UUID]) -> [Song] {
         let byID = Dictionary(songs.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
@@ -232,6 +232,8 @@ struct HomeView: View {
                             if !lastPlayed.isEmpty { shelf(String(localized: "Recently Played"), songs: lastPlayed, linksToHistory: true) }
                             if !favorites.isEmpty { shelf(String(localized: "Favorites"), songs: favorites) }
                             if mostPlayed.count > 1 { shelf(String(localized: "Most Played"), songs: mostPlayed) }
+                            let topRated = resolveSongs(HomeShelves.topRated(shelfSongs, limit: 12))
+                            if topRated.count >= 3 { shelf(String(localized: "Top Rated"), songs: topRated) }
                             let rediscover = resolveSongs(HomeShelves.rediscover(shelfSongs, limit: 12))
                             if rediscover.count >= 3 { shelf(String(localized: "Rediscover"), songs: rediscover) }
                             let unheard = resolveSongs(HomeShelves.neverPlayed(shelfSongs, limit: 12))

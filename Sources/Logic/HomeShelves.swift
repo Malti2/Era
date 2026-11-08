@@ -8,18 +8,33 @@ struct ShelfSong: Equatable {
     var lastPlayedAt: Date?
     var dateAdded: Date
     var isFavorite: Bool
+    var rating: Int
 
     init(id: UUID = UUID(), playCount: Int = 0, lastPlayedAt: Date? = nil,
-         dateAdded: Date = Date(timeIntervalSince1970: 0), isFavorite: Bool = false) {
+         dateAdded: Date = Date(timeIntervalSince1970: 0), isFavorite: Bool = false, rating: Int = 0) {
         self.id = id
         self.playCount = playCount
         self.lastPlayedAt = lastPlayedAt
         self.dateAdded = dateAdded
         self.isFavorite = isFavorite
+        self.rating = rating
     }
 }
 
 enum HomeShelves {
+    /// Die am besten bewerteten Songs (ab `SongRating.topRatedMinimum` Sternen), bei Gleichstand die oefter gespielten.
+    static func topRated(_ songs: [ShelfSong], limit: Int = 20) -> [UUID] {
+        songs
+            .filter { $0.rating >= SongRating.topRatedMinimum }
+            .sorted { lhs, rhs in
+                if lhs.rating != rhs.rating { return lhs.rating > rhs.rating }
+                if lhs.playCount != rhs.playCount { return lhs.playCount > rhs.playCount }
+                return lhs.dateAdded > rhs.dateAdded
+            }
+            .prefix(limit)
+            .map(\.id)
+    }
+
     /// Nie gespielte Songs, die am laengsten ungehoert in der Bibliothek liegen zuerst.
     /// Songs, die gerade erst importiert wurden (`graceDays`), zaehlen noch nicht als vergessen.
     static func neverPlayed(_ songs: [ShelfSong], now: Date = Date(), graceDays: Int = 3, limit: Int = 20) -> [UUID] {
