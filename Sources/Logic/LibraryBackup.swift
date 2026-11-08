@@ -66,6 +66,16 @@ struct LibraryBackup: Codable, Equatable {
         var entries: [PlaylistEntryItem]
     }
 
+    /// Hoerverlauf (Stats, Verlauf, Rueckblick). Aeltere Backups haben ihn nicht.
+    struct PlayEventEntry: Codable, Equatable {
+        var id: UUID
+        var date: Date
+        var seconds: Double
+        var songID: UUID?
+        var title: String
+        var artist: String
+    }
+
     var app: String = "Era"
     var formatVersion: Int = 1
     var createdAt: Date = Date()
@@ -74,6 +84,7 @@ struct LibraryBackup: Codable, Equatable {
     var tags: [TagEntry]
     var packs: [PackEntry]
     var playlists: [PlaylistEntry2]
+    var playEvents: [PlayEventEntry]?
 }
 
 
@@ -117,8 +128,9 @@ struct RestorePlan: Equatable {
     var resolvableSongIDs: Set<UUID> = []
     var newPacks: [LibraryBackup.PackEntry] = []
     var newPlaylists: [LibraryBackup.PlaylistEntry2] = []
+    var newPlayEvents: [LibraryBackup.PlayEventEntry] = []
 
-    var isEmpty: Bool { songs.isEmpty && newPacks.isEmpty && newPlaylists.isEmpty }
+    var isEmpty: Bool { songs.isEmpty && newPacks.isEmpty && newPlaylists.isEmpty && newPlayEvents.isEmpty }
 }
 
 struct LibraryState {
@@ -128,6 +140,7 @@ struct LibraryState {
     var packNames: Set<String> = []
     var playlistIDs: Set<UUID> = []
     var audioFileNames: Set<String> = []
+    var playEventIDs: Set<UUID> = []
 }
 
 enum RestorePlanner {
@@ -152,6 +165,8 @@ enum RestorePlanner {
         let existingPacks = state.packNames.map { $0.lowercased() }
         plan.newPacks = backup.packs.filter { !existingPacks.contains($0.name.lowercased()) }
         plan.newPlaylists = backup.playlists.filter { !state.playlistIDs.contains($0.id) }
+        var seenEvents = state.playEventIDs
+        plan.newPlayEvents = (backup.playEvents ?? []).filter { seenEvents.insert($0.id).inserted }
         return plan
     }
 }
@@ -161,8 +176,9 @@ struct RestoreSummary: Equatable {
     var versions = 0
     var playlists = 0
     var packs = 0
+    var playEvents = 0
     var skippedExisting = 0
     var skippedMissingAudio = 0
 
-    var restoredAnything: Bool { songs + playlists + packs > 0 }
+    var restoredAnything: Bool { songs + playlists + packs + playEvents > 0 }
 }

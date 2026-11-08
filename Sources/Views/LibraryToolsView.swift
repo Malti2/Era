@@ -271,6 +271,7 @@ struct LibraryToolsView: View {
             var parts = [String(localized: "\(summary.songs) songs")]
             if summary.playlists > 0 { parts.append(String(localized: "\(summary.playlists) playlists")) }
             if summary.packs > 0 { parts.append(String(localized: "\(summary.packs) collections")) }
+            if summary.playEvents > 0 { parts.append(String(localized: "\(summary.playEvents) plays")) }
             lines.append(String(localized: "Restored: \(parts.joined(separator: ", "))"))
         } else if summary.skippedMissingAudio == 0 {
             lines.append(String(localized: "Nothing to restore. Your library already contains everything from this backup."))

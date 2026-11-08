@@ -30,7 +30,8 @@ extension EraStore {
             pcmHashes: Set(songs.flatMap { $0.versions.map(\.pcmHash) }),
             packNames: Set(((try? allPacks()) ?? []).map(\.name)),
             playlistIDs: Set(((try? allPlaylists()) ?? []).map(\.id)),
-            audioFileNames: Set(LibraryFiles.snapshot().audio.keys)
+            audioFileNames: Set(LibraryFiles.snapshot().audio.keys),
+            playEventIDs: Set(((try? context.fetch(FetchDescriptor<PlayEvent>())) ?? []).map(\.id))
         )
     }
 
@@ -220,6 +221,12 @@ extension BackupService {
                 position += 1
             }
             summary.playlists += 1
+        }
+        for entry in plan.newPlayEvents {
+            let event = PlayEvent(date: entry.date, seconds: entry.seconds, songID: entry.songID, title: entry.title, artist: entry.artist)
+            event.id = entry.id
+            context.insert(event)
+            summary.playEvents += 1
         }
         store.save()
         if summary.songs > 0 { SpotlightIndexer.reindex(songs: (try? store.allSongs()) ?? []) }

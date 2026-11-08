@@ -130,4 +130,28 @@ final class LibraryBackupTests: XCTestCase {
         let decoded = try LibraryBackup.decode(from: encoder.encode(backup([], [], packs: [pack])))
         XCTAssertEqual(decoded.packs.first?.searchQuery, "era:synth -fav")
     }
+
+    func testPlayHistoryRoundtripsAndIsPlannedOnlyOnce() throws {
+        let e1 = LibraryBackup.PlayEventEntry(id: UUID(), date: Date(timeIntervalSince1970: 100), seconds: 30, songID: nil, title: "A", artist: "X")
+        let e2 = LibraryBackup.PlayEventEntry(id: UUID(), date: Date(timeIntervalSince1970: 200), seconds: 60, songID: UUID(), title: "B", artist: "Y")
+        var original = backup([], [])
+        original.playEvents = [e1, e2, e2]
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        let decoded = try LibraryBackup.decode(from: encoder.encode(original))
+        XCTAssertEqual(decoded.playEvents?.count, 3)
+
+        let plan = RestorePlanner.plan(decoded, against: LibraryState(playEventIDs: [e1.id]))
+        XCTAssertEqual(plan.newPlayEvents, [e2], "known ids and repeats inside the backup are skipped")
+        XCTAssertFalse(plan.isEmpty)
+        XCTAssertTrue(RestorePlanner.plan(decoded, against: LibraryState(playEventIDs: [e1.id, e2.id])).isEmpty)
+    }
+
+    func testBackupsWithoutPlayHistoryStillDecode() throws {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        let decoded = try LibraryBackup.decode(from: encoder.encode(backup([], [])))
+        XCTAssertNil(decoded.playEvents)
+        XCTAssertTrue(RestorePlanner.plan(decoded, against: LibraryState()).newPlayEvents.isEmpty)
+    }
 }

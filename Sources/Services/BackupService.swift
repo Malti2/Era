@@ -9,6 +9,7 @@ enum BackupService {
         let tags = try store.allTags()
         let packs = try store.allPacks()
         let playlists = try store.allPlaylists()
+        let context = store.context
 
         let backup = LibraryBackup(
             songs: songs.map { song in
@@ -42,6 +43,9 @@ enum BackupService {
                         LibraryBackup.PlaylistEntryItem(position: $0.position, songID: $0.song?.id, versionID: $0.versionID)
                     }
                 )
+            },
+            playEvents: try context.fetch(FetchDescriptor<PlayEvent>(sortBy: [SortDescriptor(\.date)])).map {
+                LibraryBackup.PlayEventEntry(id: $0.id, date: $0.date, seconds: $0.seconds, songID: $0.songID, title: $0.title, artist: $0.artist)
             }
         )
 
