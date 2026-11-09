@@ -568,3 +568,5 @@
 "Daily Automatic Backup" = "Tägliches Auto-Backup";
 "Back Up Now" = "Jetzt sichern";
 "Era saves a backup on this device about once a day and keeps the last five. They survive a database reset. Swipe a backup to share it." = "Era sichert etwa einmal am Tag auf diesem Gerät und behält die letzten fünf. Sie überstehen ein Zurücksetzen der Datenbank. Wische über ein Backup, um es zu teilen.";
+"Best Of" = "Best Of";
+"Your top-rated songs" = "Deine bestbewerteten Songs";

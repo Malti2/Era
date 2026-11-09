@@ -75,3 +75,27 @@ final class MixBuilderTests: XCTestCase {
         XCTAssertEqual(d1, MixBuilder.daySeed(for: now.addingTimeInterval(60), calendar: cal))
     }
 }
+
+final class BestOfMixTests: XCTestCase {
+    private let now = Date(timeIntervalSince1970: 1_800_000_000)
+
+    func testOnlyTopRatedSongsAreEligible() {
+        let five = MixCandidate(rating: 5), four = MixCandidate(rating: 4)
+        let three = MixCandidate(rating: 3), none = MixCandidate()
+        let mix = MixBuilder.make(.bestOf, from: [five, three, none, four], now: now, seed: 7)
+        XCTAssertEqual(Set(mix), [five.id, four.id])
+    }
+
+    func testBestOfIsStableForTheSameSeedAndEmptyWithoutRatings() {
+        let songs = (0..<12).map { MixCandidate(artist: "A\($0 % 4)", rating: 4 + $0 % 2) }
+        XCTAssertEqual(MixBuilder.make(.bestOf, from: songs, now: now, seed: 3), MixBuilder.make(.bestOf, from: songs, now: now, seed: 3))
+        XCTAssertTrue(MixBuilder.make(.bestOf, from: [MixCandidate(rating: 2)], now: now, seed: 3).isEmpty)
+    }
+
+    func testFiveStarsWeighMoreAndRecentPlaysLess() {
+        let five = MixCandidate(rating: 5), four = MixCandidate(rating: 4)
+        let justPlayed = MixCandidate(lastPlayedAt: now.addingTimeInterval(-3600), rating: 5)
+        XCTAssertGreaterThan(MixBuilder.weight(five, kind: .bestOf, now: now), MixBuilder.weight(four, kind: .bestOf, now: now))
+        XCTAssertLessThan(MixBuilder.weight(justPlayed, kind: .bestOf, now: now), MixBuilder.weight(five, kind: .bestOf, now: now))
+    }
+}

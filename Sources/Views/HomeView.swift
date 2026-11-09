@@ -60,6 +60,7 @@ struct HomeView: View {
         case .daily: String(localized: "Daily Mix")
         case .deepCuts: String(localized: "Deep Cuts")
         case .fresh: String(localized: "Fresh Imports")
+        case .bestOf: String(localized: "Best Of")
         }
     }
 
@@ -68,6 +69,7 @@ struct HomeView: View {
         case .daily: String(localized: "Favorites and forgotten songs")
         case .deepCuts: String(localized: "Rarely played")
         case .fresh: String(localized: "New in your library")
+        case .bestOf: String(localized: "Your top-rated songs")
         }
     }
 
@@ -76,6 +78,7 @@ struct HomeView: View {
         case .daily: "sun.max.fill"
         case .deepCuts: "circle.dotted.circle"
         case .fresh: "sparkles"
+        case .bestOf: "star.fill"
         }
     }
 
@@ -84,6 +87,7 @@ struct HomeView: View {
         case .daily: .orange
         case .deepCuts: .indigo
         case .fresh: .teal
+        case .bestOf: .yellow
         }
     }
 

@@ -11,20 +11,22 @@ struct MixCandidate: Equatable {
     var lastPlayedAt: Date?
     var dateAdded: Date
     var isFavorite: Bool
+    var rating: Int
 
     init(id: UUID = UUID(), artist: String = "", playCount: Int = 0, lastPlayedAt: Date? = nil,
-         dateAdded: Date = Date(timeIntervalSince1970: 0), isFavorite: Bool = false) {
+         dateAdded: Date = Date(timeIntervalSince1970: 0), isFavorite: Bool = false, rating: Int = 0) {
         self.id = id
         self.artist = artist
         self.playCount = playCount
         self.lastPlayedAt = lastPlayedAt
         self.dateAdded = dateAdded
         self.isFavorite = isFavorite
+        self.rating = rating
     }
 }
 
 enum MixKind: String, CaseIterable, Identifiable {
-    case daily, deepCuts, fresh
+    case daily, deepCuts, fresh, bestOf
     var id: String { rawValue }
 }
 
@@ -78,6 +80,8 @@ enum MixBuilder {
             return song.playCount <= 2 && age >= 14 * day
         case .fresh:
             return age <= 30 * day
+        case .bestOf:
+            return SongRating.clamp(song.rating) >= SongRating.topRatedMinimum
         }
     }
 
@@ -102,6 +106,11 @@ enum MixBuilder {
             let ageDays = max(0, now.timeIntervalSince(song.dateAdded) / day)
             var w = 1.5 - min(ageDays, 30) / 30 // neuere zuerst
             if song.playCount == 0 { w += 1 }
+            return w
+        case .bestOf:
+            // Fuenf Sterne ziehen doppelt so oft wie vier; was gerade lief, kommt seltener sofort wieder.
+            var w = SongRating.clamp(song.rating) >= SongRating.range.upperBound ? 3.0 : 1.5
+            if let last = song.lastPlayedAt, now.timeIntervalSince(last) < 2 * day { w *= 0.4 }
             return w
         }
     }
@@ -129,6 +138,7 @@ private extension MixKind {
         case .daily: 11
         case .deepCuts: 23
         case .fresh: 37
+        case .bestOf: 53
         }
     }
 }

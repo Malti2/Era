@@ -3,7 +3,7 @@ import Foundation
 extension Song {
     var mixCandidate: MixCandidate {
         MixCandidate(id: id, artist: artist, playCount: playCount, lastPlayedAt: lastPlayedAt,
-                     dateAdded: dateAdded, isFavorite: isFavorite)
+                     dateAdded: dateAdded, isFavorite: isFavorite, rating: rating)
     }
 }
 
