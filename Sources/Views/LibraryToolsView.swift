@@ -15,6 +15,7 @@ struct LibraryToolsView: View {
     @State private var autoBackups: [AutoBackupFile] = []
     @State private var pendingAutoRestore: AutoBackupFile?
     @AppStorage(AppSettings.lastBackupKey) private var lastBackup = 0.0
+    @AppStorage(AppSettings.autoBackupEnabledKey) private var autoBackupEnabled = true
     @AppStorage(AppSettings.ignoredSimilarKey) private var ignoredSimilarRaw = ""
 
     private var ignoredSimilar: Set<String> { Set(ignoredSimilarRaw.split(separator: "\n").map(String.init)) }
@@ -64,26 +65,39 @@ struct LibraryToolsView: View {
                 Text("Backups contain your library data, not the audio files. Restoring adds songs back whose audio is still on this device and never overwrites anything.")
             }
 
-            if !autoBackups.isEmpty {
-                Section {
-                    ForEach(autoBackups) { file in
-                        HStack {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(file.date.formatted(date: .abbreviated, time: .shortened))
-                                Text(ByteCountFormatter.string(fromByteCount: file.size, countStyle: .file))
-                                    .font(.caption).foregroundStyle(.secondary)
-                            }
-                            Spacer(minLength: 8)
-                            Button("Restore") { pendingAutoRestore = file }
-                                .buttonStyle(.bordered).controlSize(.small)
+            Section {
+                Toggle("Daily Automatic Backup", isOn: $autoBackupEnabled)
+                ForEach(autoBackups) { file in
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(file.date.formatted(date: .abbreviated, time: .shortened))
+                            Text(ByteCountFormatter.string(fromByteCount: file.size, countStyle: .file))
+                                .font(.caption).foregroundStyle(.secondary)
                         }
-                        .accessibilityElement(children: .combine)
+                        Spacer(minLength: 8)
+                        Button("Restore") { pendingAutoRestore = file }
+                            .buttonStyle(.bordered).controlSize(.small)
                     }
-                } header: {
-                    Text("Automatic Backups")
-                } footer: {
-                    Text("Era saves a backup on this device about once a day and keeps the last five. They survive a database reset.")
+                    .accessibilityElement(children: .combine)
+                    .swipeActions(edge: .trailing) {
+                        Button { shareItem = ShareItem(url: file.url) } label: { Label("Share", systemImage: "square.and.arrow.up") }
+                            .tint(.accentColor)
+                    }
+                    .contextMenu {
+                        Button { shareItem = ShareItem(url: file.url) } label: { Label("Share", systemImage: "square.and.arrow.up") }
+                    }
                 }
+                Button {
+                    if AutoBackupService.runIfDue(store: store, force: true) {
+                        autoBackups = AutoBackupService.files()
+                    } else {
+                        exportFailed = true
+                    }
+                } label: { Label("Back Up Now", systemImage: "externaldrive.badge.plus") }
+            } header: {
+                Text("Automatic Backups")
+            } footer: {
+                Text("Era saves a backup on this device about once a day and keeps the last five. They survive a database reset. Swipe a backup to share it.")
             }
 
             Section {

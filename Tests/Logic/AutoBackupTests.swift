@@ -40,3 +40,17 @@ final class AutoBackupTests: XCTestCase {
         XCTAssertTrue(AutoBackup.namesToPrune(names, keep: 0).isEmpty)
     }
 }
+
+final class AutoBackupSwitchTests: XCTestCase {
+    func testDisabledNeverRunsEvenWhenOverdue() {
+        XCTAssertFalse(AutoBackup.isDue(songCount: 10, lastBackup: nil, enabled: false))
+        XCTAssertFalse(AutoBackup.isDue(songCount: 10, lastBackup: .distantPast, enabled: false, force: true))
+    }
+
+    func testForceSkipsTheIntervalButNotTheEmptyLibraryGuard() {
+        let now = Date()
+        XCTAssertFalse(AutoBackup.isDue(songCount: 3, lastBackup: now.addingTimeInterval(-60), now: now))
+        XCTAssertTrue(AutoBackup.isDue(songCount: 3, lastBackup: now.addingTimeInterval(-60), now: now, force: true))
+        XCTAssertFalse(AutoBackup.isDue(songCount: 0, lastBackup: nil, force: true))
+    }
+}

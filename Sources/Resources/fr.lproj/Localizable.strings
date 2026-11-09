@@ -565,3 +565,6 @@
 "Skip" = "Passer";
 "Ratings" = "Notes";
 "Average Rating" = "Note moyenne";
+"Daily Automatic Backup" = "Sauvegarde automatique quotidienne";
+"Back Up Now" = "Sauvegarder maintenant";
+"Era saves a backup on this device about once a day and keeps the last five. They survive a database reset. Swipe a backup to share it." = "Era enregistre une sauvegarde sur cet appareil environ une fois par jour et garde les cinq dernières. Elles survivent à une réinitialisation de la base. Balaie une sauvegarde pour la partager.";

@@ -31,9 +31,11 @@ enum AutoBackupService {
     /// Creates a backup when the last one is old enough. Cheap no-op otherwise.
     @MainActor
     @discardableResult
-    static func runIfDue(store: EraStore, now: Date = Date(), directory: URL = directory) -> Bool {
+    static func runIfDue(store: EraStore, now: Date = Date(), directory: URL = directory, force: Bool = false) -> Bool {
         let songCount = (try? store.allSongs().count) ?? 0
-        guard AutoBackup.isDue(songCount: songCount, lastBackup: files(in: directory).first?.date, now: now) else { return false }
+        let enabled = force || AppSettings.bool(AppSettings.autoBackupEnabledKey)
+        guard AutoBackup.isDue(songCount: songCount, lastBackup: files(in: directory).first?.date, now: now,
+                               enabled: enabled, force: force) else { return false }
         do {
             let temp = try BackupService.exportURL(store: store)
             let target = directory.appendingPathComponent(AutoBackup.fileName(for: now))

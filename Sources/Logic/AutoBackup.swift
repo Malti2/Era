@@ -39,8 +39,10 @@ enum AutoBackup {
     }
 
     /// Empty libraries are never backed up: that would push real backups out after a reset.
-    static func isDue(songCount: Int, lastBackup: Date?, now: Date = Date()) -> Bool {
-        guard songCount > 0 else { return false }
+    /// `force` (manual "Back Up Now") skips the interval, `enabled == false` (user switched it off) skips everything.
+    static func isDue(songCount: Int, lastBackup: Date?, now: Date = Date(), enabled: Bool = true, force: Bool = false) -> Bool {
+        guard enabled, songCount > 0 else { return false }
+        if force { return true }
         guard let lastBackup else { return true }
         return now.timeIntervalSince(lastBackup) >= minInterval
     }
