@@ -554,3 +554,14 @@
 "Top Rated" = "Mieux notés";
 "Rated four stars or more" = "Notés quatre étoiles ou plus";
 "Songs you have not rated" = "Titres sans note";
+"All Songs Rated" = "Tous les morceaux sont notés";
+"Every song in your library has a rating." = "Chaque morceau de ta bibliothèque a une note.";
+"All Caught Up" = "Tout est à jour";
+"Songs rated: %lld" = "Morceaux notés : %lld";
+"Start Again" = "Recommencer";
+"Rate Songs" = "Noter des morceaux";
+"%lld of %lld" = "%lld sur %lld";
+"Plays: %lld" = "Lectures : %lld";
+"Skip" = "Passer";
+"Ratings" = "Notes";
+"Average Rating" = "Note moyenne";

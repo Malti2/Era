@@ -40,6 +40,7 @@ struct LibraryInsightsView: View {
                     LabeledContent("Songs with Notes", value: "\(insights.withNotes)")
                     LabeledContent("Markers", value: "\(insights.markers)")
                 }
+                ratingSection(RatingStats.make(from: songs.map(\.rating)))
                 if !insights.statuses.isEmpty { statusSection(insights) }
                 if !insights.eras.isEmpty {
                     Section("Top Eras") {
@@ -125,6 +126,35 @@ struct LibraryInsightsView: View {
                         }
                     }
                 }
+            }
+        }
+    }
+
+    @ViewBuilder private func ratingSection(_ stats: RatingStats) -> some View {
+        Section("Ratings") {
+            if stats.rated > 0 {
+                LabeledContent("Average Rating", value: "\(stats.average.formatted(.number.precision(.fractionLength(1)))) ★")
+                Chart(Array(SongRating.range.reversed()), id: \.self) { stars in
+                    BarMark(x: .value(String(localized: "Songs"), stats.count(for: stars)),
+                            y: .value(String(localized: "Rating"), String(repeating: "★", count: stars)))
+                        .foregroundStyle(Color.yellow.gradient)
+                        .cornerRadius(4)
+                        .annotation(position: .trailing) { Text("\(stats.count(for: stars))").font(.caption).foregroundStyle(.secondary) }
+                }
+                .chartXAxis(.hidden)
+                .frame(height: CGFloat(SongRating.range.count) * 30 + 12)
+                .padding(.vertical, 4)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(Text("Ratings"))
+                .accessibilityValue(SongRating.range.reversed().map { "\($0): \(stats.count(for: $0))" }.joined(separator: ", "))
+            }
+            if stats.unrated > 0 {
+                NavigationLink { RatingReviewView() } label: {
+                    LabeledContent("Rate Songs", value: "\(stats.unrated)")
+                }
+            } else {
+                Label("All Songs Rated", systemImage: "checkmark.circle")
+                    .foregroundStyle(.secondary)
             }
         }
     }

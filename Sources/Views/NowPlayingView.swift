@@ -229,6 +229,12 @@ struct NowPlayingView: View {
                             if !version.markers.isEmpty {
                                 Button { showMarkers = true } label: { Label("Markers", systemImage: "mappin") }
                             }
+                            Menu {
+                                Picker("Rating", selection: Binding(get: { song.rating }, set: { song.rating = $0; store.save() })) {
+                                    Text("Not Rated").tag(0)
+                                    ForEach(Array(SongRating.range), id: \.self) { Text(SongRating.stars($0)).tag($0) }
+                                }
+                            } label: { Label("Rating", systemImage: "star") }
                             Button { showTimer = true } label: { Label("Sleep Timer", systemImage: "moon.zzz") }
                         } label: {
                             Image(systemName: "ellipsis")

@@ -554,3 +554,14 @@
 "Top Rated" = "Top Rated";
 "Rated four stars or more" = "Rated four stars or more";
 "Songs you have not rated" = "Songs you have not rated";
+"All Songs Rated" = "All Songs Rated";
+"Every song in your library has a rating." = "Every song in your library has a rating.";
+"All Caught Up" = "All Caught Up";
+"Songs rated: %lld" = "Songs rated: %lld";
+"Start Again" = "Start Again";
+"Rate Songs" = "Rate Songs";
+"%lld of %lld" = "%lld of %lld";
+"Plays: %lld" = "Plays: %lld";
+"Skip" = "Skip";
+"Ratings" = "Ratings";
+"Average Rating" = "Average Rating";

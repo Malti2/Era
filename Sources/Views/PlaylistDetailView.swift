@@ -280,7 +280,14 @@ struct PlaylistEntryRow: View {
                             .accessibilityLabel("Explicit")
                     }
                 }
-                Text(version?.displayArtist ?? song.displayArtist).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
+                HStack(spacing: 6) {
+                    Text(version?.displayArtist ?? song.displayArtist).lineLimit(1)
+                    if song.rating > 0 {
+                        Text(verbatim: "\(song.rating)★").font(.caption.weight(.semibold)).foregroundStyle(.yellow)
+                            .accessibilityLabel(Text("\(song.rating) of 5"))
+                    }
+                }
+                .font(.subheadline).foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .layoutPriority(1)

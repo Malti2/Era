@@ -554,3 +554,14 @@
 "Top Rated" = "Mejor valoradas";
 "Rated four stars or more" = "Valoradas con cuatro estrellas o más";
 "Songs you have not rated" = "Canciones sin valorar";
+"All Songs Rated" = "Todas las canciones valoradas";
+"Every song in your library has a rating." = "Todas las canciones de tu biblioteca tienen valoración.";
+"All Caught Up" = "Todo al día";
+"Songs rated: %lld" = "Canciones valoradas: %lld";
+"Start Again" = "Empezar de nuevo";
+"Rate Songs" = "Valorar canciones";
+"%lld of %lld" = "%lld de %lld";
+"Plays: %lld" = "Reproducciones: %lld";
+"Skip" = "Omitir";
+"Ratings" = "Valoraciones";
+"Average Rating" = "Valoración media";
