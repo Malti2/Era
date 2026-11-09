@@ -8,18 +8,20 @@ struct PlaylistRow: Equatable {
     var artist: String
     var dateAdded: Date
     var duration: Double
+    var rating: Int
 
-    init(id: UUID = UUID(), title: String, artist: String = "", dateAdded: Date = Date(timeIntervalSince1970: 0), duration: Double = 0) {
+    init(id: UUID = UUID(), title: String, artist: String = "", dateAdded: Date = Date(timeIntervalSince1970: 0), duration: Double = 0, rating: Int = 0) {
         self.id = id
         self.title = title
         self.artist = artist
         self.dateAdded = dateAdded
         self.duration = duration
+        self.rating = rating
     }
 }
 
 enum PlaylistSortOrder: String, CaseIterable, Identifiable {
-    case title, artist, newest, longest, reverse
+    case title, artist, newest, longest, rating, reverse
     var id: String { rawValue }
 
     /// Ids in neuer Reihenfolge. Stabil: Gleiche Werte behalten ihre bisherige Reihenfolge.
@@ -36,6 +38,7 @@ enum PlaylistSortOrder: String, CaseIterable, Identifiable {
                 order = a.artist.localizedStandardCompare(b.artist)
             case .newest: order = a.dateAdded == b.dateAdded ? .orderedSame : (a.dateAdded > b.dateAdded ? .orderedAscending : .orderedDescending)
             case .longest: order = a.duration == b.duration ? .orderedSame : (a.duration > b.duration ? .orderedAscending : .orderedDescending)
+            case .rating: order = a.rating == b.rating ? .orderedSame : (a.rating > b.rating ? .orderedAscending : .orderedDescending)
             case .reverse: order = .orderedSame
             }
             return order == .orderedSame ? lhs.offset < rhs.offset : order == .orderedAscending

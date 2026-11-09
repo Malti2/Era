@@ -366,6 +366,7 @@ extension PlaylistSortOrder {
         case .artist: "Artist"
         case .newest: "Recently Added"
         case .longest: "Longest"
+        case .rating: "Rating"
         case .reverse: "Reverse Order"
         }
     }

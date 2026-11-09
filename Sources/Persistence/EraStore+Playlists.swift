@@ -15,7 +15,8 @@ extension EraStore {
                 title: version?.displayTitle ?? entry.song?.title ?? "",
                 artist: override.isEmpty ? (entry.song?.artist ?? "") : override,
                 dateAdded: entry.dateAdded,
-                duration: version?.duration ?? 0
+                duration: version?.duration ?? 0,
+                rating: entry.song?.rating ?? 0
             )
         }
         let byID = Dictionary(entries.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
