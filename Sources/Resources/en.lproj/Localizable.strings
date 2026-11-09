@@ -570,3 +570,6 @@
 "Era saves a backup on this device about once a day and keeps the last five. They survive a database reset. Swipe a backup to share it." = "Era saves a backup on this device about once a day and keeps the last five. They survive a database reset. Swipe a backup to share it.";
 "Best Of" = "Best Of";
 "Your top-rated songs" = "Your top-rated songs";
+"Rate Your Favorites" = "Rate Your Favorites";
+"%lld songs you play a lot have no rating yet." = "%lld songs you play a lot have no rating yet.";
+"Rate" = "Rate";

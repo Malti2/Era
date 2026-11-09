@@ -60,4 +60,25 @@ enum RatingReview {
     }
 
     static func score(_ c: RatingCandidate) -> Int { max(0, c.playCount) * 2 + (c.isFavorite ? 3 : 0) }
+
+    // MARK: Home prompt
+
+    static let promptMinimumPlays = 2
+    static let promptMinimumSongs = 5
+    static let snoozeDays = 21
+
+    /// Unbewertete Songs, die schon oft genug liefen, um eine Bewertung zu verdienen.
+    static func promptCount(from candidates: [RatingCandidate]) -> Int {
+        candidates.filter { SongRating.clamp($0.rating) == 0 && $0.playCount >= promptMinimumPlays }.count
+    }
+
+    /// Die Karte erscheint erst bei genug Kandidaten und nie waehrend einer "Spaeter"-Pause.
+    static func isPromptDue(candidates: [RatingCandidate], snoozedUntil: Date?, now: Date = Date()) -> Bool {
+        if let snoozedUntil, snoozedUntil > now { return false }
+        return promptCount(from: candidates) >= promptMinimumSongs
+    }
+
+    static func snoozeDate(from now: Date = Date()) -> Date {
+        now.addingTimeInterval(Double(snoozeDays) * 86_400)
+    }
 }

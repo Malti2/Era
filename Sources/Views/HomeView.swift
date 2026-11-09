@@ -18,6 +18,8 @@ struct HomeView: View {
     @State private var showStats = ProcessInfo.processInfo.arguments.contains("--era-stats")
     @State private var showImporter = false
     @State private var showBackupTools = false
+    @State private var showRatingReview = false
+    @AppStorage(AppSettings.ratingPromptSnoozeKey) private var ratingSnooze = 0.0
     @AppStorage(AppSettings.lastBackupKey) private var lastBackup = 0.0
     @AppStorage(AppSettings.backupSnoozeKey) private var backupSnooze = 0.0
 
@@ -187,6 +189,31 @@ struct HomeView: View {
         )
     }
 
+    private var ratingCandidates: [RatingCandidate] {
+        songs.map { RatingCandidate(id: $0.id, rating: $0.rating, playCount: $0.playCount, isFavorite: $0.isFavorite,
+                                    lastPlayedAt: $0.lastPlayedAt, dateAdded: $0.dateAdded) }
+    }
+
+    private func ratingCard(count: Int) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: "star.leadinghalf.filled").font(.title2).foregroundStyle(.yellow)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Rate Your Favorites").font(.subheadline.weight(.semibold))
+                Text("\(count) songs you play a lot have no rating yet.").font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 8)
+            Button("Rate") { showRatingReview = true }.buttonStyle(.borderedProminent).controlSize(.small)
+            Button { withAnimation { ratingSnooze = RatingReview.snoozeDate().timeIntervalSince1970 } } label: {
+                Image(systemName: "xmark").font(.caption.weight(.semibold)).frame(width: 32, height: 32)
+            }
+            .buttonStyle(.plain).foregroundStyle(.secondary)
+            .accessibilityLabel("Remind me later")
+        }
+        .padding(12)
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .padding(.horizontal)
+    }
+
     private var backupCard: some View {
         let days = BackupReminder.daysSince(lastBackup > 0 ? Date(timeIntervalSince1970: lastBackup) : nil)
         return HStack(spacing: 12) {
@@ -229,6 +256,10 @@ struct HomeView: View {
                             if let resume = lastPlayed.first {
                                 resumeCard(resume)
                             }
+                            let ratingList = ratingCandidates
+                            if RatingReview.isPromptDue(candidates: ratingList, snoozedUntil: ratingSnooze > 0 ? Date(timeIntervalSince1970: ratingSnooze) : nil) {
+                                ratingCard(count: RatingReview.promptCount(from: ratingList))
+                            }
                             let recap = weeklyRecap
                             if recap.hasActivity { recapCard(recap) }
                             let mixList = mixes()
@@ -259,6 +290,12 @@ struct HomeView: View {
                     Button { showStats = true } label: {
                         Label("Listening Stats", systemImage: "chart.bar.fill")
                     }
+                }
+            }
+            .sheet(isPresented: $showRatingReview) {
+                NavigationStack {
+                    RatingReviewView()
+                        .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Done") { showRatingReview = false } } }
                 }
             }
             .sheet(isPresented: $showBackupTools) {

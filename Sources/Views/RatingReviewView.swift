@@ -77,7 +77,7 @@ struct RatingReviewView: View {
             Spacer(minLength: 0)
             HStack(spacing: 14) {
                 Button { togglePreview(song) } label: {
-                    Label(isPreviewing(song) ? "Pause" : "Play", systemImage: isPreviewing(song) ? "pause.fill" : "play.fill")
+                    Label(isPreviewing(song) ? String(localized: "Pause") : String(localized: "Play"), systemImage: isPreviewing(song) ? "pause.fill" : "play.fill")
                         .frame(maxWidth: .infinity, minHeight: 44)
                 }
                 .buttonStyle(.bordered)

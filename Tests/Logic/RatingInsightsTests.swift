@@ -65,3 +65,25 @@ final class RatingInsightsTests: XCTestCase {
         XCTAssertEqual(ids, [b.id, c.id, d.id, a.id])
     }
 }
+
+final class RatingPromptTests: XCTestCase {
+    private func song(plays: Int, rating: Int = 0) -> RatingCandidate {
+        RatingCandidate(id: UUID(), rating: rating, playCount: plays, isFavorite: false, lastPlayedAt: nil, dateAdded: Date(timeIntervalSince1970: 0))
+    }
+
+    func testPromptCountsOnlyPlayedUnratedSongs() {
+        let list = [song(plays: 5), song(plays: 2), song(plays: 1), song(plays: 9, rating: 3), song(plays: 0)]
+        XCTAssertEqual(RatingReview.promptCount(from: list), 2)
+    }
+
+    func testPromptNeedsEnoughSongsAndRespectsSnooze() {
+        let now = Date()
+        let few = (0..<4).map { _ in song(plays: 3) }
+        let enough = (0..<5).map { _ in song(plays: 3) }
+        XCTAssertFalse(RatingReview.isPromptDue(candidates: few, snoozedUntil: nil, now: now))
+        XCTAssertTrue(RatingReview.isPromptDue(candidates: enough, snoozedUntil: nil, now: now))
+        XCTAssertFalse(RatingReview.isPromptDue(candidates: enough, snoozedUntil: now.addingTimeInterval(60), now: now))
+        XCTAssertTrue(RatingReview.isPromptDue(candidates: enough, snoozedUntil: now.addingTimeInterval(-60), now: now))
+        XCTAssertGreaterThan(RatingReview.snoozeDate(from: now), now.addingTimeInterval(20 * 86_400))
+    }
+}

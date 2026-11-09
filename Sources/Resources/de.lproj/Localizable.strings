@@ -570,3 +570,6 @@
 "Era saves a backup on this device about once a day and keeps the last five. They survive a database reset. Swipe a backup to share it." = "Era sichert etwa einmal am Tag auf diesem Gerät und behält die letzten fünf. Sie überstehen ein Zurücksetzen der Datenbank. Wische über ein Backup, um es zu teilen.";
 "Best Of" = "Best Of";
 "Your top-rated songs" = "Deine bestbewerteten Songs";
+"Rate Your Favorites" = "Bewerte deine Lieblinge";
+"%lld songs you play a lot have no rating yet." = "%lld Songs, die du oft hörst, haben noch keine Bewertung.";
+"Rate" = "Bewerten";
