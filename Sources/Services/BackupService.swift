@@ -64,7 +64,7 @@ enum BackupService {
 
 // CSV-Export der Bibliothek (eine Zeile pro Song) fuer Tabellenkalkulationen.
 enum CSVExport {
-    static let header = ["Title", "Artist", "Album", "Era", "Year", "Duration", "Versions", "Status", "Tags", "Plays", "Rating", "Favorite", "Date Added", "Notes", "Markers"]
+    static let header = ["Title", "Artist", "Album", "Era", "Year", "Duration", "Versions", "Status", "Tags", "Plays", "Rating", "Favorite", "Date Added", "Notes", "Markers", "Track"]
 
     /// RFC 4180: Felder mit Komma, Anfuehrungszeichen oder Zeilenumbruch werden gequotet.
     static func escape(_ field: String) -> String {
@@ -97,7 +97,8 @@ enum CSVExport {
                 song.isFavorite ? "yes" : "no",
                 dateFormatter.string(from: song.dateAdded),
                 song.notes,
-                markerSummary(of: song)
+                markerSummary(of: song),
+                song.trackNumber > 0 ? String(song.trackNumber) : ""
             ]
             lines.append(fields.map(escape).joined(separator: ","))
         }

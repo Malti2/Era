@@ -96,11 +96,13 @@ struct MiniPlayer: View {
                         .contentTransition(.symbolEffect(.replace))
                         .frame(width: 40, height: 40).contentShape(Rectangle())
                 }
+                .accessibilityLabel(player.isPlaying ? String(localized: "Pause") : String(localized: "Play"))
                 Button { player.next() } label: {
                     Image(systemName: "forward.fill")
                         .font(.body)
                         .frame(width: 36, height: 40).contentShape(Rectangle())
                 }
+                .accessibilityLabel(String(localized: "Next"))
             }
             .padding(.horizontal, 12).padding(.vertical, 8)
             .eraGlassRect(18)
