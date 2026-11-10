@@ -47,6 +47,7 @@ extension LibraryFilter.Attribute {
         case .hasNotes: "With Notes"
         case .multipleVersions: "Multiple Versions"
         case .topRated: "Top Rated"
+        case .unrated: "Not Rated"
         }
     }
 }

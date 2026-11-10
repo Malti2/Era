@@ -48,6 +48,14 @@ struct SongRow: View {
                     }
                     Text(song.displayArtist)
                     if !song.album.isEmpty { Text("· \(song.album)") }
+                    if song.rating > 0 {
+                        Label("\(song.rating)", systemImage: "star.fill")
+                            .labelStyle(.titleAndIcon)
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.yellow)
+                            .accessibilityLabel(Text("\(song.rating) of 5"))
+                            .fixedSize()
+                    }
                 }
                 .font(.caption).foregroundStyle(.secondary).lineLimit(1)
             }

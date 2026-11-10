@@ -55,6 +55,21 @@ struct EraPlayMixIntent: AppIntent {
     }
 }
 
+struct EraPlayBestOfIntent: AppIntent {
+    static var title: LocalizedStringResource = "Play Best Of"
+    static var description = IntentDescription("Plays a mix of your 4 and 5 star songs.")
+    static var openAppWhenRun: Bool = true
+
+    @MainActor
+    func perform() async throws -> some IntentResult {
+        let player = PlayerEngine.shared
+        guard let store = player.store, let library = try? store.allSongs() else { return .result() }
+        let queue = MixPlaylist.songs(.bestOf, in: library).compactMap(\.primaryVersion)
+        if let first = queue.first { player.play(first, from: queue) }
+        return .result()
+    }
+}
+
 struct EraShortcuts: AppShortcutsProvider {
     static var shortcutTileColor: ShortcutTileColor = .grape
 
@@ -95,6 +110,15 @@ struct EraShortcuts: AppShortcutsProvider {
             ],
             shortTitle: "Daily Mix",
             systemImageName: "sun.max.fill"
+        )
+        AppShortcut(
+            intent: EraPlayBestOfIntent(),
+            phrases: [
+                "Play my best songs with \(.applicationName)",
+                "Play best of \(.applicationName)"
+            ],
+            shortTitle: "Best Of",
+            systemImageName: "star.fill"
         )
     }
 }

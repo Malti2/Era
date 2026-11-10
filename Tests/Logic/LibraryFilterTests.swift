@@ -106,4 +106,21 @@ final class LibraryFilterPersistenceTests: XCTestCase {
     func testGarbageDecodesToNoFilter() {
         XCTAssertEqual(LibraryFilter.decode("{broken"), LibraryFilter())
     }
+
+    func testUnratedMatchesOnlySongsWithoutStars() {
+        let rated = SearchableSong(title: "Rated", rating: 3)
+        let none = SearchableSong(title: "None", rating: 0)
+        var filter = LibraryFilter()
+        filter.toggle(.unrated)
+        XCTAssertEqual(filter.ids(in: [rated, none]), [none.id])
+    }
+
+    func testUnratedAndTopRatedExcludeEachOther() {
+        let top = SearchableSong(title: "Top", rating: 5)
+        let none = SearchableSong(title: "None", rating: 0)
+        var filter = LibraryFilter()
+        filter.toggle(.unrated)
+        filter.toggle(.topRated)
+        XCTAssertTrue(filter.ids(in: [top, none]).isEmpty)
+    }
 }
