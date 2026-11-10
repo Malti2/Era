@@ -84,3 +84,11 @@ enum TrackOrder {
         return (1...top).filter { !present.contains($0) }
     }
 }
+
+enum TrackNumberList {
+    /// "3, 5, 8" - bei vielen Nummern gekuerzt ("1, 2, 3 +4").
+    static func text(_ numbers: [Int], limit: Int = 6) -> String {
+        let shown = numbers.prefix(limit).map(String.init).joined(separator: ", ")
+        return numbers.count > limit ? "\(shown) +\(numbers.count - limit)" : shown
+    }
+}

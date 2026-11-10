@@ -36,6 +36,12 @@ final class TrackStoreTests: XCTestCase {
         XCTAssertEqual(a.trackNumber, 0)
     }
 
+    func testRenumberAlbumFixesGapsAndDuplicates() {
+        let a = makeSong("A", track: 1), b = makeSong("B", track: 4), c = makeSong("C", track: 4)
+        XCTAssertEqual(store.renumberAlbum(songIDs: [a.id, b.id, c.id]), 2)
+        XCTAssertEqual([a.trackNumber, b.trackNumber, c.trackNumber], [1, 2, 3])
+    }
+
     func testBackupRoundTripKeepsTrackNumber() throws {
         _ = makeSong("A", track: 4)
         let exported = try BackupService.exportURL(store: store)

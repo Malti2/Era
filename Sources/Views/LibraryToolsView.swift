@@ -169,6 +169,11 @@ struct LibraryToolsView: View {
                     detail: ByteCountFormatter.string(fromByteCount: Int64(report.orphanBytes), countStyle: .file),
                     action: String(localized: "Delete")) { pending = .deleteOrphans }
         }
+        ForEach(report.trackIssues, id: \.songIDs) { issue in
+            finding(issue.album, symbol: "list.number", tint: .yellow,
+                    detail: trackIssueDetail(issue),
+                    action: String(localized: "Fix")) { store.renumberAlbum(songIDs: issue.songIDs); runCheck() }
+        }
         ForEach(report.duplicates, id: \.songIDs) { group in
             finding(group.title, symbol: "square.on.square", tint: .blue,
                     detail: String(localized: "\(group.songIDs.count) copies") + (group.artist.isEmpty ? "" : " · \(group.artist)"),
@@ -185,6 +190,13 @@ struct LibraryToolsView: View {
                     Button { ignore(group) } label: { Label("Not the Same Song", systemImage: "eye.slash") }.tint(.gray)
                 }
         }
+    }
+
+    private func trackIssueDetail(_ issue: LibraryHealthReport.TrackIssue) -> String {
+        var parts: [String] = []
+        if !issue.missing.isEmpty { parts.append(String(localized: "Missing track numbers: \(TrackNumberList.text(issue.missing))")) }
+        if !issue.duplicates.isEmpty { parts.append(String(localized: "Used twice: \(TrackNumberList.text(issue.duplicates))")) }
+        return parts.joined(separator: "\n")
     }
 
     private func ignore(_ group: LibraryHealthReport.DuplicateGroup) {

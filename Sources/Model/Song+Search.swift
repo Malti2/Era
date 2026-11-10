@@ -15,6 +15,18 @@ extension Song {
 }
 
 extension Song {
+    /// Schlanke Variante fuer `LibraryFilter`: spart das Dekodieren der Marker-JSONs jeder Version,
+    /// die der Filter nie liest (relevant bei grossen Bibliotheken, der Filter laeuft bei jedem Neuzeichnen).
+    var filterable: SearchableSong {
+        SearchableSong(
+            id: id, title: title, tags: personalTags.map(\.name), statuses: statusTags.map(\.name),
+            versionNames: versions.map(\.name), isFavorite: isFavorite, playCount: playCount,
+            notes: notes, rating: rating
+        )
+    }
+}
+
+extension Song {
     var eraSong: EraSong {
         EraSong(id: id, era: era, year: year, duration: duration, statuses: statusTags.map(\.name))
     }

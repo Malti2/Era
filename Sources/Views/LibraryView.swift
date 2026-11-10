@@ -294,6 +294,14 @@ struct LibraryView: View {
         }.listStyle(.plain)
     }
 
+    /// "2019 · 12 tracks · 48 min" fuer Album-Zeilen.
+    private func albumFacts(_ members: [Song]) -> String {
+        let years = members.compactMap(\.year)
+        let year = years.min().map { low in years.max() == low ? "\(low)" : "\(low)–\(years.max() ?? low)" }
+        let total = members.reduce(0) { $0 + $1.duration }
+        return [year, String(localized: "\(members.count) tracks"), TimeFormatting.spoken(total)].compactMap { $0 }.joined(separator: " · ")
+    }
+
     private func eraSubtitle(_ group: EraGroup) -> String {
         [group.yearText, String(localized: "\(group.ids.count) tracks")].compactMap { $0 }.joined(separator: " · ")
     }
@@ -315,7 +323,11 @@ struct LibraryView: View {
                 NavigationLink { CollectionDetailView(title: name, songs: members, kind: .album, showNowPlaying: $showNowPlaying) } label: {
                     HStack(spacing: 14) {
                         Artwork(song: members.first, radius: 8).scaledSquare(64)
-                        VStack(alignment: .leading) { Text(name); Text(members.first?.displayArtist ?? "").font(.subheadline).foregroundStyle(.secondary) }
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(name)
+                            Text(members.first?.displayArtist ?? "").font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
+                            Text(albumFacts(members)).font(.caption).foregroundStyle(.tertiary).lineLimit(1)
+                        }
                     }
                 }
             }
@@ -325,7 +337,7 @@ struct LibraryView: View {
     /// Songs after the (remembered) library filter; shared by songs, albums and artists.
     private var filteredSongs: [Song] {
         guard filter.isActive else { return songs }
-        let allowed = Set(filter.ids(in: songs.map(\.searchable)))
+        let allowed = Set(filter.ids(in: songs.map(\.filterable)))
         return songs.filter { allowed.contains($0.id) }
     }
 

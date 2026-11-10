@@ -41,9 +41,16 @@ extension EraStore {
         let songs = ((try? allSongs()) ?? []).map { song in
             HealthSong(id: song.id, title: song.title, artist: song.artist, versions: song.versions.map {
                 HealthVersion(id: $0.id, name: $0.name, fileName: $0.fileName, artworkFile: $0.artworkFile)
-            })
+            }, album: song.album, trackNumber: song.trackNumber)
         }
         return LibraryHealth.analyze(songs: songs, files: LibraryFiles.snapshot())
+    }
+
+    /// Nummeriert ein Album lueckenlos in seiner aktuellen Reihenfolge neu (loest doppelte Nummern und Luecken).
+    @discardableResult
+    func renumberAlbum(songIDs: [UUID]) -> Int {
+        let byID = Dictionary(((try? allSongs()) ?? []).map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        return applyTrackOrder(songIDs.compactMap { byID[$0] })
     }
 
     /// Removes versions whose audio file is gone; songs left without a version go too.

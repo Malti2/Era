@@ -581,3 +581,5 @@
 "Track Order" = "Titelreihenfolge";
 "Drag songs into album order. Numbers are stored in Era only; your files stay untouched." = "Ziehe die Songs in die Albumreihenfolge. Die Nummern werden nur in Era gespeichert, deine Dateien bleiben unverändert.";
 "Remove Track Numbers" = "Tracknummern entfernen";
+"Missing track numbers: %@" = "Fehlende Tracknummern: %@";
+"Used twice: %@" = "Doppelt vergeben: %@";

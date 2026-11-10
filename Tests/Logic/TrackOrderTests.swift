@@ -77,3 +77,40 @@ final class TrackOrderTests: XCTestCase {
         XCTAssertTrue(TrackOrder.missing(in: [0, 0]).isEmpty)
     }
 }
+
+final class TrackHealthTests: XCTestCase {
+    private func song(_ title: String, album: String, track: Int) -> HealthSong {
+        HealthSong(id: UUID(), title: title, artist: "A", versions: [], album: album, trackNumber: track)
+    }
+
+    func testGapAndDuplicateAreReported() {
+        let songs = [song("a", album: "LP", track: 1), song("b", album: "LP", track: 3), song("c", album: "LP", track: 3)]
+        let issues = LibraryHealth.trackIssues(in: songs)
+        XCTAssertEqual(issues.count, 1)
+        XCTAssertEqual(issues[0].missing, [2])
+        XCTAssertEqual(issues[0].duplicates, [3])
+        XCTAssertEqual(issues[0].songIDs.count, 3)
+    }
+
+    func testCleanAlbumHasNoIssue() {
+        let songs = [song("a", album: "LP", track: 1), song("b", album: "lp ", track: 2)]
+        XCTAssertTrue(LibraryHealth.trackIssues(in: songs).isEmpty)
+    }
+
+    func testAlbumsWithOneNumberedSongOrNoNumbersAreIgnored() {
+        let songs = [song("a", album: "EP", track: 4), song("b", album: "EP", track: 0), song("c", album: "Loose", track: 0)]
+        XCTAssertTrue(LibraryHealth.trackIssues(in: songs).isEmpty)
+    }
+
+    func testIssuesMakeTheReportUnhealthy() {
+        let songs = [song("a", album: "LP", track: 1), song("b", album: "LP", track: 4)]
+        let report = LibraryHealth.analyze(songs: songs, files: LibraryFilesSnapshot())
+        XCTAssertFalse(report.isHealthy)
+        XCTAssertEqual(report.trackIssues.first?.album, "LP")
+    }
+
+    func testNumberListIsTruncated() {
+        XCTAssertEqual(TrackNumberList.text([2, 4]), "2, 4")
+        XCTAssertEqual(TrackNumberList.text([1, 2, 3, 4, 5, 6, 7, 8], limit: 3), "1, 2, 3 +5")
+    }
+}

@@ -581,3 +581,5 @@
 "Track Order" = "Orden de pistas";
 "Drag songs into album order. Numbers are stored in Era only; your files stay untouched." = "Arrastra las canciones al orden del álbum. Los números solo se guardan en Era; tus archivos no se modifican.";
 "Remove Track Numbers" = "Quitar números de pista";
+"Missing track numbers: %@" = "Números de pista que faltan: %@";
+"Used twice: %@" = "Repetidos: %@";
