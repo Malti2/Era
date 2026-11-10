@@ -20,6 +20,8 @@ final class PlayerEngine: NSObject, ObservableObject, AVAudioPlayerDelegate {
     @Published var rate: Float = 1.0
     /// Set when a track could not be loaded (missing/unreadable file); the UI shows it briefly.
     @Published var playbackError: String?
+    /// Version, von der zuletzt per A/B-Wechsel weggeschaltet wurde (siehe `swapTarget`).
+    @Published private(set) var compareVersion: SongVersion?
 
     var sleepRemaining: Int? { sleepTimer.remaining }
 
@@ -29,6 +31,8 @@ final class PlayerEngine: NSObject, ObservableObject, AVAudioPlayerDelegate {
     private var nextAudio: AVAudioPlayer?
     private var nextVersion: SongVersion?
     private var transitionArmed = false
+    /// Aus bei A/B-Wechseln: dieselbe Hoerrunde soll den Zaehler nicht mehrfach erhoehen.
+    private var countsAsNewPlay = true
     private var fading = false
     private var fadeWindow: Double = 1
     private var crackle: AVAudioPlayer?
@@ -178,7 +182,7 @@ final class PlayerEngine: NSObject, ObservableObject, AVAudioPlayerDelegate {
     }
 
     private func markPlayed(_ version: SongVersion) {
-        guard let song = version.song else { return }
+        guard countsAsNewPlay, let song = version.song else { return }
         song.playCount += 1
         song.lastPlayedAt = Date()
         try? song.modelContext?.save()
@@ -365,10 +369,28 @@ final class PlayerEngine: NSObject, ObservableObject, AVAudioPlayerDelegate {
         let anchor = queue.firstIndex(where: { $0.id == current?.id }) ?? queue.count
         var newQueue = queue.filter { !ids.contains($0.id) }
         newQueue.insert(version, at: min(anchor, newQueue.count))
-        // Comparing versions of one song keeps the loop, so A/B listening lines up.
+        // Comparing versions of one song keeps loop and position, so A/B listening lines up.
         let keptLoop = loop
-        play(version, from: newQueue)
+        let previous = current
+        let target = VersionSwitch.position(time: currentTime, from: duration, to: version.duration)
+        countsAsNewPlay = previous?.song?.id != song.id
+        defer { countsAsNewPlay = true }
+        guard play(version, from: newQueue) else { return }
         loop = keptLoop
+        if target > 0 { seek(target) }
+        if let previous, previous.id != version.id { compareVersion = previous }
+    }
+
+    /// Die zuletzt verlassene Version desselben Songs ("A" beim Vergleichen); nur gueltig, solange der Song laeuft.
+    var swapTarget: SongVersion? {
+        guard let compareVersion, let current, compareVersion.id != current.id,
+              compareVersion.song?.id == current.song?.id else { return nil }
+        return compareVersion
+    }
+
+    /// Ein Tipp zurueck zur vorigen Version an derselben Stelle.
+    func swapVersions() {
+        if let target = swapTarget { switchVersion(target) }
     }
 
     /// Cycles the A-B loop: mark start, mark end, clear.

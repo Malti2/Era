@@ -217,6 +217,12 @@ struct NowPlayingView: View {
                         .sensoryFeedback(.impact(flexibility: .soft), trigger: song.isFavorite) { _, _ in haptics }
 
                         Menu {
+                            if let target = player.swapTarget {
+                                Button { player.swapVersions() } label: {
+                                    Label("Swap with \(target.name)", systemImage: "arrow.left.arrow.right")
+                                }
+                                Divider()
+                            }
                             ForEach(song.sortedVersions) { v in
                                 Button { player.switchVersion(v) } label: {
                                     Label(v.name, systemImage: v.id == version.id ? "checkmark" : "opticaldisc")
@@ -281,7 +287,13 @@ struct NowPlayingView: View {
                             Text(TimeFormatting.mmss(scrubbing ? scrubValue : player.currentTime))
                             Spacer()
                             Menu {
-                                ForEach(song.sortedVersions) { v in
+                                if let target = player.swapTarget {
+                                    Button { player.swapVersions() } label: {
+                                    Label("Swap with \(target.name)", systemImage: "arrow.left.arrow.right")
+                                }
+                                Divider()
+                            }
+                            ForEach(song.sortedVersions) { v in
                                     Button { player.switchVersion(v) } label: {
                                         Label(v.name, systemImage: v.id == version.id ? "checkmark" : "opticaldisc")
                                     }
@@ -292,6 +304,17 @@ struct NowPlayingView: View {
                                     .padding(.horizontal, 9)
                                     .padding(.vertical, 4)
                                     .background(.ultraThinMaterial, in: .capsule)
+                            }
+                            if let target = player.swapTarget {
+                                Button { player.swapVersions() } label: {
+                                    Image(systemName: "arrow.left.arrow.right")
+                                        .font(.caption2.weight(.semibold))
+                                        .padding(6)
+                                        .background(.ultraThinMaterial, in: .circle)
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel(Text("Swap with \(target.name)"))
+                                .sensoryFeedback(.selection, trigger: version.id) { _, _ in haptics }
                             }
                             Spacer()
                             Text("-" + TimeFormatting.mmss(max(0, player.duration - (scrubbing ? scrubValue : player.currentTime))))
