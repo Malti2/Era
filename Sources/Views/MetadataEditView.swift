@@ -14,6 +14,7 @@ struct MetadataEditView: View {
     @State private var album: String = ""
     @State private var era: String = ""
     @State private var year: String = ""
+    @State private var track: String = ""
     @State private var newTag = ""
     // Tag edits stay in a draft until "Sichern", so Cancel really discards them.
     @State private var tagIDs: Set<UUID> = []
@@ -26,6 +27,7 @@ struct MetadataEditView: View {
         _album = State(initialValue: song.album)
         _era = State(initialValue: song.era)
         _year = State(initialValue: song.year.map(String.init) ?? "")
+        _track = State(initialValue: song.trackNumber > 0 ? String(song.trackNumber) : "")
         _tagIDs = State(initialValue: Set(song.tags.map(\.id)))
     }
 
@@ -44,6 +46,7 @@ struct MetadataEditView: View {
                     TextField("Album", text: $album)
                     TextField("Era / Project", text: $era)
                     TextField("Year", text: $year).keyboardType(.numberPad)
+                    TextField("Track Number", text: $track).keyboardType(.numberPad)
                 }
                 Section("Status") {
                     ForEach(statusTags) { tag in
@@ -118,6 +121,7 @@ struct MetadataEditView: View {
         song.album = album.trimmingCharacters(in: .whitespaces)
         song.era = era.trimmingCharacters(in: .whitespaces)
         song.year = Int(year.trimmingCharacters(in: .whitespaces))
+        song.trackNumber = TrackNumber.parse(track)
         var final = tags.filter { tagIDs.contains($0.id) }
         for name in pendingTagNames {
             let tag = store.makeTag(named: name)

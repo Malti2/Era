@@ -576,3 +576,8 @@
 "Play Best Of" = "Best Of abspielen";
 "Plays a mix of your 4 and 5 star songs." = "Spielt einen Mix aus deinen Songs mit 4 und 5 Sternen.";
 "Swap with %@" = "Wechseln zu %@";
+"Track Number" = "Tracknummer";
+"Edit Track Order" = "Titelreihenfolge bearbeiten";
+"Track Order" = "Titelreihenfolge";
+"Drag songs into album order. Numbers are stored in Era only; your files stay untouched." = "Ziehe die Songs in die Albumreihenfolge. Die Nummern werden nur in Era gespeichert, deine Dateien bleiben unverändert.";
+"Remove Track Numbers" = "Tracknummern entfernen";

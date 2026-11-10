@@ -20,7 +20,8 @@ enum BackupService {
                     isFavorite: song.isFavorite, resumePosition: song.resumePosition,
                     primaryVersionID: song.primaryVersionID, tagIDs: song.tags.map(\.id),
                     notes: song.notes.isEmpty ? nil : song.notes,
-                    rating: song.rating == 0 ? nil : song.rating
+                    rating: song.rating == 0 ? nil : song.rating,
+                    trackNumber: song.trackNumber == 0 ? nil : song.trackNumber
                 )
             },
             versions: versions.map { v in

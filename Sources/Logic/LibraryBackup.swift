@@ -20,6 +20,7 @@ struct LibraryBackup: Codable, Equatable {
         /// Seit Notizen/Marker: optional, damit alte Backups weiter lesbar bleiben.
         var notes: String?
         var rating: Int?
+        var trackNumber: Int?
     }
     struct VersionEntry: Codable, Equatable {
         var id: UUID

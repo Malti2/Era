@@ -7,6 +7,7 @@ struct AudioMetadata {
     var album: String?
     var era: String?
     var year: Int?
+    var trackNumber: Int = 0
     var artworkData: Data?
 }
 
@@ -28,10 +29,25 @@ enum MetadataService {
         if let raw = await string(.commonIdentifierCreationDate, in: items) {
             meta.year = Int(raw.prefix(4))
         }
+        if let all = try? await asset.load(.metadata) { meta.trackNumber = await trackNumber(in: all) }
         if let item = AVMetadataItem.metadataItems(from: items, filteredByIdentifier: .commonIdentifierArtwork).first {
             meta.artworkData = try? await item.load(.dataValue)
         }
         return meta
+    }
+
+    /// ID3 ("3/12" als Text) und MP4/iTunes ("trkn" als Binaeratom).
+    private static func trackNumber(in items: [AVMetadataItem]) async -> Int {
+        if let item = AVMetadataItem.metadataItems(from: items, filteredByIdentifier: .id3MetadataTrackNumber).first,
+           let text = try? await item.load(.stringValue) {
+            let value = TrackNumber.parse(text)
+            if value > 0 { return value }
+        }
+        if let item = AVMetadataItem.metadataItems(from: items, filteredByIdentifier: .iTunesMetadataTrackNumber).first,
+           let data = try? await item.load(.dataValue) {
+            return TrackNumber.fromITunesData([UInt8](data))
+        }
+        return 0
     }
 
     private static func string(_ id: AVMetadataIdentifier, in items: [AVMetadataItem]) async -> String? {
@@ -68,6 +84,7 @@ enum FLACVorbisReader {
         meta.album = comments["ALBUM"]
         meta.era = comments["ERA"] ?? comments["GROUPING"]
         if let date = comments["DATE"] ?? comments["YEAR"] { meta.year = Int(date.prefix(4)) }
+        meta.trackNumber = TrackNumber.parse(comments["TRACKNUMBER"])
         meta.artworkData = picture
         return meta
     }

@@ -623,6 +623,9 @@ struct SongListView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
                         Button { selecting = true } label: { Label("Select Songs", systemImage: "checkmark.circle") }
+                        if kind == .album {
+                            Button { showTrackOrder = true } label: { Label("Edit Track Order", systemImage: "list.number") }
+                        }
                     } label: { Image(systemName: "ellipsis.circle") }
                     .accessibilityLabel("More")
                 }
@@ -650,6 +653,15 @@ struct CollectionDetailView: View {
     let songs: [Song]
     let kind: CollectionKind
     @Binding var showNowPlaying: Bool
+    @State private var showTrackOrder = false
+
+    init(title: String, songs: [Song], kind: CollectionKind, showNowPlaying: Binding<Bool>) {
+        self.title = title
+        // Alben laufen in Track-Reihenfolge, alles andere in der uebergebenen Reihenfolge.
+        self.songs = kind == .album ? EraStore.inTrackOrder(songs) : songs
+        self.kind = kind
+        _showNowPlaying = showNowPlaying
+    }
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var player: PlayerEngine
     @EnvironmentObject private var store: EraStore
@@ -706,6 +718,7 @@ struct CollectionDetailView: View {
         }
         .toolbar(selecting ? .hidden : .automatic, for: .tabBar)
         .sheet(isPresented: $showBulkTags) { BulkTagSheet(songs: selectedSongs) }
+        .sheet(isPresented: $showTrackOrder) { TrackOrderView(songs: songs) }
         .confirmationDialog("Delete Songs?", isPresented: $confirmBulkDelete, titleVisibility: .visible) {
             Button("Delete \(selection.count) Songs", role: .destructive) {
                 store.deleteSongs(selectedSongs)
@@ -804,7 +817,7 @@ struct CollectionDetailView: View {
                         Image(systemName: "waveform").foregroundStyle(.tint)
                             .symbolEffect(.variableColor.iterative, isActive: player.isPlaying)
                     } else {
-                        Text("\(index + 1)").font(.subheadline).foregroundStyle(.secondary)
+                        Text("\(kind == .album && song.trackNumber > 0 ? song.trackNumber : index + 1)").font(.subheadline.monospacedDigit()).foregroundStyle(.secondary)
                     }
                 }
                 .frame(width: 24)
