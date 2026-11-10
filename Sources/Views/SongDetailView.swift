@@ -183,6 +183,16 @@ struct SongDetailView: View {
             renameText = version.name
             versionToRename = version
         } label: { Label("Umbenennen", systemImage: "pencil") }
+        if song.versions.count > 1 {
+            Menu {
+                ForEach(song.sortedVersions.filter { $0.id != version.id }) { other in
+                    Button {
+                        player.compare(version, with: other)
+                        showNowPlaying = true
+                    } label: { Label(other.name, systemImage: "opticaldisc") }
+                }
+            } label: { Label("Compare With", systemImage: "arrow.left.arrow.right") }
+        }
         Button { versionToEdit = version } label: { Label("Edit Details", systemImage: "slider.horizontal.3") }
         Button { versionForMarkers = version } label: { Label("Markers", systemImage: "mappin") }
         if song.versions.count > 1 {

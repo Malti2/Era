@@ -388,6 +388,12 @@ final class PlayerEngine: NSObject, ObservableObject, AVAudioPlayerDelegate {
         return compareVersion
     }
 
+    /// Startet `a` und haelt `b` als Gegenstueck bereit: ein Tipp auf den Wechseln-Knopf springt an dieselbe Stelle.
+    func compare(_ a: SongVersion, with b: SongVersion) {
+        guard a.id != b.id, a.song?.id == b.song?.id, play(a, from: [a]) else { return }
+        compareVersion = b
+    }
+
     /// Ein Tipp zurueck zur vorigen Version an derselben Stelle.
     func swapVersions() {
         if let target = swapTarget { switchVersion(target) }
