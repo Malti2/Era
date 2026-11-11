@@ -20,6 +20,8 @@ final class PlayerEngine: NSObject, ObservableObject, AVAudioPlayerDelegate {
     @Published var rate: Float = 1.0
     /// Set when a track could not be loaded (missing/unreadable file); the UI shows it briefly.
     @Published var playbackError: String?
+    /// Versions the radio/autoplay appended to the queue (marked in the Up Next list).
+    @Published private(set) var autoQueuedIDs: Set<UUID> = []
     /// Version, von der zuletzt per A/B-Wechsel weggeschaltet wurde (siehe `swapTarget`).
     @Published private(set) var compareVersion: SongVersion?
 
@@ -81,6 +83,7 @@ final class PlayerEngine: NSObject, ObservableObject, AVAudioPlayerDelegate {
     func play(_ version: SongVersion, from versions: [SongVersion]) -> Bool {
         cancelTransition()
         loop.clear()
+        if !autoQueuedIDs.isEmpty, !versions.contains(where: { autoQueuedIDs.contains($0.id) }) { autoQueuedIDs = [] }
         recordPlayEvent(finished: false)
         saveResumePosition()
         queue = versions
@@ -455,6 +458,7 @@ final class PlayerEngine: NSObject, ObservableObject, AVAudioPlayerDelegate {
     }
 
     func clearQueue() {
+        autoQueuedIDs = []
         guard let current else { queue = []; return }
         queue = [current]
     }
@@ -512,7 +516,19 @@ final class PlayerEngine: NSObject, ObservableObject, AVAudioPlayerDelegate {
         }
         shuffle = false
         play(seed, from: [seed] + versions)
+        autoQueuedIDs = Set(versions.map(\.id))
         return true
+    }
+
+    /// Radio from what is playing now, else from the last played song, else from a favorite (Siri / Shortcuts).
+    @discardableResult
+    func startRadioFromContext() -> Bool {
+        if let song = current?.song { return startRadio(from: song) }
+        guard let store, let all = try? store.allSongs() else { return false }
+        let seed = all.filter { $0.lastPlayedAt != nil }.max { ($0.lastPlayedAt ?? .distantPast) < ($1.lastPlayedAt ?? .distantPast) }
+            ?? all.first(where: \.isFavorite) ?? all.first
+        guard let seed else { return false }
+        return startRadio(from: seed)
     }
 
     /// At the end of the queue: keep going with similar songs if Autoplay is on.
@@ -523,7 +539,9 @@ final class PlayerEngine: NSObject, ObservableObject, AVAudioPlayerDelegate {
         let versions = similarVersions(to: song, excluding: heard, limit: 10)
         guard let first = versions.first else { return false }
         let kept = Array(queue.suffix(60))
-        return play(first, from: kept + versions)
+        let started = play(first, from: kept + versions)
+        autoQueuedIDs.formUnion(versions.map(\.id))
+        return started
     }
 
     private func endOfQueue() {

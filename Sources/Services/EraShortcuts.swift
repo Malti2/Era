@@ -70,6 +70,18 @@ struct EraPlayBestOfIntent: AppIntent {
     }
 }
 
+struct EraStartRadioIntent: AppIntent {
+    static var title: LocalizedStringResource = "Start Radio"
+    static var description = IntentDescription("Plays songs similar to what you are listening to.")
+    static var openAppWhenRun: Bool = true
+
+    @MainActor
+    func perform() async throws -> some IntentResult {
+        PlayerEngine.shared.startRadioFromContext()
+        return .result()
+    }
+}
+
 struct EraShortcuts: AppShortcutsProvider {
     static var shortcutTileColor: ShortcutTileColor = .grape
 
@@ -119,6 +131,15 @@ struct EraShortcuts: AppShortcutsProvider {
             ],
             shortTitle: "Best Of",
             systemImageName: "star.fill"
+        )
+        AppShortcut(
+            intent: EraStartRadioIntent(),
+            phrases: [
+                "Start radio with \(.applicationName)",
+                "Play something similar in \(.applicationName)"
+            ],
+            shortTitle: "Start Radio",
+            systemImageName: "dot.radiowaves.left.and.right"
         )
     }
 }

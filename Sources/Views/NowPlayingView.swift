@@ -454,6 +454,11 @@ struct NowPlayingView: View {
                 ForEach(player.queue, id: \.id) { v in
                     HStack {
                         if let song = v.song { SongRow(song: song, version: v, isCurrent: player.current?.id == v.id) }
+                        if player.autoQueuedIDs.contains(v.id) {
+                            Image(systemName: "dot.radiowaves.left.and.right")
+                                .font(.caption).foregroundStyle(.secondary)
+                                .accessibilityLabel(Text("Added by Radio"))
+                        }
                     }
                     .contentShape(Rectangle())
                     .onTapGesture { player.play(v, from: player.queue) }
