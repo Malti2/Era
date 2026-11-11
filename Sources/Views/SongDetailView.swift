@@ -19,6 +19,7 @@ struct SongDetailView: View {
     @State private var renameText = ""
     @State private var shareItem: ShareItem?
     @State private var rank: SongRank?
+    @State private var similar: [Song] = []
     @Query private var playEvents: [PlayEvent]
 
     init(song: Song, showNowPlaying: Binding<Bool>) {
@@ -94,6 +95,17 @@ struct SongDetailView: View {
 
             listeningSection
 
+            if !similar.isEmpty {
+                Section("Similar Songs") {
+                    ForEach(similar) { other in
+                        Button {
+                            if let version = other.primaryVersion { player.play(version, from: similar.compactMap(\.primaryVersion)) }
+                        } label: { SongRow(song: other, version: nil) }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+
             if !song.personalTags.isEmpty {
                 Section("Tags") {
                     FlowTags(tags: song.personalTags)
@@ -114,11 +126,19 @@ struct SongDetailView: View {
         }
         .sheet(isPresented: $showNotes) { SongNotesView(song: song) }
         .task(id: song.playCount) { loadRank() }
+        .task(id: song.id) { loadSimilar() }
         .alert("Versionsname", isPresented: Binding(get: { versionToRename != nil }, set: { if !$0 { versionToRename = nil } })) {
             TextField("Name", text: $renameText)
             Button("Save") { if let version = versionToRename { store.renameVersion(version, to: renameText) }; versionToRename = nil }
             Button("Cancel", role: .cancel) { versionToRename = nil }
         }
+    }
+
+    private func loadSimilar() {
+        guard let all = try? store.allSongs() else { return }
+        let byID = Dictionary(all.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        let ids = SimilarSongs.rank(seed: song.similarityProfile, in: all.map(\.similarityProfile), limit: 5)
+        similar = ids.compactMap { byID[$0] }.filter { $0.primaryVersion != nil }
     }
 
     @ViewBuilder private var listeningSection: some View {
