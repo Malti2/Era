@@ -85,21 +85,19 @@ enum CSVExport {
         let dateFormatter = ISO8601DateFormatter()
         var lines = [header.map(escape).joined(separator: ",")]
         for song in songs {
-            let fields = [
-                song.title, song.artist, song.album, song.era,
-                song.year.map(String.init) ?? "",
-                song.durationText,
-                String(song.versions.count),
-                song.statusTags.map(\.name).joined(separator: "; "),
-                song.personalTags.map(\.name).joined(separator: "; "),
-                String(song.playCount),
-                song.rating > 0 ? String(song.rating) : "",
-                song.isFavorite ? "yes" : "no",
-                dateFormatter.string(from: song.dateAdded),
-                song.notes,
-                markerSummary(of: song),
-                song.trackNumber > 0 ? String(song.trackNumber) : ""
-            ]
+            var fields: [String] = [song.title, song.artist, song.album, song.era]
+            fields.append(song.year.map(String.init) ?? "")
+            fields.append(song.durationText)
+            fields.append(String(song.versions.count))
+            fields.append(song.statusTags.map(\.name).joined(separator: "; "))
+            fields.append(song.personalTags.map(\.name).joined(separator: "; "))
+            fields.append(String(song.playCount))
+            fields.append(song.rating > 0 ? String(song.rating) : "")
+            fields.append(song.isFavorite ? "yes" : "no")
+            fields.append(dateFormatter.string(from: song.dateAdded))
+            fields.append(song.notes)
+            fields.append(markerSummary(of: song))
+            fields.append(song.trackNumber > 0 ? String(song.trackNumber) : "")
             lines.append(fields.map(escape).joined(separator: ","))
         }
         return lines.joined(separator: "\r\n") + "\r\n"
