@@ -219,17 +219,8 @@ final class ImportManager: ObservableObject {
                 switch outcome {
                 case .imported:
                     imported += 1
-                    if let link, let s = link.versions.last?.song {
-                        _ = s
-                    }
                 case .duplicate: dupes += 1
                 case .relinked: relinked += 1
-                }
-                // Titel/Artist aus der Staging-Liste uebernehmen
-                if outcome == .imported {
-                    if let all = try? store.allSongs(), let newest = all.first {
-                        _ = newest
-                    }
                 }
             } catch {
                 errors.append((item.name, error.localizedDescription))

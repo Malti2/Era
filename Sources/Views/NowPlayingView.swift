@@ -72,6 +72,7 @@ struct NowPlayingView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var player: PlayerEngine
     @EnvironmentObject private var store: EraStore
+    @ScaledMetric(relativeTo: .title) private var transportSize: CGFloat = 36
     @State private var showQueue = false
     @State private var scrubbing = false
     @State private var scrubValue: Double = 0
@@ -357,7 +358,7 @@ struct NowPlayingView: View {
                         Button { player.next() } label: { Image(systemName: "forward.fill") }
                             .accessibilityLabel(String(localized: "Next"))
                     }
-                        .font(.system(size: compact ? 32 : 36, weight: .semibold))
+                        .font(.system(size: min(compact ? transportSize * 0.89 : transportSize, 52), weight: .semibold))
                         .padding(.horizontal, 66)
                         .padding(.top, compact ? 14 : 20)
 
