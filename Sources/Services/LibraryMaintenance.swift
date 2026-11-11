@@ -49,8 +49,11 @@ extension EraStore {
     /// Nummeriert ein Album lueckenlos in seiner aktuellen Reihenfolge neu (loest doppelte Nummern und Luecken).
     @discardableResult
     func renumberAlbum(songIDs: [UUID]) -> Int {
-        let byID = Dictionary(((try? allSongs()) ?? []).map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
-        return applyTrackOrder(songIDs.compactMap { byID[$0] })
+        let all: [Song] = (try? allSongs()) ?? []
+        var byID: [UUID: Song] = [:]
+        for song in all where byID[song.id] == nil { byID[song.id] = song }
+        let ordered: [Song] = songIDs.compactMap { byID[$0] }
+        return applyTrackOrder(ordered)
     }
 
     /// Removes versions whose audio file is gone; songs left without a version go too.

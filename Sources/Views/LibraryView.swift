@@ -296,10 +296,16 @@ struct LibraryView: View {
 
     /// "2019 · 12 tracks · 48 min" fuer Album-Zeilen.
     private func albumFacts(_ members: [Song]) -> String {
+        var parts: [String] = []
         let years = members.compactMap(\.year)
-        let year = years.min().map { low in years.max() == low ? "\(low)" : "\(low)–\(years.max() ?? low)" }
-        let total = members.reduce(0) { $0 + $1.duration }
-        return [year, String(localized: "\(members.count) tracks"), TimeFormatting.spoken(total)].compactMap { $0 }.joined(separator: " · ")
+        if let low = years.min(), let high = years.max() {
+            parts.append(low == high ? String(low) : "\(low)–\(high)")
+        }
+        parts.append(String(localized: "\(members.count) tracks"))
+        var total = 0.0
+        for member in members { total += member.duration }
+        parts.append(TimeFormatting.spoken(total))
+        return parts.joined(separator: " · ")
     }
 
     private func eraSubtitle(_ group: EraGroup) -> String {
@@ -817,6 +823,12 @@ struct CollectionDetailView: View {
         .accessibilityElement(children: .combine)
     }
 
+    /// Alben zeigen die Track-Nummer (falls gesetzt), sonst die Position in der Liste.
+    private func displayedNumber(index: Int, song: Song) -> Int {
+        if kind == .album && song.trackNumber > 0 { return song.trackNumber }
+        return index + 1
+    }
+
     @ViewBuilder private func row(index: Int, song: Song) -> some View {
         if selecting {
             SelectableSongRow(song: song, isSelected: selection.contains(song.id)) { selection.toggle(song.id) }
@@ -829,7 +841,8 @@ struct CollectionDetailView: View {
                         Image(systemName: "waveform").foregroundStyle(.tint)
                             .symbolEffect(.variableColor.iterative, isActive: player.isPlaying)
                     } else {
-                        Text("\(kind == .album && song.trackNumber > 0 ? song.trackNumber : index + 1)").font(.subheadline.monospacedDigit()).foregroundStyle(.secondary)
+                        Text(verbatim: String(displayedNumber(index: index, song: song)))
+                            .font(.subheadline.monospacedDigit()).foregroundStyle(.secondary)
                     }
                 }
                 .frame(width: 24)
