@@ -241,6 +241,7 @@ struct NowPlayingView: View {
                                     ForEach(Array(SongRating.range), id: \.self) { Text(SongRating.stars($0)).tag($0) }
                                 }
                             } label: { Label("Rating", systemImage: "star") }
+                            Button { player.startRadio(from: song) } label: { Label("Start Radio", systemImage: "dot.radiowaves.left.and.right") }
                             Button { showTimer = true } label: { Label("Sleep Timer", systemImage: "moon.zzz") }
                         } label: {
                             Image(systemName: "ellipsis")

@@ -13,6 +13,7 @@ struct SettingsView: View {
     @AppStorage(AppSettings.pauseOnRouteChangeKey) private var pauseOnRouteChange = true
     @AppStorage(AppSettings.resumeAfterInterruptionKey) private var resumeAfterInterruption = true
     @AppStorage(AppSettings.hapticsEnabledKey) private var haptics = true
+    @AppStorage(AppSettings.autoplayKey) private var autoplaySimilar = false
     @AppStorage(AppSettings.spotlightEnabledKey) private var spotlightEnabled = true
     @AppStorage(AppSettings.crackleEnabledKey) private var crackleEnabled = false
     @AppStorage(AppSettings.crackleVolumeKey) private var crackleVolume = 0.18
@@ -69,6 +70,9 @@ struct SettingsView: View {
                     }
                     Toggle(isOn: $resumeAfterInterruption) {
                         Label("Resume after calls", systemImage: "phone.fill")
+                    }
+                    Toggle(isOn: $autoplaySimilar) {
+                        Label("Autoplay Similar Songs", systemImage: "dot.radiowaves.left.and.right")
                     }
                     NavigationLink { AudioEffectsSettingsView() } label: { Label("Audio Effects", systemImage: "waveform") }
                     Toggle(isOn: $haptics) {

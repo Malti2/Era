@@ -25,6 +25,7 @@ enum AppSettings {
     static let backupSnoozeKey = "backup.snoozedUntil"
     static let ratingPromptSnoozeKey = "rating.promptSnoozedUntil"
     static let ignoredSimilarKey = "maintenance.ignoredSimilar"
+    static let autoplayKey = "settings.autoplaySimilar"
     static let recentSearchesKey = "search.recents"
     static let savedSearchesKey = "search.saved"
 

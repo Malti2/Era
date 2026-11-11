@@ -584,3 +584,6 @@
 "Missing track numbers: %@" = "Numéros de piste manquants : %@";
 "Used twice: %@" = "Utilisés deux fois : %@";
 "Compare With" = "Comparer avec";
+"Autoplay Similar Songs" = "Lire des titres similaires";
+"Start Radio" = "Lancer la radio";
+"Nothing similar found yet. Tags, an era, or an album link songs together." = "Rien de similaire pour l’instant. Les tags, une ère ou un album relient les titres.";

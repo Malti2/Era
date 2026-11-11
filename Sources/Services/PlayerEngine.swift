@@ -489,7 +489,45 @@ final class PlayerEngine: NSObject, ObservableObject, AVAudioPlayerDelegate {
         if !play(queue[target], from: queue), skipped < queue.count - 1 { move(offset, skipped: skipped + 1) }
     }
 
+    // MARK: - Radio & Autoplay
+
+    /// Playable versions of the songs most similar to `song` (see `SimilarSongs`), best match first.
+    private func similarVersions(to song: Song, excluding: Set<UUID>, limit: Int) -> [SongVersion] {
+        guard let store, let all = try? store.allSongs() else { return [] }
+        let byID = Dictionary(all.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        let ids = SimilarSongs.rank(seed: song.similarityProfile, in: all.map(\.similarityProfile),
+                                    excluding: excluding, limit: limit,
+                                    randomSeed: MixBuilder.daySeed() &+ UInt64(song.id.uuid.0))
+        return ids.compactMap { byID[$0]?.primaryVersion }
+    }
+
+    /// Starts a radio: the song itself, followed by a queue of similar songs.
+    @discardableResult
+    func startRadio(from song: Song) -> Bool {
+        guard let seed = song.primaryVersion else { return false }
+        let versions = similarVersions(to: song, excluding: [song.id], limit: 25)
+        guard !versions.isEmpty else {
+            playbackError = String(localized: "Nothing similar found yet. Tags, an era, or an album link songs together.")
+            return false
+        }
+        shuffle = false
+        play(seed, from: [seed] + versions)
+        return true
+    }
+
+    /// At the end of the queue: keep going with similar songs if Autoplay is on.
+    private func continueWithSimilar() -> Bool {
+        guard AppSettings.bool(AppSettings.autoplayKey, default: false), repeatMode == 0,
+              let song = current?.song else { return false }
+        let heard = Set(queue.compactMap { $0.song?.id })
+        let versions = similarVersions(to: song, excluding: heard, limit: 10)
+        guard let first = versions.first else { return false }
+        let kept = Array(queue.suffix(60))
+        return play(first, from: kept + versions)
+    }
+
     private func endOfQueue() {
+        if continueWithSimilar() { return }
         seek(0)
         audio?.pause()
         isPlaying = false

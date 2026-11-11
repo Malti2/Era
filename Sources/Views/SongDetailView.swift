@@ -300,6 +300,7 @@ struct SongContextMenu: View {
                 if let v = song.primaryVersion { player.playLater(v) }
             } label: { Label("Add to End", systemImage: "text.line.last.and.arrowtriangle.forward") }
             Button { playlistPicker.present([song]) } label: { Label("Add to Playlist", systemImage: "text.badge.plus") }
+            Button { player.startRadio(from: song) } label: { Label("Start Radio", systemImage: "dot.radiowaves.left.and.right") }
             Menu {
                 Button { showDrawer = true } label: { Label("Add", systemImage: "plus") }
                 Divider()

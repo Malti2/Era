@@ -584,3 +584,6 @@
 "Missing track numbers: %@" = "Missing track numbers: %@";
 "Used twice: %@" = "Used twice: %@";
 "Compare With" = "Compare With";
+"Autoplay Similar Songs" = "Autoplay Similar Songs";
+"Start Radio" = "Start Radio";
+"Nothing similar found yet. Tags, an era, or an album link songs together." = "Nothing similar found yet. Tags, an era, or an album link songs together.";
