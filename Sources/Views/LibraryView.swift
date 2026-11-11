@@ -635,9 +635,6 @@ struct SongListView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
                         Button { selecting = true } label: { Label("Select Songs", systemImage: "checkmark.circle") }
-                        if kind == .album {
-                            Button { showTrackOrder = true } label: { Label("Edit Track Order", systemImage: "list.number") }
-                        }
                     } label: { Image(systemName: "ellipsis.circle") }
                     .accessibilityLabel("More")
                 }
@@ -723,6 +720,9 @@ struct CollectionDetailView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
                         Button { selecting = true } label: { Label("Select Songs", systemImage: "checkmark.circle") }
+                        if kind == .album {
+                            Button { showTrackOrder = true } label: { Label("Edit Track Order", systemImage: "list.number") }
+                        }
                     } label: { Image(systemName: "ellipsis.circle") }
                     .accessibilityLabel("More")
                 }
