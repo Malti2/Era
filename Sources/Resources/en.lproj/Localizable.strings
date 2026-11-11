@@ -590,3 +590,6 @@
 "Plays songs similar to what you are listening to." = "Plays songs similar to what you are listening to.";
 "Added by Radio" = "Added by Radio";
 "Songs without a track number" = "Songs without a track number";
+"Radio" = "Radio";
+"Similar to %@" = "Similar to %@";
+"Plays songs similar to this one" = "Plays songs similar to this one";

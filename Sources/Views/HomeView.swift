@@ -123,10 +123,32 @@ struct HomeView: View {
                         .accessibilityElement(children: .combine)
                         .accessibilityHint(Text("Plays this mix"))
                     }
+                    if let seed = lastPlayed.first { radioTile(seed) }
                 }
                 .padding(.horizontal)
             }
         }
+    }
+
+    /// Radio from the song played last: a queue of similar songs, discoverable next to the mixes.
+    private func radioTile(_ seed: Song) -> some View {
+        Button { player.startRadio(from: seed) } label: {
+            VStack(alignment: .leading, spacing: 4) {
+                Image(systemName: "dot.radiowaves.left.and.right").font(.title2).foregroundStyle(.white.opacity(0.95))
+                Spacer(minLength: 6)
+                Text("Radio").font(.headline).foregroundStyle(.white)
+                Text("Similar to \(seed.title)").font(.caption).foregroundStyle(.white.opacity(0.85)).lineLimit(2)
+            }
+            .padding(14)
+            .frame(width: 170, height: 130, alignment: .leading)
+            .background(
+                LinearGradient(colors: [.indigo, .indigo.opacity(0.6)], startPoint: .topLeading, endPoint: .bottomTrailing),
+                in: RoundedRectangle(cornerRadius: 18, style: .continuous)
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityHint(Text("Plays songs similar to this one"))
     }
 
     private func recapCard(_ recap: WeeklyRecap) -> some View {

@@ -590,3 +590,6 @@
 "Plays songs similar to what you are listening to." = "Reproduce canciones similares a lo que estás escuchando.";
 "Added by Radio" = "Añadida por la radio";
 "Songs without a track number" = "Canciones sin número de pista";
+"Radio" = "Radio";
+"Similar to %@" = "Similar a %@";
+"Plays songs similar to this one" = "Reproduce canciones similares";
