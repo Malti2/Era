@@ -179,3 +179,19 @@ final class SongSearchTests: XCTestCase {
         XCTAssertTrue(SearchCompletion.make(for: "tag:\"late n", songs: extra).isEmpty, "open quote = phrase in progress")
     }
 }
+
+final class TrackSearchTests: XCTestCase {
+    func testTrackOperatorFiltersByTrackNumber() {
+        let first = SearchableSong(title: "One", trackNumber: 1)
+        let third = SearchableSong(title: "Three", trackNumber: 3)
+        let loose = SearchableSong(title: "Loose")
+        let songs = [first, third, loose]
+        func titles(_ query: String) -> [String] {
+            let ids = Set(SongSearch.search(query, in: songs).map(\.id))
+            return songs.filter { ids.contains($0.id) }.map(\.title)
+        }
+        XCTAssertEqual(titles("track:0"), ["Loose"])
+        XCTAssertEqual(titles("track:>=2"), ["Three"])
+        XCTAssertEqual(titles("-track:0").sorted(), ["One", "Three"])
+    }
+}

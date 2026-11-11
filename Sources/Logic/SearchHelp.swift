@@ -43,6 +43,7 @@ enum SearchHelp {
             SearchHelpEntry(example: "length:>5m", title: "Longer than five minutes"),
             SearchHelpEntry(example: "length:<1m", title: "Shorter than one minute"),
             SearchHelpEntry(example: "versions:>1", title: "Songs with several versions"),
+            SearchHelpEntry(example: "track:0", title: "Songs without a track number"),
             SearchHelpEntry(example: "has:notes", title: "Songs with notes"),
             SearchHelpEntry(example: "has:markers", title: "Songs with markers"),
         ]),

@@ -28,11 +28,13 @@ struct SearchableSong: Equatable {
     var duration: Double
     /// 0 = nicht bewertet, sonst 1...5 (fuer `rating:`).
     var rating: Int
+    /// 0 = keine Tracknummer (fuer `track:`).
+    var trackNumber: Int
 
     init(id: UUID = UUID(), title: String, artist: String = "", album: String = "", era: String = "",
          year: Int? = nil, tags: [String] = [], statuses: [String] = [], versionNames: [String] = [],
          isFavorite: Bool = false, playCount: Int = 0, notes: String = "", markerLabels: [String] = [], markerCount: Int? = nil,
-         dateAdded: Date? = nil, lastPlayedAt: Date? = nil, duration: Double = 0, rating: Int = 0) {
+         dateAdded: Date? = nil, lastPlayedAt: Date? = nil, duration: Double = 0, rating: Int = 0, trackNumber: Int = 0) {
         self.id = id
         self.title = title
         self.artist = artist
@@ -51,6 +53,7 @@ struct SearchableSong: Equatable {
         self.lastPlayedAt = lastPlayedAt
         self.duration = duration
         self.rating = rating
+        self.trackNumber = trackNumber
     }
 }
 
@@ -193,6 +196,7 @@ indirect enum SearchFilter: Equatable {
     case played(DateCondition)
     case length(DurationComparison)
     case rating(CountComparison)
+    case track(CountComparison)
     /// `-tag:demo`, `-fav`: Songs, die den Filter NICHT erfuellen.
     case not(SearchFilter)
 }
@@ -264,6 +268,7 @@ struct SongSearchQuery: Equatable {
         case "era": return .era(value)
         case "plays": return CountComparison(value).map(SearchFilter.plays)
         case "rating", "stars": return CountComparison(value).map(SearchFilter.rating)
+        case "track": return CountComparison(value).map(SearchFilter.track)
         case "versions": return CountComparison(value).map(SearchFilter.versionCount)
         case "added": return DateCondition(value).map(SearchFilter.added)
         case "played": return DateCondition(value).map(SearchFilter.played)
@@ -392,6 +397,8 @@ enum SongSearch {
             return comparison.matches(song.versionNames.count) ? [.version] : nil
         case .rating(let comparison):
             return comparison.matches(song.rating) ? [] : nil
+        case .track(let comparison):
+            return comparison.matches(song.trackNumber) ? [] : nil
         case .added(let condition):
             guard let date = song.dateAdded, condition.matches(date, now: now) else { return nil }
             return []
@@ -469,11 +476,12 @@ enum RecentSearches {
 /// Schlaegt fuer das letzte Wort der Eingabe Operatoren (`ta` -> `tag:`) und, nach dem Doppelpunkt,
 /// vorhandene Werte (`tag:sy` -> `tag:synth`) vor. `query` ist jeweils die komplette neue Eingabe.
 enum SearchCompletion {
-    static let operators = ["tag:", "status:", "year:", "version:", "artist:", "album:", "era:", "has:", "plays:", "rating:", "versions:", "is:", "added:", "played:", "length:"]
+    static let operators = ["tag:", "status:", "year:", "version:", "artist:", "album:", "era:", "has:", "plays:", "rating:", "track:", "versions:", "is:", "added:", "played:", "length:"]
     private static let fixedValues: [String: [String]] = [
         "has": ["notes", "markers"],
         "is": ["fav", "unplayed"],
         "rating": [">=4", "5", "0"],
+        "track": ["0", "1"],
         "added": ["7d", "30d", ">1y"],
         "played": ["7d", "30d", ">90d"],
         "length": [">5m", "<1m", "2m-4m"],
