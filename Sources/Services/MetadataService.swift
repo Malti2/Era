@@ -8,6 +8,7 @@ struct AudioMetadata {
     var era: String?
     var year: Int?
     var trackNumber: Int = 0
+    var discNumber: Int = 0
     var artworkData: Data?
 }
 
@@ -29,7 +30,10 @@ enum MetadataService {
         if let raw = await string(.commonIdentifierCreationDate, in: items) {
             meta.year = Int(raw.prefix(4))
         }
-        if let all = try? await asset.load(.metadata) { meta.trackNumber = await trackNumber(in: all) }
+        if let all = try? await asset.load(.metadata) {
+            meta.trackNumber = await trackNumber(in: all)
+            meta.discNumber = await discNumber(in: all)
+        }
         if let item = AVMetadataItem.metadataItems(from: items, filteredByIdentifier: .commonIdentifierArtwork).first {
             meta.artworkData = try? await item.load(.dataValue)
         }
@@ -44,6 +48,20 @@ enum MetadataService {
             if value > 0 { return value }
         }
         if let item = AVMetadataItem.metadataItems(from: items, filteredByIdentifier: .iTunesMetadataTrackNumber).first,
+           let data = try? await item.load(.dataValue) {
+            return TrackNumber.fromITunesData([UInt8](data))
+        }
+        return 0
+    }
+
+    /// Disc-Nummer ("1/2" als Text, ID3 "TPOS"; MP4/iTunes "disk" wie "trkn" als Binaeratom).
+    private static func discNumber(in items: [AVMetadataItem]) async -> Int {
+        if let item = AVMetadataItem.metadataItems(from: items, filteredByIdentifier: .id3MetadataDiscNumber).first,
+           let text = try? await item.load(.stringValue) {
+            let value = TrackNumber.parse(text)
+            if value > 0 { return value }
+        }
+        if let item = AVMetadataItem.metadataItems(from: items, filteredByIdentifier: .iTunesMetadataDiscNumber).first,
            let data = try? await item.load(.dataValue) {
             return TrackNumber.fromITunesData([UInt8](data))
         }
@@ -85,6 +103,7 @@ enum FLACVorbisReader {
         meta.era = comments["ERA"] ?? comments["GROUPING"]
         if let date = comments["DATE"] ?? comments["YEAR"] { meta.year = Int(date.prefix(4)) }
         meta.trackNumber = TrackNumber.parse(comments["TRACKNUMBER"])
+        meta.discNumber = TrackNumber.parse(comments["DISCNUMBER"])
         meta.artworkData = picture
         return meta
     }

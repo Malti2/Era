@@ -145,6 +145,7 @@ final class ImportManager: ObservableObject {
                 year: meta.year
             )
             target.trackNumber = meta.trackNumber
+            target.discNumber = meta.discNumber
             target.versions.append(version)
             version.song = target
             target.primaryVersionID = version.id

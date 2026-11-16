@@ -495,21 +495,35 @@ final class PlayerEngine: NSObject, ObservableObject, AVAudioPlayerDelegate {
 
     // MARK: - Radio & Autoplay
 
-    /// Playable versions of the songs most similar to `song` (see `SimilarSongs`), best match first.
-    private func similarVersions(to song: Song, excluding: Set<UUID>, limit: Int) -> [SongVersion] {
+    /// Playable versions of the songs most similar to `songs` (see `SimilarSongs`), best match first.
+    /// Mit mehreren Seeds zaehlt, was mehreren Seeds aehnelt (Radio aus Playlist, Sammlung, Auswahl).
+    func similarVersions(to songs: [Song], excluding: Set<UUID>, limit: Int) -> [SongVersion] {
         guard let store, let all = try? store.allSongs() else { return [] }
         let byID = Dictionary(all.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
-        let ids = SimilarSongs.rank(seed: song.similarityProfile, in: all.map(\.similarityProfile),
+        let seeds = songs.map(\.similarityProfile)
+        let seedMix = seeds.reduce(UInt64(0)) { $0 &+ UInt64($1.id.uuid.0) }
+        let ids = SimilarSongs.rank(seeds: seeds, in: all.map(\.similarityProfile),
                                     excluding: excluding, limit: limit,
-                                    randomSeed: MixBuilder.daySeed() &+ UInt64(song.id.uuid.0))
+                                    randomSeed: MixBuilder.daySeed() &+ seedMix)
         return ids.compactMap { byID[$0]?.primaryVersion }
     }
 
-    /// Starts a radio: the song itself, followed by a queue of similar songs.
+    /// Playable versions of the songs most similar to `song` (see `SimilarSongs`), best match first.
+    private func similarVersions(to song: Song, excluding: Set<UUID>, limit: Int) -> [SongVersion] {
+        similarVersions(to: [song], excluding: excluding, limit: limit)
+    }
+
+    /// Die ersten Songs eines Radios zu `song` - Vorschau auf der Home-Kachel.
+    func radioPreview(for song: Song, limit: Int = 3) -> [Song] {
+        similarVersions(to: [song], excluding: [song.id], limit: limit).compactMap(\.song)
+    }
+
+    /// Starts a radio from several seeds: the first seed song, then songs similar to all of them.
     @discardableResult
-    func startRadio(from song: Song) -> Bool {
-        guard let seed = song.primaryVersion else { return false }
-        let versions = similarVersions(to: song, excluding: [song.id], limit: 25)
+    func startRadio(from songs: [Song]) -> Bool {
+        let seeds = songs.filter { $0.primaryVersion != nil }
+        guard let first = seeds.first, let seed = first.primaryVersion else { return false }
+        let versions = similarVersions(to: seeds, excluding: Set(seeds.map(\.id)), limit: 25)
         guard !versions.isEmpty else {
             playbackError = String(localized: "Nothing similar found yet. Tags, an era, or an album link songs together.")
             return false
@@ -518,6 +532,12 @@ final class PlayerEngine: NSObject, ObservableObject, AVAudioPlayerDelegate {
         play(seed, from: [seed] + versions)
         autoQueuedIDs = Set(versions.map(\.id))
         return true
+    }
+
+    /// Starts a radio: the song itself, followed by a queue of similar songs.
+    @discardableResult
+    func startRadio(from song: Song) -> Bool {
+        startRadio(from: [song])
     }
 
     /// Radio from what is playing now, else from the last played song, else from a favorite (Siri / Shortcuts).

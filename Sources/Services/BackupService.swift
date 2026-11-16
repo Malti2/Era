@@ -21,7 +21,8 @@ enum BackupService {
                     primaryVersionID: song.primaryVersionID, tagIDs: song.tags.map(\.id),
                     notes: song.notes.isEmpty ? nil : song.notes,
                     rating: song.rating == 0 ? nil : song.rating,
-                    trackNumber: song.trackNumber == 0 ? nil : song.trackNumber
+                    trackNumber: song.trackNumber == 0 ? nil : song.trackNumber,
+                    discNumber: song.discNumber == 0 ? nil : song.discNumber
                 )
             },
             versions: versions.map { v in
@@ -65,7 +66,7 @@ enum BackupService {
 
 // CSV-Export der Bibliothek (eine Zeile pro Song) fuer Tabellenkalkulationen.
 enum CSVExport {
-    static let header = ["Title", "Artist", "Album", "Era", "Year", "Duration", "Versions", "Status", "Tags", "Plays", "Rating", "Favorite", "Date Added", "Notes", "Markers", "Track"]
+    static let header = ["Title", "Artist", "Album", "Era", "Year", "Duration", "Versions", "Status", "Tags", "Plays", "Rating", "Favorite", "Date Added", "Notes", "Markers", "Track", "Disc"]
 
     /// RFC 4180: Felder mit Komma, Anfuehrungszeichen oder Zeilenumbruch werden gequotet.
     static func escape(_ field: String) -> String {
@@ -99,6 +100,7 @@ enum CSVExport {
             fields.append(song.notes)
             fields.append(markerSummary(of: song))
             fields.append(song.trackNumber > 0 ? String(song.trackNumber) : "")
+            fields.append(song.discNumber > 0 ? String(song.discNumber) : "")
             lines.append(fields.map(escape).joined(separator: ","))
         }
         return lines.joined(separator: "\r\n") + "\r\n"
