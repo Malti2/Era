@@ -54,9 +54,11 @@ enum MetadataService {
         return 0
     }
 
-    /// Disc-Nummer ("1/2" als Text, ID3 "TPOS"; MP4/iTunes "disk" wie "trkn" als Binaeratom).
+    /// Disc-Nummer ("1/2" als Text, ID3-Frame "TPOS"; MP4/iTunes "disk" wie "trkn" als Binaeratom).
+    /// Achtung: AVFoundation hat kein `id3MetadataDiscNumber`-Member (Xcode 26.3, CI Run 162) -
+    /// der ID3-Bezeichner ist der Roh-String "org.id3.TPOS" (wie "org.id3.TRCK" fuer Tracks).
     private static func discNumber(in items: [AVMetadataItem]) async -> Int {
-        if let item = AVMetadataItem.metadataItems(from: items, filteredByIdentifier: .id3MetadataDiscNumber).first,
+        if let item = AVMetadataItem.metadataItems(from: items, filteredByIdentifier: AVMetadataIdentifier(rawValue: "org.id3.TPOS")).first,
            let text = try? await item.load(.stringValue) {
             let value = TrackNumber.parse(text)
             if value > 0 { return value }
