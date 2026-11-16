@@ -23,6 +23,8 @@ final class Song {
     var rating: Int = 0
     /// Position im Album (siehe `TrackOrder`), 0 = keine Nummer. Neues Feld mit Default -> leichtgewichtige Migration.
     var trackNumber: Int = 0
+    /// Disc im Mehr-CD-Album (siehe `TrackOrder`), 0 = keine Angabe. Neues Feld mit Default -> leichtgewichtige Migration.
+    var discNumber: Int = 0
 
     @Relationship(deleteRule: .cascade, inverse: \SongVersion.song)
     var versions: [SongVersion] = []
