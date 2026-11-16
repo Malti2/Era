@@ -164,14 +164,15 @@ final class CSVExportTests: XCTestCase {
         version.song = song
         song.versions.append(version)
         let lines = CSVExport.csv(songs: [song]).components(separatedBy: "\r\n")
-        XCTAssertTrue(lines[0].hasSuffix("Notes,Markers,Track"))
-        XCTAssertTrue(lines[1].hasSuffix("\"Refrain, neu\",OG 0:42 Hook; OG 1:10,"))
+        XCTAssertTrue(lines[0].hasSuffix("Notes,Markers,Track,Disc"))
+        XCTAssertTrue(lines[1].hasSuffix("\"Refrain, neu\",OG 0:42 Hook; OG 1:10,,"))
     }
 
     func testCSVIncludesTrackNumber() {
         let song = Song(title: "Opener")
         song.trackNumber = 3
+        song.discNumber = 2
         let lines = CSVExport.csv(songs: [song]).components(separatedBy: "\r\n")
-        XCTAssertTrue(lines[1].hasSuffix(",3"))
+        XCTAssertTrue(lines[1].hasSuffix(",3,2"))
     }
 }
