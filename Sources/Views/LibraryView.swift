@@ -354,6 +354,18 @@ struct LibraryView: View {
         return sort.ordered(base.map(\.sortRow)).compactMap { byID[$0] }
     }
 
+    /// Fester Text je Mindestbewertung (eigene Keys, damit die Lokalisierung sie findet).
+    private func ratingMinimumTitle(_ stars: Int) -> String {
+        switch stars {
+        case 1: return String(localized: "1 Star or More")
+        case 2: return String(localized: "2 Stars or More")
+        case 3: return String(localized: "3 Stars or More")
+        case 4: return String(localized: "4 Stars or More")
+        case 5: return String(localized: "5 Stars")
+        default: return String(localized: "Any Rating")
+        }
+    }
+
     @ViewBuilder private var filterMenuItems: some View {
         Section("Filter") {
             Toggle(isOn: Binding(get: { filter.favoritesOnly }, set: { filter.favoritesOnly = $0 })) { Label("Favorites", systemImage: "heart") }
@@ -378,6 +390,13 @@ struct LibraryView: View {
                     Toggle(attribute.title, isOn: Binding(get: { filter.attributes.contains(attribute) }, set: { _ in filter.toggle(attribute) }))
                 }
             } label: { Label("Show Only", systemImage: "line.3.horizontal.decrease") }
+            Menu {
+                ForEach(0...5, id: \.self) { stars in
+                    Button { filter.ratingMinimum = stars } label: {
+                        Label(ratingMinimumTitle(stars), systemImage: filter.ratingMinimum == stars ? "checkmark" : "star")
+                    }
+                }
+            } label: { Label("Minimum Rating", systemImage: "star") }
             if filter.isActive {
                 Button(role: .destructive) { filter = LibraryFilter() } label: { Label("Clear Filters", systemImage: "xmark.circle") }
             }
@@ -470,8 +489,18 @@ struct LibraryView: View {
             Button { song.isFavorite.toggle(); store.save() } label: {
                 Label("Favorite", systemImage: song.isFavorite ? "heart.slash" : "heart.fill")
             }.tint(.pink)
+            if song.rating < 5 {
+                Button { song.rating = 5; store.save() } label: {
+                    Label("5 Stars", systemImage: "star.fill")
+                }.tint(.yellow)
+            }
         }
         .swipeActions {
+            if song.rating > 0 {
+                Button { song.rating = 0; store.save() } label: {
+                    Label("Clear Rating", systemImage: "star.slash")
+                }.tint(.gray)
+            }
             Button(role: .destructive) { songToDelete = song } label: { Label("Delete", systemImage: "trash") }
         }
         .contextMenu { SongContextMenu(song: song, showNowPlaying: $showNowPlaying) }
@@ -766,6 +795,7 @@ struct CollectionDetailView: View {
             if kind == .era, let years = EraTimeline.groups(of: songs.map(\.eraSong)).first?.yearText {
                 Text(years).font(.title3).foregroundStyle(.tint)
             }
+            if kind == .era { eraStatusBar }
             if kind == .album {
                 Text(songs.first?.displayArtist ?? "").font(.title3).foregroundStyle(.tint)
                 Text([songs.first?.era, songs.first?.year.map(String.init)].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · "))
@@ -778,6 +808,10 @@ struct CollectionDetailView: View {
                     Image(systemName: "shuffle").font(.title2).frame(width: 52, height: 52).background(.thinMaterial, in: .circle)
                 }
                 .accessibilityLabel("Shuffle")
+                Button { if player.startRadio(from: songs) { showNowPlaying = true } } label: {
+                    Image(systemName: "dot.radiowaves.left.and.right").font(.title2).frame(width: 52, height: 52).background(.thinMaterial, in: .circle)
+                }
+                .accessibilityLabel("Start Radio")
                 Button {
                     let versions = songs.compactMap(\.primaryVersion)
                     if let first = versions.first { player.play(first, from: versions); showNowPlaying = true }
@@ -788,6 +822,56 @@ struct CollectionDetailView: View {
             }.buttonStyle(.plain)
         }
         .padding(.horizontal, 18).padding(.vertical, 20)
+    }
+
+    /// Status-Mix der Era als Balken mit Legende (nur Era-Details).
+    @ViewBuilder private var eraStatusBar: some View {
+        if let group = EraTimeline.groups(of: songs.map(\.eraSong)).first, !group.statusSegments.isEmpty {
+            VStack(spacing: 8) {
+                GeometryReader { geo in
+                    let gaps = CGFloat(max(0, group.statusSegments.count - 1)) * 2
+                    HStack(spacing: 2) {
+                        ForEach(group.statusSegments, id: \.name) { segment in
+                            Rectangle()
+                                .fill(statusColor(for: segment.name))
+                                .frame(width: max(4, (geo.size.width - gaps) * segment.fraction))
+                        }
+                    }
+                }
+                .frame(height: 8)
+                .clipShape(Capsule())
+                .accessibilityHidden(true)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 12) {
+                        ForEach(group.statusSegments, id: \.name) { segment in
+                            HStack(spacing: 4) {
+                                Circle().fill(statusColor(for: segment.name)).frame(width: 8, height: 8)
+                                Text("\(segment.count) \(segment.name)").font(.caption).foregroundStyle(.secondary)
+                            }
+                            .accessibilityElement(children: .combine)
+                            .accessibilityLabel("\(segment.count) \(segment.name)")
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, 18)
+        }
+    }
+
+    /// Farbe je reserviertem Status (gefaltet, damit "demo" und "Demo" gleich aussehen).
+    private func statusColor(for status: String) -> Color {
+        switch SongSearch.fold(status) {
+        case "released": return .green
+        case "unreleased": return .orange
+        case "leak": return .red
+        case "demo": return .purple
+        case "snippet": return .pink
+        case "live": return .blue
+        case "remix": return .teal
+        case "alternate": return .indigo
+        case "unknown": return .gray
+        default: return .secondary
+        }
     }
 
     private var profile: CollectionProfile {
@@ -824,9 +908,14 @@ struct CollectionDetailView: View {
     }
 
     /// Alben zeigen die Track-Nummer (falls gesetzt), sonst die Position in der Liste.
-    private func displayedNumber(index: Int, song: Song) -> Int {
-        if kind == .album && song.trackNumber > 0 { return song.trackNumber }
-        return index + 1
+    /// Mit Disc-Nummer als "2-5" (Disc 2, Track 5), damit Mehr-CD-Alben lesbar bleiben.
+    private var showsDiscNumbers: Bool { kind == .album && songs.contains { $0.discNumber > 0 } }
+
+    private func displayedNumber(index: Int, song: Song) -> String {
+        if kind == .album && song.trackNumber > 0 {
+            return song.discNumber > 0 ? "\(song.discNumber)-\(song.trackNumber)" : "\(song.trackNumber)"
+        }
+        return "\(index + 1)"
     }
 
     @ViewBuilder private func row(index: Int, song: Song) -> some View {
@@ -841,11 +930,11 @@ struct CollectionDetailView: View {
                         Image(systemName: "waveform").foregroundStyle(.tint)
                             .symbolEffect(.variableColor.iterative, isActive: player.isPlaying)
                     } else {
-                        Text(verbatim: String(displayedNumber(index: index, song: song)))
+                        Text(verbatim: displayedNumber(index: index, song: song))
                             .font(.subheadline.monospacedDigit()).foregroundStyle(.secondary)
                     }
                 }
-                .frame(width: 24)
+                .frame(width: showsDiscNumbers ? 34 : 24)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(song.title).lineLimit(1).foregroundStyle(isCurrent ? Color.accentColor : Color.primary)
                     Text(song.displayArtist).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)

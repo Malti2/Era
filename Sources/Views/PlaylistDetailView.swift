@@ -96,6 +96,10 @@ struct PlaylistDetailView: View {
                 Menu {
                     Button { editOrder = false; selecting = true } label: { Label("Select Songs", systemImage: "checkmark.circle") }
                         .disabled(playlist.entries.isEmpty)
+                    Button {
+                        if player.startRadio(from: playlist.entries.compactMap(\.song)) { showNowPlaying = true }
+                    } label: { Label("Start Radio", systemImage: "dot.radiowaves.left.and.right") }
+                        .disabled(playlist.entries.isEmpty)
                     Button { renameText = playlist.name; showRename = true } label: { Label("Rename Playlist", systemImage: "pencil") }
                     Button { editOrder.toggle() } label: { Label(editOrder ? "Done Editing" : "Edit Order", systemImage: "arrow.up.arrow.down") }
                         .disabled(isFiltered || playlist.entries.count < 2)

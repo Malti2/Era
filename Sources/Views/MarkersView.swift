@@ -99,11 +99,13 @@ struct MarkerRow: View {
 }
 
 /// Dezente Skala unter dem Scrubber: Marker als kleine Striche, aktive A-B-Schleife als Band.
+/// Die Striche sind tippbar (springen zum Marker) und haben eine VoiceOver-Beschreibung.
 struct ScrubberOverlay: View {
     let markers: [VersionMarker]
     let loopStart: Double?
     let loopEnd: Double?
     let duration: Double
+    var onMarkerTap: ((VersionMarker) -> Void)? = nil
 
     // Slider-Daumen sitzt innen: Skala entsprechend einruecken.
     private let inset: CGFloat = 14
@@ -118,17 +120,27 @@ struct ScrubberOverlay: View {
                     Capsule().fill(Color.accentColor.opacity(0.9))
                         .frame(width: max(3, endX - x(start, width)), height: 3)
                         .position(x: x(start, width) + max(3, endX - x(start, width)) / 2, y: y)
+                        .accessibilityHidden(true)
                 }
                 ForEach(markers) { marker in
-                    Capsule().fill(.white.opacity(0.75))
-                        .frame(width: 3, height: 8)
-                        .position(x: x(marker.time, width), y: y)
+                    Button { onMarkerTap?(marker) } label: {
+                        Capsule().fill(.white.opacity(0.75))
+                            .frame(width: 3, height: 8)
+                    }
+                    .frame(width: 24, height: 12)
+                    .contentShape(Rectangle())
+                    .buttonStyle(.plain)
+                    .position(x: x(marker.time, width), y: y)
+                    .accessibilityLabel(markerAccessibilityLabel(marker))
                 }
             }
         }
         .frame(height: 12)
-        .allowsHitTesting(false)
-        .accessibilityHidden(true)
+    }
+
+    private func markerAccessibilityLabel(_ marker: VersionMarker) -> String {
+        let name = marker.label.isEmpty ? String(localized: "Marker") : marker.label
+        return "\(name), \(TimeFormatting.mmss(marker.time))"
     }
 
     private func x(_ time: Double, _ width: CGFloat) -> CGFloat {

@@ -275,7 +275,8 @@ struct NowPlayingView: View {
                         }
                         .tint(.primary)
                         .overlay(alignment: .bottom) {
-                            ScrubberOverlay(markers: version.markers, loopStart: player.loop.start, loopEnd: player.loop.end, duration: player.duration)
+                            ScrubberOverlay(markers: version.markers, loopStart: player.loop.start, loopEnd: player.loop.end, duration: player.duration,
+                                            onMarkerTap: { player.seek($0.time) })
                                 .offset(y: 9)
                         }
                         .accessibilityLabel("Playback Position")

@@ -9,6 +9,7 @@ struct SongSelectionToolbar: ToolbarContent {
     @Binding var confirmDelete: Bool
     /// Gesetzt in Playlists: der letzte Knopf entfernt dann nur aus der Playlist, statt Songs zu loeschen.
     var removeFromPlaylist: (() -> Void)?
+    @EnvironmentObject private var player: PlayerEngine
 
     var body: some ToolbarContent {
         ToolbarItemGroup(placement: .bottomBar) {
@@ -22,6 +23,14 @@ struct SongSelectionToolbar: ToolbarContent {
             .disabled(chosen.isEmpty)
             Spacer()
             Button { showTags = true } label: { Label("Tags", systemImage: "tag") }
+                .disabled(chosen.isEmpty)
+            Spacer()
+            Menu {
+                Button { player.startRadio(from: chosen) } label: {
+                    Label("Start Radio", systemImage: "dot.radiowaves.left.and.right")
+                }
+                .disabled(chosen.isEmpty)
+            } label: { Label("More", systemImage: "ellipsis.circle") }
                 .disabled(chosen.isEmpty)
             Spacer()
             if let removeFromPlaylist {

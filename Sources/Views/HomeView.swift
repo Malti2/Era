@@ -131,13 +131,18 @@ struct HomeView: View {
     }
 
     /// Radio from the song played last: a queue of similar songs, discoverable next to the mixes.
+    /// The tile previews the first titles, so it reads as a station, not a blind button.
     private func radioTile(_ seed: Song) -> some View {
-        Button { player.startRadio(from: seed) } label: {
+        let preview = player.radioPreview(for: seed)
+        return Button { player.startRadio(from: seed) } label: {
             VStack(alignment: .leading, spacing: 4) {
                 Image(systemName: "dot.radiowaves.left.and.right").font(.title2).foregroundStyle(.white.opacity(0.95))
                 Spacer(minLength: 6)
                 Text("Radio").font(.headline).foregroundStyle(.white)
-                Text("Similar to \(seed.title)").font(.caption).foregroundStyle(.white.opacity(0.85)).lineLimit(2)
+                Text("Similar to \(seed.title)").font(.caption).foregroundStyle(.white.opacity(0.85)).lineLimit(1)
+                if !preview.isEmpty {
+                    Text(preview.map(\.title).joined(separator: " · ")).font(.caption2).foregroundStyle(.white.opacity(0.7)).lineLimit(2)
+                }
             }
             .padding(14)
             .frame(width: 170, height: 130, alignment: .leading)

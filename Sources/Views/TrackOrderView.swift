@@ -14,13 +14,26 @@ struct TrackOrderView: View {
 
     private var isChanged: Bool { order.map(\.id) != songs.map(\.id) || order.contains { $0.trackNumber == 0 } }
 
+    /// Angezeigte neue Nummern: je Disc neu bei 1 ("2·3" = Disc 2, Track 3), sonst global 1...n.
+    /// Spiegelt `EraStore.applyTrackOrder`, damit die Vorschau stimmt.
+    private var numberLabels: [String] {
+        let hasDiscs = order.contains { $0.discNumber > 0 }
+        var perDisc: [Int: Int] = [:]
+        return order.enumerated().map { index, song in
+            guard hasDiscs else { return "\(index + 1)" }
+            perDisc[song.discNumber, default: 0] += 1
+            let number = perDisc[song.discNumber] ?? 1
+            return song.discNumber > 0 ? "\(song.discNumber)·\(number)" : "\(number)"
+        }
+    }
+
     var body: some View {
         NavigationStack {
             List {
                 Section {
                     ForEach(Array(order.enumerated()), id: \.element.id) { index, song in
                         HStack(spacing: 12) {
-                            Text("\(index + 1)")
+                            Text(numberLabels[index])
                                 .font(.body.monospacedDigit().weight(.semibold))
                                 .foregroundStyle(.secondary)
                                 .frame(minWidth: 28, alignment: .trailing)
