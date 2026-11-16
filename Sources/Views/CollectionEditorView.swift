@@ -89,15 +89,21 @@ struct CollectionEditorView: View {
 
     /// Kurztext einer Gruppe wie in der Sammlungsliste: Bedingungen, dazu "ohne ...".
     @ViewBuilder private func groupRow(_ group: CollectionRule) -> some View {
+        if let summary = groupSummary(group) {
+            Text(verbatim: summary)
+        } else {
+            Text("No conditions yet").foregroundStyle(.secondary)
+        }
+    }
+
+    /// Text fuer groupRow; eigene Funktion ohne ViewBuilder, damit die if-append-
+    /// Logik nicht als View-Ausdruck geparst wird (sonst: type '()' cannot conform to 'View').
+    private func groupSummary(_ group: CollectionRule) -> String? {
         let labels = group.labels(tagName: { tagNames[$0] })
         var parts: [String] = []
         if !labels.include.isEmpty { parts.append(labels.include.joined(separator: group.matchAny ? " / " : " + ")) }
         if !labels.exclude.isEmpty { parts.append(String(localized: "without \(labels.exclude.joined(separator: ", "))")) }
-        if parts.isEmpty {
-            Text("No conditions yet").foregroundStyle(.secondary)
-        } else {
-            Text(verbatim: parts.joined(separator: " · "))
-        }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
     private func save() {
