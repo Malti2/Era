@@ -3,7 +3,9 @@ import SwiftData
 
 // Track-Nummern: Reihenfolge innerhalb eines Albums.
 extension Song {
-    var trackItem: TrackItem { TrackItem(id: id, trackNumber: trackNumber, title: title, dateAdded: dateAdded) }
+    var trackItem: TrackItem {
+        TrackItem(id: id, trackNumber: trackNumber, discNumber: discNumber, title: title, dateAdded: dateAdded)
+    }
 }
 
 extension EraStore {
@@ -14,13 +16,16 @@ extension EraStore {
         return TrackOrder.sorted(songs.map(\.trackItem)).compactMap { byID[$0] }
     }
 
-    /// Vergibt 1...n in der gegebenen Reihenfolge. Gibt zurueck, wie viele Songs sich geaendert haben.
+    /// Vergibt 1...n in der gegebenen Reihenfolge (je Disc neu bei 1, wenn Discs gesetzt sind).
+    /// Gibt zurueck, wie viele Songs sich geaendert haben.
     @discardableResult
     func applyTrackOrder(_ ordered: [Song]) -> Int {
         let songs = ordered.map { resolve($0) }
         var current: [UUID: Int] = [:]
-        for song in songs { current[song.id] = song.trackNumber }
-        let changes = TrackOrder.renumbered(order: songs.map(\.id), current: current)
+        var discs: [UUID: Int] = [:]
+        for song in songs { current[song.id] = song.trackNumber; discs[song.id] = song.discNumber }
+        let changes = TrackOrder.renumbered(order: songs.map(\.id), current: current,
+                                            discs: discs.values.contains { $0 > 0 } ? discs : [:])
         guard !changes.isEmpty else { return 0 }
         for song in songs { if let number = changes[song.id] { song.trackNumber = number } }
         save()
