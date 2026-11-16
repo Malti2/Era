@@ -41,6 +41,16 @@ struct EraGroup: Equatable, Identifiable {
         guard let years else { return nil }
         return years.lowerBound == years.upperBound ? "\(years.lowerBound)" : "\(years.lowerBound)–\(years.upperBound)"
     }
+
+    /// Status-Mix als Balken-Segmente: Name, Anzahl und Anteil (Summe = 1, leer = keine).
+    /// Reihenfolge wie `statusCounts` (haeufigster Status zuerst).
+    var statusSegments: [(name: String, count: Int, fraction: Double)] {
+        let total = statusCounts.reduce(0) { $0 + $1.count }
+        guard total > 0 else { return [] }
+        return statusCounts.map {
+            (name: $0.name, count: $0.count, fraction: Double($0.count) / Double(total))
+        }
+    }
 }
 
 enum EraTimeline {

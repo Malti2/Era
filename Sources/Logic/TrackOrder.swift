@@ -32,22 +32,29 @@ enum TrackNumber {
 struct TrackItem: Equatable {
     var id: UUID
     var trackNumber: Int
+    /// 0 = keine Disc-Angabe (z.B. Single-Disc-Album); wirkt bei der Sortierung wie Disc 1.
+    var discNumber: Int
     var title: String
     var dateAdded: Date
 
-    init(id: UUID = UUID(), trackNumber: Int = 0, title: String = "", dateAdded: Date = Date(timeIntervalSince1970: 0)) {
+    init(id: UUID = UUID(), trackNumber: Int = 0, discNumber: Int = 0, title: String = "",
+         dateAdded: Date = Date(timeIntervalSince1970: 0)) {
         self.id = id
         self.trackNumber = trackNumber
+        self.discNumber = discNumber
         self.title = title
         self.dateAdded = dateAdded
     }
 }
 
 enum TrackOrder {
-    /// Nummerierte Songs aufsteigend, danach die ohne Nummer in Import-Reihenfolge (Titel als Tiebreaker).
+    /// Disc zuerst (ohne Angabe = Disc 1), dann nummerierte Songs aufsteigend, danach die ohne
+    /// Nummer in Import-Reihenfolge (Titel als Tiebreaker).
     static func sorted(_ items: [TrackItem]) -> [UUID] {
         items.enumerated().sorted { a, b in
             let (x, y) = (a.element, b.element)
+            let (dx, dy) = (x.discNumber > 0 ? x.discNumber : 1, y.discNumber > 0 ? y.discNumber : 1)
+            if dx != dy { return dx < dy }
             switch (x.trackNumber > 0, y.trackNumber > 0) {
             case (true, false): return true
             case (false, true): return false
@@ -61,9 +68,20 @@ enum TrackOrder {
     }
 
     /// Fortlaufende Nummern 1...n in der gegebenen Reihenfolge; nur Aenderungen kommen zurueck.
-    static func renumbered(order: [UUID], current: [UUID: Int]) -> [UUID: Int] {
+    /// Mit `discs` wird je Disc neu bei 1 angefangen (Mehr-CD-Album); ohne Angabe wie bisher global.
+    static func renumbered(order: [UUID], current: [UUID: Int], discs: [UUID: Int] = [:]) -> [UUID: Int] {
         var changes: [UUID: Int] = [:]
-        for (index, id) in order.enumerated() where current[id] != index + 1 { changes[id] = index + 1 }
+        var perDisc: [Int: Int] = [:]
+        for (index, id) in order.enumerated() {
+            if discs.isEmpty {
+                if current[id] != index + 1 { changes[id] = index + 1 }
+            } else {
+                let disc = discs[id] ?? 0
+                perDisc[disc, default: 0] += 1
+                let number = perDisc[disc] ?? 1
+                if current[id] != number { changes[id] = number }
+            }
+        }
         return changes
     }
 

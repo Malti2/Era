@@ -67,10 +67,21 @@ enum SimilarSongs {
     /// Die `limit` aehnlichsten Songs fuer `seed`, ohne `excluding`. Bei gleichem Seed gleiche Reihenfolge.
     static func rank(seed: SimilarityProfile, in library: [SimilarityProfile], excluding: Set<UUID> = [],
                      limit: Int = 25, now: Date = Date(), randomSeed: UInt64 = 0) -> [UUID] {
+        rank(seeds: [seed], in: library, excluding: excluding, limit: limit, now: now, randomSeed: randomSeed)
+    }
+
+    /// Wie `rank(seed:)`, aber mit mehreren Seeds: ein Song punktet fuer jeden Seed, dem er aehnelt
+    /// (gleicher Kuenstler, geteilte Tags, gleiche Era ...). So startet Radio aus einer Playlist,
+    /// einer Sammlung oder einer Mehrfachauswahl mit dem gemeinsamen Nenner der Seeds.
+    /// Leere Seed-Liste = keine Treffer; Seeds selbst kommen nie in die Ergebnisse.
+    static func rank(seeds: [SimilarityProfile], in library: [SimilarityProfile], excluding: Set<UUID> = [],
+                     limit: Int = 25, now: Date = Date(), randomSeed: UInt64 = 0) -> [UUID] {
+        guard !seeds.isEmpty else { return [] }
+        let seedIDs = Set(seeds.map(\.id))
         var generator = SeededGenerator(seed: randomSeed)
         let scored = library.compactMap { song -> (song: SimilarityProfile, score: Double)? in
-            guard song.id != seed.id, !excluding.contains(song.id) else { return nil }
-            var score = similarity(seed, song)
+            guard !seedIDs.contains(song.id), !excluding.contains(song.id) else { return nil }
+            var score = seeds.reduce(0.0) { $0 + similarity($1, song) }
             guard score >= minimumScore else { return nil }
             if song.isFavorite { score += 0.5 }
             if SongRating.clamp(song.rating) >= SongRating.topRatedMinimum { score += 0.5 }

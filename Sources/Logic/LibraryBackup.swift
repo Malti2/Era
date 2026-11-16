@@ -21,6 +21,8 @@ struct LibraryBackup: Codable, Equatable {
         var notes: String?
         var rating: Int?
         var trackNumber: Int?
+        /// Seit Disc-Nummern: optional, damit alte Backups weiter lesbar bleiben.
+        var discNumber: Int? = nil
     }
     struct VersionEntry: Codable, Equatable {
         var id: UUID

@@ -9,6 +9,9 @@ struct LibraryFilter: Equatable, Codable {
     var tags: Set<String> = []
     var attributes: Set<Attribute> = []
 
+    /// Mindestbewertung (0 = egal): nur Songs mit mindestens so vielen Sternen.
+    var ratingMinimum: Int = 0
+
     /// Eigenschaften, die sich aus dem Song selbst ergeben - hilft beim Aufraeumen ("Was habe ich noch nie gehoert?").
     enum Attribute: String, Codable, CaseIterable, Hashable {
         case notPlayed, hasNotes, multipleVersions, topRated, unrated
@@ -24,11 +27,13 @@ struct LibraryFilter: Equatable, Codable {
         }
     }
 
-    init(favoritesOnly: Bool = false, statuses: Set<String> = [], tags: Set<String> = [], attributes: Set<Attribute> = []) {
+    init(favoritesOnly: Bool = false, statuses: Set<String> = [], tags: Set<String> = [], attributes: Set<Attribute> = [],
+         ratingMinimum: Int = 0) {
         self.favoritesOnly = favoritesOnly
         self.statuses = statuses
         self.tags = tags
         self.attributes = attributes
+        self.ratingMinimum = ratingMinimum
     }
 
     // Aeltere gespeicherte Filter kennen `attributes` noch nicht.
@@ -38,13 +43,19 @@ struct LibraryFilter: Equatable, Codable {
         statuses = try container.decodeIfPresent(Set<String>.self, forKey: .statuses) ?? []
         tags = try container.decodeIfPresent(Set<String>.self, forKey: .tags) ?? []
         attributes = (try? container.decodeIfPresent(Set<Attribute>.self, forKey: .attributes)) ?? []
+        ratingMinimum = try container.decodeIfPresent(Int.self, forKey: .ratingMinimum) ?? 0
     }
 
-    var isActive: Bool { favoritesOnly || !statuses.isEmpty || !tags.isEmpty || !attributes.isEmpty }
-    var activeCount: Int { (favoritesOnly ? 1 : 0) + statuses.count + tags.count + attributes.count }
+    var isActive: Bool {
+        favoritesOnly || !statuses.isEmpty || !tags.isEmpty || !attributes.isEmpty || ratingMinimum > 0
+    }
+    var activeCount: Int {
+        (favoritesOnly ? 1 : 0) + statuses.count + tags.count + attributes.count + (ratingMinimum > 0 ? 1 : 0)
+    }
 
     func matches(_ song: SearchableSong) -> Bool {
         if favoritesOnly && !song.isFavorite { return false }
+        if ratingMinimum > 0 && SongRating.clamp(song.rating) < SongRating.clamp(ratingMinimum) { return false }
         if !attributes.allSatisfy({ $0.matches(song) }) { return false }
         if !statuses.isEmpty {
             let own = Set(song.statuses.map(SongSearch.fold))
