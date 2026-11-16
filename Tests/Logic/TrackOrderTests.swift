@@ -65,6 +65,24 @@ final class TrackOrderTests: XCTestCase {
         XCTAssertEqual(TrackOrder.renumbered(order: [a, b], current: [:]), [a: 1, b: 2])
     }
 
+    func testDiscsSortBeforeTrackNumbers() {
+        let d2t1 = TrackItem(trackNumber: 1, discNumber: 2, title: "D2-1")
+        let d1t2 = TrackItem(trackNumber: 2, discNumber: 1, title: "D1-2")
+        let d1t1 = TrackItem(trackNumber: 1, discNumber: 1, title: "D1-1")
+        let noDisc = TrackItem(trackNumber: 3, discNumber: 0, title: "NoDisc-3")
+        // Ohne Disc-Angabe sortiert der Song mit in Disc 1 (hinter Track 2).
+        XCTAssertEqual(TrackOrder.sorted([d2t1, d1t2, d1t1, noDisc]), [d1t1.id, d1t2.id, noDisc.id, d2t1.id])
+    }
+
+    func testRenumberingRestartsPerDisc() {
+        let a = UUID(), b = UUID(), c = UUID(), d = UUID()
+        let discs = [a: 1, b: 2, c: 1, d: 2]
+        XCTAssertEqual(TrackOrder.renumbered(order: [a, b, c, d], current: [:], discs: discs),
+                       [a: 1, b: 1, c: 2, d: 2])
+        // Ohne Disc-Angabe wie bisher global durchnummeriert.
+        XCTAssertEqual(TrackOrder.renumbered(order: [a, b, c, d], current: [:]), [a: 1, b: 2, c: 3, d: 4])
+    }
+
     func testNextNumber() {
         XCTAssertEqual(TrackOrder.nextNumber(after: []), 1)
         XCTAssertEqual(TrackOrder.nextNumber(after: [1, 4, 2]), 5)

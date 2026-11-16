@@ -123,4 +123,27 @@ final class LibraryFilterPersistenceTests: XCTestCase {
         filter.toggle(.topRated)
         XCTAssertTrue(filter.ids(in: [top, none]).isEmpty)
     }
+
+    func testRatingMinimumKeepsOnlyRatedEnough() {
+        let top = SearchableSong(title: "Top", rating: 5)
+        let mid = SearchableSong(title: "Mid", rating: 3)
+        let none = SearchableSong(title: "None", rating: 0)
+        var filter = LibraryFilter()
+        filter.ratingMinimum = 4
+        XCTAssertTrue(filter.isActive)
+        XCTAssertEqual(filter.activeCount, 1)
+        XCTAssertEqual(filter.ids(in: [mid, none, top]), [top.id])
+        filter.ratingMinimum = 1
+        XCTAssertEqual(filter.ids(in: [mid, none, top]), [mid.id, top.id])
+        filter.ratingMinimum = 0
+        XCTAssertFalse(filter.isActive)
+        XCTAssertEqual(filter.ids(in: [mid, none, top]), [mid.id, none.id, top.id])
+    }
+
+    func testRatingMinimumSurvivesRoundTripAndOldFilters() {
+        var filter = LibraryFilter()
+        filter.ratingMinimum = 3
+        XCTAssertEqual(LibraryFilter.decode(filter.encoded), filter)
+        XCTAssertEqual(LibraryFilter.decode("{\"favoritesOnly\":true}").ratingMinimum, 0)
+    }
 }

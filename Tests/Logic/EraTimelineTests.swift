@@ -38,6 +38,22 @@ final class EraTimelineTests: XCTestCase {
         XCTAssertFalse(EraTimeline.isUseful([]))
     }
 
+    func testStatusSegmentsAreFractionsOfTheMix() {
+        let group = EraTimeline.groups(of: [
+            song("E", 2020, 60, ["Demo"]), song("E", 2021, 90, ["Demo", "Leak"]), song("E", nil, 30, ["released"]),
+        ])[0]
+        XCTAssertEqual(group.statusSegments.map(\.name), ["Demo", "Leak", "released"])
+        XCTAssertEqual(group.statusSegments.map(\.count), [2, 1, 1])
+        let fractions = group.statusSegments.map(\.fraction)
+        XCTAssertEqual(fractions.count, 3)
+        zip(fractions, [0.5, 0.25, 0.25]).forEach { XCTAssertEqual($0, $1, accuracy: 0.0001) }
+        XCTAssertEqual(fractions.reduce(0, +), 1, accuracy: 0.0001)
+    }
+
+    func testStatusSegmentsAreEmptyWithoutSongs() {
+        XCTAssertTrue(EraGroup(name: "E", ids: [], years: nil, duration: 0, statusCounts: []).statusSegments.isEmpty)
+    }
+
     func testEmptyInput() {
         XCTAssertTrue(EraTimeline.groups(of: []).isEmpty)
     }

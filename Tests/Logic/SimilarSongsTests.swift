@@ -58,4 +58,31 @@ final class SimilarSongsTests: XCTestCase {
     func testNothingSimilarMeansEmptyResult() {
         XCTAssertTrue(SimilarSongs.rank(seed: profile("A"), in: [profile("B"), profile("C")]).isEmpty)
     }
+
+    func testMultiSeedPrefersSongsMatchingSeveralSeeds() {
+        let seedA = profile("A", tags: ["x"])
+        let seedB = profile("B", tags: ["x"])
+        let both = profile("A", tags: ["x"])
+        let onlyA = profile("A")
+        let onlyB = profile("B")
+        let ids = SimilarSongs.rank(seeds: [seedA, seedB], in: [onlyB, onlyA, both, seedA, seedB], randomSeed: 3)
+        XCTAssertEqual(ids.first, both.id)
+        XCTAssertEqual(Set(ids), [both.id, onlyA.id, onlyB.id])
+    }
+
+    func testMultiSeedExcludesAllSeedsAndEmptySeedsMeanEmpty() {
+        let seedA = profile("A", tags: ["x"])
+        let seedB = profile("B", tags: ["x"])
+        let match = profile("A", tags: ["x"])
+        let ids = SimilarSongs.rank(seeds: [seedA, seedB], in: [seedA, seedB, match])
+        XCTAssertEqual(ids, [match.id])
+        XCTAssertTrue(SimilarSongs.rank(seeds: [], in: [match]).isEmpty)
+    }
+
+    func testSingleSeedRankIsTheMultiSeedRank() {
+        let seed = profile("A", era: "2020", tags: ["x"])
+        let library = [profile("A", era: "2020", tags: ["x"]), profile("B", era: "2020"), profile("C")]
+        XCTAssertEqual(SimilarSongs.rank(seed: seed, in: library, randomSeed: 5),
+                       SimilarSongs.rank(seeds: [seed], in: library, randomSeed: 5))
+    }
 }

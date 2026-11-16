@@ -39,6 +39,25 @@ final class LibraryBackupTests: XCTestCase {
         XCTAssertEqual(VersionMarkers.decode(decoded.versions.first?.markersJSON).first?.label, "Hook")
     }
 
+    func testDiscNumberSurvivesRoundtripAndOldBackupsStillDecode() throws {
+        var s = song("A")
+        s.trackNumber = 5
+        s.discNumber = 2
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        let decoded = try LibraryBackup.decode(from: encoder.encode(backup([s], [version(s.id, file: "a.m4a")])))
+        XCTAssertEqual(decoded.songs.first?.trackNumber, 5)
+        XCTAssertEqual(decoded.songs.first?.discNumber, 2)
+        // Altes Backup ohne discNumber-Feld: decodiert mit nil statt Fehler.
+        let data = try encoder.encode(backup([s], [version(s.id, file: "a.m4a")]))
+        var object = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        var songs = try XCTUnwrap(object["songs"] as? [[String: Any]])
+        songs[0].removeValue(forKey: "discNumber")
+        object["songs"] = songs
+        let legacy = try JSONSerialization.data(withJSONObject: object)
+        XCTAssertNil(try LibraryBackup.decode(from: legacy).songs.first?.discNumber)
+    }
+
     func testBackupsWithoutNotesFieldsStillDecode() throws {
         let s = song("Old")
         let encoder = JSONEncoder()
