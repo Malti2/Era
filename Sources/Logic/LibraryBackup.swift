@@ -55,6 +55,8 @@ struct LibraryBackup: Codable, Equatable {
         var excludedStatusNames: [String]? = nil
         var matchAny: Bool? = nil
         var searchQuery: String? = nil
+        // Regel-Gruppen (JSON wie im Pack) - optional, aeltere Backups haben keine.
+        var groupsJSON: String? = nil
     }
     struct PlaylistEntryItem: Codable, Equatable {
         var position: Int

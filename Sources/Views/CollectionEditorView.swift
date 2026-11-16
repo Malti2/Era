@@ -3,6 +3,7 @@ import SwiftData
 
 // Sammlung anlegen oder bearbeiten: Name plus Status/Tags, die ein Song alle haben muss.
 // Die Trefferzahl aktualisiert sich live, damit man sieht, was die Regel faengt.
+// Regel-Gruppen (z. B. "(A oder B) und nicht C") stehen in einem eigenen Abschnitt.
 struct CollectionEditorView: View {
     /// nil = neue Sammlung
     let pack: Pack?
@@ -17,10 +18,7 @@ struct CollectionEditorView: View {
     @State private var name = ""
     @State private var rule = CollectionRule()
 
-    private var statusTags: [Tag] { tags.filter { $0.isStatus && !$0.songs.isEmpty || rule.statusNames.contains($0.name) } }
-    private var personalTags: [Tag] {
-        tags.filter { !$0.isStatus }.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
-    }
+    private var tagNames: [UUID: String] { Dictionary(tags.map { ($0.id, $0.name) }, uniquingKeysWith: { first, _ in first }) }
     private var matchCount: Int { songs.filter { $0.matches(rule) }.count }
     private var otherNames: [String] { packs.filter { $0.id != pack?.id }.map(\.name) }
     private var nameCheck: CollectionName.Check { CollectionName.validate(name, existing: otherNames) }
@@ -38,17 +36,6 @@ struct CollectionEditorView: View {
                 } footer: {
                     if nameCheck == .duplicate { Text("A collection with this name already exists.").foregroundStyle(.red) }
                 }
-                if rule.needsMatchMode {
-                    Section {
-                        Picker("Match", selection: $rule.matchAny) {
-                            Text("All").tag(false)
-                            Text("Any").tag(true)
-                        }
-                        .pickerStyle(.segmented)
-                    } footer: {
-                        Text(rule.matchAny ? "A song needs at least one of the chosen statuses or tags." : "A song needs all of the chosen statuses and tags.")
-                    }
-                }
                 Section {
                     TextField("era:synth plays:0 -tag:demo", text: $rule.query)
                         .textInputAutocapitalization(.never)
@@ -59,24 +46,21 @@ struct CollectionEditorView: View {
                 } footer: {
                     Text("Optional. Uses the same words and filters as Search, e.g. has:notes or year:2018-2020. Songs must match this as well.")
                 }
-                if !statusTags.isEmpty {
-                    Section("Status") {
-                        ForEach(statusTags) { tag in
-                            markRow(tag.name, mark: rule.mark(status: tag.name)) { rule.cycle(status: tag.name) }
+                RuleConditionsView(rule: $rule, tags: tags)
+                Section {
+                    ForEach(rule.groups.indices, id: \.self) { index in
+                        NavigationLink {
+                            RuleGroupEditorView(group: $rule.groups[index], tags: tags)
+                        } label: {
+                            groupRow(rule.groups[index])
                         }
                     }
-                }
-                Section {
-                    if personalTags.isEmpty {
-                        Text("Add tags to songs first, then use them here.").foregroundStyle(.secondary)
-                    }
-                    ForEach(personalTags) { tag in
-                        markRow(tag.name, mark: rule.mark(tag: tag.id)) { rule.cycle(tag: tag.id) }
-                    }
+                    .onDelete { rule.groups.remove(atOffsets: $0) }
+                    Button("Add Group", systemImage: "plus") { rule.groups.append(CollectionRule()) }
                 } header: {
-                    Text("Tags")
+                    Text("Rule Groups")
                 } footer: {
-                    Text("Tap once to include, twice to exclude, a third time to clear.")
+                    Text("A song must match every group too. Use Any inside a group for alternatives like (A or B).")
                 }
                 Section {
                     Label(rule.isEmpty ? String(localized: "Choose at least one status, tag or search.") : String(localized: "\(matchCount) songs match"),
@@ -103,6 +87,72 @@ struct CollectionEditorView: View {
         }
     }
 
+    /// Kurztext einer Gruppe wie in der Sammlungsliste: Bedingungen, dazu "ohne ...".
+    @ViewBuilder private func groupRow(_ group: CollectionRule) -> some View {
+        let labels = group.labels(tagName: { tagNames[$0] })
+        var parts: [String] = []
+        if !labels.include.isEmpty { parts.append(labels.include.joined(separator: group.matchAny ? " / " : " + ")) }
+        if !labels.exclude.isEmpty { parts.append(String(localized: "without \(labels.exclude.joined(separator: ", "))")) }
+        if parts.isEmpty {
+            Text("No conditions yet").foregroundStyle(.secondary)
+        } else {
+            Text(verbatim: parts.joined(separator: " · "))
+        }
+    }
+
+    private func save() {
+        if let pack {
+            if store.updateCollection(pack, name: name, rule: rule) { dismiss() }
+        } else if store.createCollection(named: name, rule: rule) != nil {
+            dismiss()
+        }
+    }
+}
+
+/// Status/Tags-Auswahl mit dreistufigen Zeilen plus Alle/Eine-Auswahl. Wird fuer die
+/// Hauptregel und fuer jede Gruppe benutzt.
+private struct RuleConditionsView: View {
+    @Binding var rule: CollectionRule
+    var tags: [Tag]
+
+    private var statusTags: [Tag] { tags.filter { $0.isStatus && !$0.songs.isEmpty || rule.statusNames.contains($0.name) } }
+    private var personalTags: [Tag] {
+        tags.filter { !$0.isStatus }.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+    }
+
+    var body: some View {
+        if rule.needsMatchMode {
+            Section {
+                Picker("Match", selection: $rule.matchAny) {
+                    Text("All").tag(false)
+                    Text("Any").tag(true)
+                }
+                .pickerStyle(.segmented)
+            } footer: {
+                Text(rule.matchAny ? "A song needs at least one of the chosen statuses or tags." : "A song needs all of the chosen statuses and tags.")
+            }
+        }
+        if !statusTags.isEmpty {
+            Section("Status") {
+                ForEach(statusTags) { tag in
+                    markRow(tag.name, mark: rule.mark(status: tag.name)) { rule.cycle(status: tag.name) }
+                }
+            }
+        }
+        Section {
+            if personalTags.isEmpty {
+                Text("Add tags to songs first, then use them here.").foregroundStyle(.secondary)
+            }
+            ForEach(personalTags) { tag in
+                markRow(tag.name, mark: rule.mark(tag: tag.id)) { rule.cycle(tag: tag.id) }
+            }
+        } header: {
+            Text("Tags")
+        } footer: {
+            Text("Tap once to include, twice to exclude, a third time to clear.")
+        }
+    }
+
     /// Dreistufige Zeile: aus / dabei (Haken) / ohne (rotes Minus). Der Zustand steht auch als Text im Accessibility-Wert.
     private func markRow(_ title: String, mark: CollectionRule.Mark, action: @escaping () -> Void) -> some View {
         Button(action: action) {
@@ -121,12 +171,24 @@ struct CollectionEditorView: View {
         .buttonStyle(.plain)
         .accessibilityValue(mark == .include ? Text("Included") : (mark == .exclude ? Text("Excluded") : Text("Off")))
     }
+}
 
-    private func save() {
-        if let pack {
-            if store.updateCollection(pack, name: name, rule: rule) { dismiss() }
-        } else if store.createCollection(named: name, rule: rule) != nil {
-            dismiss()
+/// Bedingungen einer einzelnen Gruppe bearbeiten (gleiche Auswahl wie die Hauptregel).
+private struct RuleGroupEditorView: View {
+    @Binding var group: CollectionRule
+    var tags: [Tag]
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        Form {
+            RuleConditionsView(rule: $group, tags: tags)
+        }
+        .navigationTitle("Edit Group")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Done") { dismiss() }.fontWeight(.semibold)
+            }
         }
     }
 }

@@ -6,8 +6,11 @@ import SwiftData
 struct YearReviewView: View {
     @Query(sort: \PlayEvent.date, order: .reverse) private var events: [PlayEvent]
     @Query private var songs: [Song]
-    @State private var year: Int?
+    @State private var range: YearReviewRange?
     @State private var shareItem: ShareItem?
+    @State private var showCustomRange = false
+    @State private var customStart = Date()
+    @State private var customEnd = Date()
 
     private var records: [PlayRecord] {
         events.map { PlayRecord(date: $0.date, seconds: $0.seconds, title: $0.title, artist: $0.artist, songID: $0.songID) }
@@ -16,8 +19,16 @@ struct YearReviewView: View {
     var body: some View {
         let all = records
         let years = YearReview.availableYears(all)
-        let selected = year ?? years.first ?? Calendar.current.component(.year, from: Date())
-        let review = YearReview.make(year: selected, from: all)
+        let selectedRange = range ?? .year(years.first ?? Calendar.current.component(.year, from: Date()))
+        let review = YearReview.make(range: selectedRange, from: all)
+        let comparison: YearComparison? = {
+            guard case .year(let selectedYear) = selectedRange else { return nil }
+            return YearComparison.make(current: review, previous: YearReview.make(year: selectedYear - 1, from: all))
+        }()
+        let yearSelection = Binding<Int?>(
+            get: { if case .year(let year) = range { year } else { nil } },
+            set: { if let year = $0 { range = .year(year) } }
+        )
         ScrollView {
             VStack(spacing: 18) {
                 if years.isEmpty {
@@ -29,12 +40,12 @@ struct YearReviewView: View {
                 } else {
                     YearReviewCard(review: review)
                     highlights(review)
-                    if let comparison = YearComparison.make(current: review, previous: YearReview.make(year: selected - 1, from: all)) {
+                    if let comparison {
                         comparisonCard(comparison)
                     }
                     if !review.topTracks.isEmpty { rankedCard("Top Tracks", rows: review.topTracks.map { ($0.title, artistName($0.artist), $0.plays) }) }
                     if !review.topArtists.isEmpty { rankedCard("Top Artists", rows: review.topArtists.map { (artistName($0.name), nil, $0.plays) }) }
-                    let albums = topAlbums(in: selected, from: all)
+                    let albums = topAlbums(in: selectedRange, from: all)
                     if albums.count > 0 { rankedCard("Top Albums", rows: albums.map { ($0.name, nil, $0.plays) }) }
                 }
             }
@@ -44,13 +55,20 @@ struct YearReviewView: View {
         .navigationTitle("Year in Review")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            if years.count > 1 {
+            if !years.isEmpty {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
-                        Picker("Year", selection: Binding(get: { selected }, set: { year = $0 })) {
-                            ForEach(years, id: \.self) { Text(verbatim: String($0)).tag($0) }
+                        Picker("Year", selection: yearSelection) {
+                            ForEach(years, id: \.self) { Text(verbatim: String($0)).tag(Optional($0)) }
                         }
-                    } label: { Label(String(selected), systemImage: "calendar") }
+                        Section {
+                            Button("Last 3 Months") { range = .trailing(months: 3) }
+                            Button("Last 6 Months") { range = .trailing(months: 6) }
+                            Button("Last 12 Months") { range = .trailing(months: 12) }
+                            Button("All Time") { range = .allTime(from: all) }
+                        }
+                        Button("Custom Range…") { openCustomRange(selected: selectedRange) }
+                    } label: { Label(selectedRange.title(), systemImage: "calendar") }
                 }
             }
             if !years.isEmpty {
@@ -60,13 +78,58 @@ struct YearReviewView: View {
             }
         }
         .sheet(item: $shareItem) { ShareSheet(items: [$0.url]) }
+        .sheet(isPresented: $showCustomRange) { customRangeSheet }
     }
 
-    /// Albums of the year by plays; songs without an album are left out.
-    private func topAlbums(in year: Int, from all: [PlayRecord]) -> [ListeningShare] {
-        let inYear = all.filter { Calendar.current.component(.year, from: $0.date) == year }
+    /// Eigene Spanne: zwei Datumswahlschalter, Tagesgrenzen, Ende nie vor dem Start.
+    private var customRangeSheet: some View {
+        NavigationStack {
+            Form {
+                DatePicker("Start Date", selection: $customStart, displayedComponents: .date)
+                DatePicker("End Date", selection: $customEnd, displayedComponents: .date)
+            }
+            .navigationTitle("Custom Range")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { showCustomRange = false } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") {
+                        let calendar = Calendar.current
+                        let start = calendar.startOfDay(for: customStart)
+                        let endDay = calendar.startOfDay(for: max(customEnd, customStart))
+                        if let end = calendar.date(byAdding: .day, value: 1, to: endDay) {
+                            range = .interval(DateInterval(start: start, end: end))
+                        }
+                        showCustomRange = false
+                    }.fontWeight(.semibold)
+                }
+            }
+        }
+    }
+
+    /// Vorbelegung der Datumswahl: aktuelle Spanne, sonst der letzte Monat.
+    private func openCustomRange(selected: YearReviewRange) {
+        if case .interval(let interval) = selected {
+            customStart = interval.start
+            customEnd = Calendar.current.date(byAdding: .day, value: -1, to: interval.end) ?? interval.start
+        } else {
+            customEnd = Date()
+            customStart = Calendar.current.date(byAdding: .month, value: -1, to: customEnd) ?? customEnd
+        }
+        showCustomRange = true
+    }
+
+    /// Albums of the selected range by plays; songs without an album are left out.
+    private func topAlbums(in selectedRange: YearReviewRange, from all: [PlayRecord]) -> [ListeningShare] {
+        let inRange: [PlayRecord]
+        switch selectedRange {
+        case .year(let year):
+            inRange = all.filter { Calendar.current.component(.year, from: $0.date) == year }
+        case .interval(let interval):
+            inRange = all.filter { $0.date >= interval.start && $0.date < interval.end }
+        }
         let snapshot = Dictionary(songs.map { ($0.id, ListeningSong(album: $0.album)) }, uniquingKeysWith: { first, _ in first })
-        return ListeningBreakdown.make(.album, records: inYear, songs: snapshot, limit: 6, unknownName: "")
+        return ListeningBreakdown.make(.album, records: inRange, songs: snapshot, limit: 6, unknownName: "")
             .filter { !$0.name.isEmpty }
             .sorted { $0.plays != $1.plays ? $0.plays > $1.plays : $0.seconds > $1.seconds }
             .prefix(5).map { $0 }
@@ -184,10 +247,16 @@ struct YearReviewCard: View {
     let review: YearReview
 
     var body: some View {
+        let isYear: Bool = { if case .year = review.range { return true }; return false }()
         VStack(alignment: .leading, spacing: 18) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Year in Review").font(.subheadline.weight(.semibold)).opacity(0.8)
-                Text(verbatim: String(review.year)).font(.system(size: 52, weight: .bold, design: .rounded))
+                Text(isYear ? "Year in Review" : "Listening Review").font(.subheadline.weight(.semibold)).opacity(0.8)
+                if isYear {
+                    Text(verbatim: String(review.year)).font(.system(size: 52, weight: .bold, design: .rounded))
+                } else {
+                    Text(review.range.title()).font(.system(size: 30, weight: .bold, design: .rounded))
+                        .lineLimit(2).minimumScaleFactor(0.8)
+                }
             }
             HStack(alignment: .top, spacing: 24) {
                 stat(value: TimeFormatting.spoken(review.seconds), caption: "Time Listened")

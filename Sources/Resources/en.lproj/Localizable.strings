@@ -594,3 +594,15 @@
 "Similar to %@" = "Similar to %@";
 "Plays songs similar to this one" = "Plays songs similar to this one";
 "Similar Songs" = "Similar Songs";
+"Rule Groups" = "Rule Groups";
+"Add Group" = "Add Group";
+"No conditions yet" = "No conditions yet";
+"Edit Group" = "Edit Group";
+"A song must match every group too. A group can hold alternatives, e.g. (A or B) and not C." = "A song must match every group too. A group can hold alternatives, e.g. (A or B) and not C.";
+"Last 3 Months" = "Last 3 Months";
+"Last 12 Months" = "Last 12 Months";
+"Custom Range" = "Custom Range";
+"Custom Range…" = "Custom Range…";
+"Start Date" = "Start Date";
+"End Date" = "End Date";
+"Listening Review" = "Listening Review";

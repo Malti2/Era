@@ -5,16 +5,20 @@ import SwiftData
 extension Pack {
     var rule: CollectionRule {
         get {
-            CollectionRule(tagIDs: Set(tagIDs), statusNames: Set(statusNames),
+            var rule = CollectionRule(tagIDs: Set(tagIDs), statusNames: Set(statusNames),
                            excludedTagIDs: Set(excludedTagIDs), excludedStatusNames: Set(excludedStatusNames), matchAny: matchAny, query: searchQuery)
+            rule.groups = CollectionRule.decodeGroups(groupsJSON)
+            return rule
         }
         set {
-            tagIDs = Array(newValue.tagIDs)
-            statusNames = Array(newValue.statusNames).sorted()
-            excludedTagIDs = Array(newValue.excludedTagIDs)
-            excludedStatusNames = Array(newValue.excludedStatusNames).sorted()
-            matchAny = newValue.matchAny
-            searchQuery = newValue.query.trimmingCharacters(in: .whitespacesAndNewlines)
+            let clean = newValue.normalized()
+            tagIDs = Array(clean.tagIDs)
+            statusNames = Array(clean.statusNames).sorted()
+            excludedTagIDs = Array(clean.excludedTagIDs)
+            excludedStatusNames = Array(clean.excludedStatusNames).sorted()
+            matchAny = clean.matchAny
+            searchQuery = clean.query.trimmingCharacters(in: .whitespacesAndNewlines)
+            groupsJSON = CollectionRule.encodeGroups(clean.groups)
         }
     }
 }

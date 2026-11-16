@@ -212,6 +212,11 @@ extension BackupService {
             pack.excludedStatusNames = entry.excludedStatusNames ?? []
             pack.matchAny = entry.matchAny ?? false
             pack.searchQuery = entry.searchQuery ?? ""
+            // Gruppen: Tag-IDs aufs lokale Mapping umschreiben, unbekannte fallen weg.
+            if let json = entry.groupsJSON {
+                let groups = CollectionRule.decodeGroups(json).map { $0.remappingTags { localTag($0)?.id } }
+                pack.groupsJSON = CollectionRule.encodeGroups(groups)
+            }
             context.insert(pack)
             summary.packs += 1
         }

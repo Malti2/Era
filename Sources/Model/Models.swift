@@ -161,6 +161,8 @@ final class Pack {
     var matchAny: Bool = false
     // Gespeicherte Suche (Standardwert -> leichte Migration).
     var searchQuery: String = ""
+    // Regel-Gruppen als JSON (Standardwert -> leichte Migration, wie markersJSON); leer = keine Gruppen.
+    var groupsJSON: String = ""
 
     init(name: String, tagIDs: [UUID] = [], statusNames: [String] = [], confirmed: Bool = false) {
         self.id = UUID()

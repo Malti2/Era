@@ -139,6 +139,12 @@ struct PacksView: View {
         let labels = rule.labels(tagName: { names[$0] })
         var parts: [String] = []
         if !labels.include.isEmpty { parts.append(labels.include.joined(separator: rule.matchAny ? " / " : " + ")) }
+        for group in rule.groupLabels(tagName: { names[$0] }) {
+            var groupParts: [String] = []
+            if !group.include.isEmpty { groupParts.append(group.include.joined(separator: group.matchAny ? " / " : " + ")) }
+            if !group.exclude.isEmpty { groupParts.append(String(localized: "without \(group.exclude.joined(separator: ", "))")) }
+            if !groupParts.isEmpty { parts.append("(\(groupParts.joined(separator: " · ")))") }
+        }
         if !labels.exclude.isEmpty { parts.append(String(localized: "without \(labels.exclude.joined(separator: ", "))")) }
         let query = rule.query.trimmingCharacters(in: .whitespacesAndNewlines)
         if !query.isEmpty { parts.append("“\(query)”") }

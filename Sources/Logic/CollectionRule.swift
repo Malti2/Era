@@ -1,9 +1,10 @@
 import Foundation
 
 // Regel einer Sammlung (Pack): Songs muessen ALLE (oder, im Modus "eine", mindestens EINE) der
-// gewaehlten Tags/Status haben und duerfen keinen der ausgeschlossenen haben. Reine Logik,
+// gewaehlten Tags/Status haben und duerfen keinen der ausgeschlossenen haben. Zusaetzliche
+// Gruppen (z. B. "(A oder B) und nicht C") sind UND-verknuepft mit der Hauptregel. Reine Logik,
 // damit Editor, Liste und Detailansicht dasselbe meinen.
-struct CollectionRule: Equatable {
+struct CollectionRule: Equatable, Codable {
     /// Zustand einer Bedingung im Editor: aus -> dabei -> ohne -> aus.
     enum Mark: Equatable { case none, include, exclude }
 
@@ -16,19 +17,26 @@ struct CollectionRule: Equatable {
     var matchAny = false
     /// Gespeicherte Suche (Syntax wie in der Suche, z. B. `era:synth plays:0 -tag:demo`); zusaetzlich zu den Tags/Status.
     var query = ""
+    /// Weitere Bedingungsgruppen, alle UND-verknuepft mit der Hauptregel. Eine Gruppe mit
+    /// matchAny wirkt wie "(A oder B)". Gruppen enthalten selbst keine Gruppen und keine Suche.
+    var groups: [CollectionRule] = []
 
     init(tagIDs: Set<UUID> = [], statusNames: Set<String> = [],
-         excludedTagIDs: Set<UUID> = [], excludedStatusNames: Set<String> = [], matchAny: Bool = false, query: String = "") {
+         excludedTagIDs: Set<UUID> = [], excludedStatusNames: Set<String> = [], matchAny: Bool = false, query: String = "",
+         groups: [CollectionRule] = []) {
         self.tagIDs = tagIDs
         self.statusNames = statusNames
         self.excludedTagIDs = excludedTagIDs
         self.excludedStatusNames = excludedStatusNames
         self.matchAny = matchAny
         self.query = query
+        self.groups = groups
     }
 
     /// Eine Regel ohne Bedingung wuerde die ganze Bibliothek enthalten - so etwas legt der Editor nicht an.
-    var isEmpty: Bool { includeCount == 0 && excludedTagIDs.isEmpty && excludedStatusNames.isEmpty && parsedQuery == nil }
+    var isEmpty: Bool { isConditionEmpty && parsedQuery == nil && groups.allSatisfy(\.isConditionEmpty) }
+    /// Keine Tag-/Status-Bedingung (ohne Suche und ohne Gruppen).
+    var isConditionEmpty: Bool { includeCount == 0 && excludedTagIDs.isEmpty && excludedStatusNames.isEmpty }
     /// Die Suche, falls eine gesetzt ist und etwas bedeutet (nur Leerraum = keine Suche).
     var parsedQuery: SongSearchQuery? {
         let parsed = SongSearchQuery(query)
@@ -47,11 +55,16 @@ struct CollectionRule: Equatable {
 
     func matches(tagIDs songTagIDs: Set<UUID>, statuses songStatuses: Set<String>) -> Bool {
         guard excludedTagIDs.isDisjoint(with: songTagIDs), excludedStatusNames.isDisjoint(with: songStatuses) else { return false }
-        if includeCount == 0 { return true } // reine "Ohne"-Regel: alles ausser den Ausnahmen
-        if matchAny {
-            return !tagIDs.isDisjoint(with: songTagIDs) || !statusNames.isDisjoint(with: songStatuses)
+        let own: Bool
+        if includeCount == 0 { own = true } // reine "Ohne"-Regel: alles ausser den Ausnahmen
+        else if matchAny {
+            own = !tagIDs.isDisjoint(with: songTagIDs) || !statusNames.isDisjoint(with: songStatuses)
+        } else {
+            own = tagIDs.isSubset(of: songTagIDs) && statusNames.isSubset(of: songStatuses)
         }
-        return tagIDs.isSubset(of: songTagIDs) && statusNames.isSubset(of: songStatuses)
+        guard own else { return false }
+        // Gruppen kennen keine Suche: flache Auswertung reicht, Tiefe ist endlich.
+        return groups.allSatisfy { $0.matches(tagIDs: songTagIDs, statuses: songStatuses) }
     }
 
     mutating func toggle(tag id: UUID) {
@@ -103,7 +116,59 @@ struct CollectionRule: Equatable {
         var copy = self
         copy.tagIDs.formIntersection(existing)
         copy.excludedTagIDs.formIntersection(existing)
+        copy.groups = groups.map { $0.pruned(toExistingTagIDs: existing) }
         return copy
+    }
+
+    /// Bedingungen je Gruppe fuer die Kurzbeschreibung (gleiche Sortierung wie `labels`).
+    func groupLabels(tagName: (UUID) -> String?) -> [(include: [String], exclude: [String], matchAny: Bool)] {
+        groups.map { group in
+            let labels = group.labels(tagName: tagName)
+            return (labels.include, labels.exclude, group.matchAny)
+        }
+    }
+
+    /// Alle referenzierten Tag-IDs, inklusive Gruppen (fuer "ungenutzte Tags").
+    var allTagIDs: Set<UUID> {
+        groups.reduce(tagIDs.union(excludedTagIDs)) { $0.union($1.allTagIDs) }
+    }
+
+    /// Gruppen ohne Bedingungen fallen weg; verschachtelte Gruppen und Suchen in Gruppen werden entfernt.
+    func normalized() -> CollectionRule {
+        var copy = self
+        copy.groups = groups.map { group in
+            var flat = group
+            flat.groups = []
+            flat.query = ""
+            return flat
+        }.filter { !$0.isConditionEmpty }
+        return copy
+    }
+
+    /// Mappt Tag-IDs um (Zusammenfuehren: nil = weg); "dabei" gewinnt gegen "ohne", auch in Gruppen.
+    func remappingTags(_ map: (UUID) -> UUID?) -> CollectionRule {
+        func mapped(_ ids: Set<UUID>) -> Set<UUID> { Set(ids.compactMap(map)) }
+        var copy = self
+        copy.tagIDs = mapped(tagIDs)
+        copy.excludedTagIDs = mapped(excludedTagIDs).subtracting(copy.tagIDs)
+        copy.groups = groups.map { $0.remappingTags(map) }
+        return copy
+    }
+
+    /// Gruppen aus dem JSON-Feld des Packs; kaputtes oder leeres JSON heisst "keine Gruppen".
+    static func decodeGroups(_ json: String) -> [CollectionRule] {
+        guard !json.isEmpty, let data = json.data(using: .utf8),
+              let groups = try? JSONDecoder().decode([CollectionRule].self, from: data) else { return [] }
+        return CollectionRule(groups: groups).normalized().groups
+    }
+
+    /// Gruppen als JSON-Feld; leerer String, wenn keine Gruppe Bedingungen hat.
+    static func encodeGroups(_ groups: [CollectionRule]) -> String {
+        let clean = CollectionRule(groups: groups).normalized().groups
+        guard !clean.isEmpty,
+              let data = try? JSONEncoder().encode(clean),
+              let json = String(data: data, encoding: .utf8) else { return "" }
+        return json
     }
 }
 

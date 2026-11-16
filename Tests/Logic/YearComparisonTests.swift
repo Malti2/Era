@@ -3,7 +3,7 @@ import XCTest
 
 final class YearComparisonTests: XCTestCase {
     private func review(_ year: Int, plays: Int, seconds: Double, days: Int = 1, new: Int = 0) -> YearReview {
-        YearReview(year: year, plays: plays, seconds: seconds, activeDays: days, longestStreak: 1, newTracks: new,
+        YearReview(year: year, range: .year(year), plays: plays, seconds: seconds, activeDays: days, longestStreak: 1, newTracks: new,
                    topTracks: [], topArtists: [], busiestMonth: nil, peakHour: nil, busiestWeekdayIndex: nil)
     }
 

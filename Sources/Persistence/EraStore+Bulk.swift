@@ -77,7 +77,7 @@ extension EraStore {
     /// Personal tags no song carries and no pack or playlist filter refers to.
     func unusedTags() -> [Tag] {
         var referenced = Set<UUID>()
-        for pack in (try? allPacks()) ?? [] { referenced.formUnion(pack.tagIDs); referenced.formUnion(pack.excludedTagIDs) }
+        for pack in (try? allPacks()) ?? [] { referenced.formUnion(pack.rule.allTagIDs) }
         for playlist in (try? allPlaylists()) ?? [] { referenced.formUnion(playlist.filterTagIDs) }
         return ((try? allTags()) ?? []).filter { !$0.isStatus && $0.songs.isEmpty && !referenced.contains($0.id) }
     }
@@ -101,10 +101,10 @@ extension EraStore {
             return result
         }
         for pack in (try? allPacks()) ?? [] {
-            guard pack.tagIDs.contains(old) || pack.excludedTagIDs.contains(old) else { continue }
-            pack.tagIDs = updated(pack.tagIDs)
-            // Landet ein Tag nach dem Zusammenfuehren in beiden Listen, gewinnt "dabei".
-            pack.excludedTagIDs = updated(pack.excludedTagIDs).filter { !pack.tagIDs.contains($0) }
+            // Regel-Ebene: mappt flache Felder und Gruppen gleich mit, "dabei" gewinnt gegen "ohne".
+            let rule = pack.rule
+            guard rule.allTagIDs.contains(old) else { continue }
+            pack.rule = rule.remappingTags { $0 == old ? new : $0 }
         }
         for playlist in (try? allPlaylists()) ?? [] where playlist.filterTagIDs.contains(old) {
             playlist.filterTagIDs = updated(playlist.filterTagIDs)

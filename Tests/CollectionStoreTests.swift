@@ -109,6 +109,32 @@ final class CollectionStoreTests: XCTestCase {
         XCTAssertTrue(store.unusedTags().isEmpty, "tags used only as exclusions still count as referenced")
     }
 
+    func testGroupsRoundTripThroughPack() throws {
+        let night = store.makeTag(named: "Night"), road = store.makeTag(named: "Road"), skip = store.makeTag(named: "Skip")
+        let rule = CollectionRule(tagIDs: [night.id], groups: [CollectionRule(tagIDs: [road.id], excludedTagIDs: [skip.id], matchAny: true)])
+        let pack = try XCTUnwrap(store.createCollection(named: "Odd", rule: rule))
+        XCTAssertEqual(pack.rule, rule)
+        XCTAssertFalse(pack.groupsJSON.isEmpty)
+        let song = Song(title: "S")
+        song.tags = [night, road]
+        XCTAssertTrue(song.matches(pack.rule))
+        song.tags = [night, skip]
+        XCTAssertFalse(song.matches(pack.rule))
+    }
+
+    func testTagMergeAndDeleteFollowGroupTags() throws {
+        let keep = store.makeTag(named: "Keep"), dupe = store.makeTag(named: "Dupe"), gone = store.makeTag(named: "Gone")
+        let other = store.makeTag(named: "Other")
+        let pack = try XCTUnwrap(store.createCollection(named: "Grouped", rule: CollectionRule(tagIDs: [keep.id], groups: [CollectionRule(tagIDs: [dupe.id, gone.id])])))
+
+        guard case .merge = store.renameTag(dupe, to: "other") else { return XCTFail("expected merge") }
+        XCTAssertEqual(pack.rule.groups.first?.tagIDs, [other.id, gone.id])
+
+        store.deleteTagEverywhere(gone)
+        XCTAssertEqual(pack.rule.groups.first?.tagIDs, [other.id])
+        XCTAssertTrue(store.unusedTags().isEmpty, "tags used only in groups still count as referenced")
+    }
+
     func testSavedSearchCollectionMatchesSongsAndIsTrimmed() throws {
         let synth = Song(title: "Synth One", era: "Synth Era")
         let pop = Song(title: "Pop One", era: "Pop Era")

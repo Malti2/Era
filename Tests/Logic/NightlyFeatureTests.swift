@@ -77,6 +77,13 @@ final class SavedSearchesTests: XCTestCase {
         XCTAssertTrue(SavedSearches.decode(Data("nope".utf8)).isEmpty)
         XCTAssertTrue(SavedSearches.decode(nil).isEmpty)
     }
+
+    func testChipsHideTheActiveSearch() {
+        let list = [SavedSearch(query: "tag:Demo"), SavedSearch(query: "year:2019")]
+        XCTAssertEqual(SavedSearches.chips(for: "  TAG:demo ", in: list).map(\.query), ["year:2019"])
+        XCTAssertEqual(SavedSearches.chips(for: "other", in: list).map(\.query), ["tag:Demo", "year:2019"])
+        XCTAssertEqual(SavedSearches.chips(for: "   ", in: list).map(\.query), ["tag:Demo", "year:2019"])
+    }
 }
 
 final class QueueSummaryTests: XCTestCase {

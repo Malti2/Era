@@ -34,6 +34,13 @@ enum SavedSearches {
 
     static func encode(_ list: [SavedSearch]) -> Data? { try? JSONEncoder().encode(list) }
 
+    /// Gepinnte Suchen als Chips ueber den Treffern, ohne die gerade aktive (Schreibweise/Abstaende egal).
+    static func chips(for query: String, in list: [SavedSearch]) -> [SavedSearch] {
+        let k = key(query)
+        guard !k.isEmpty else { return list }
+        return list.filter { key($0.query) != k }
+    }
+
     static func decode(_ data: Data?) -> [SavedSearch] {
         guard let data, let list = try? JSONDecoder().decode([SavedSearch].self, from: data) else { return [] }
         return list

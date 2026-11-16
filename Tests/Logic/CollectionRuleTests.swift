@@ -140,4 +140,92 @@ final class CollectionRuleTests: XCTestCase {
         _ = CollectionRule(statusNames: ["Demo"]).matches(tagIDs: [], statuses: ["Demo"], searchable: { built += 1; return SearchableSong(title: "x") })
         XCTAssertEqual(built, 0)
     }
+
+    // MARK: Regel-Gruppen
+
+    func testGroupIsAndedWithMainRule() {
+        let a = UUID(), b = UUID(), c = UUID()
+        // Hauptregel: A dabei; Gruppe: B oder C.
+        let rule = CollectionRule(tagIDs: [a], groups: [CollectionRule(tagIDs: [b, c], matchAny: true)])
+        XCTAssertTrue(rule.matches(tagIDs: [a, b], statuses: []))
+        XCTAssertTrue(rule.matches(tagIDs: [a, c], statuses: []))
+        XCTAssertFalse(rule.matches(tagIDs: [a], statuses: []))
+        XCTAssertFalse(rule.matches(tagIDs: [b, c], statuses: []))
+    }
+
+    func testGroupExclusionsReject() {
+        let a = UUID(), skip = UUID()
+        let rule = CollectionRule(tagIDs: [a], groups: [CollectionRule(excludedTagIDs: [skip])])
+        XCTAssertTrue(rule.matches(tagIDs: [a], statuses: []))
+        XCTAssertFalse(rule.matches(tagIDs: [a, skip], statuses: []))
+    }
+
+    func testGroupWithAllModeNeedsEveryCondition() {
+        let a = UUID(), b = UUID()
+        let rule = CollectionRule(groups: [CollectionRule(tagIDs: [a], statusNames: ["Live"])])
+        XCTAssertTrue(rule.matches(tagIDs: [a, b], statuses: ["Live"]))
+        XCTAssertFalse(rule.matches(tagIDs: [a], statuses: []))
+        XCTAssertFalse(rule.isEmpty, "groups alone define a collection")
+    }
+
+    func testEmptyGroupChangesNothing() {
+        let a = UUID()
+        let rule = CollectionRule(tagIDs: [a], groups: [CollectionRule()])
+        XCTAssertTrue(rule.matches(tagIDs: [a], statuses: []))
+        XCTAssertTrue(CollectionRule(groups: [CollectionRule()]).isEmpty)
+    }
+
+    func testGroupsJSONRoundTrip() {
+        let a = UUID(), b = UUID()
+        let rule = CollectionRule(tagIDs: [a], groups: [CollectionRule(tagIDs: [b], excludedStatusNames: ["Leak"], matchAny: true)])
+        let json = CollectionRule.encodeGroups(rule.groups)
+        XCTAssertFalse(json.isEmpty)
+        XCTAssertEqual(CollectionRule.decodeGroups(json), rule.groups)
+        XCTAssertEqual(CollectionRule.encodeGroups([]), "")
+        XCTAssertEqual(CollectionRule.decodeGroups(""), [])
+        XCTAssertEqual(CollectionRule.decodeGroups("kein json"), [])
+    }
+
+    func testNormalizedDropsEmptyGroupsAndNestedContent() {
+        let inner = CollectionRule(tagIDs: [UUID()], query: "plays:0", groups: [CollectionRule(tagIDs: [UUID()])])
+        let rule = CollectionRule(groups: [CollectionRule(), inner]).normalized()
+        XCTAssertEqual(rule.groups.count, 1)
+        XCTAssertEqual(rule.groups[0].groups, [])
+        XCTAssertEqual(rule.groups[0].query, "")
+    }
+
+    func testPrunedDropsUnknownTagsInGroups() {
+        let keep = UUID(), gone = UUID()
+        let rule = CollectionRule(groups: [CollectionRule(tagIDs: [keep, gone], excludedTagIDs: [gone])])
+        XCTAssertEqual(rule.pruned(toExistingTagIDs: [keep]).groups, [CollectionRule(tagIDs: [keep])])
+    }
+
+    func testRemappingTagsCoversGroupsAndIncludeWins() {
+        let old = UUID(), new = UUID(), other = UUID()
+        let rule = CollectionRule(tagIDs: [old], groups: [CollectionRule(tagIDs: [other], excludedTagIDs: [old])])
+        let mapped = rule.remappingTags { $0 == old ? new : $0 }
+        XCTAssertEqual(mapped.tagIDs, [new])
+        XCTAssertEqual(mapped.groups[0].excludedTagIDs, [new], "Ausschluss in der Gruppe folgt dem Mapping")
+        // Faellt ein Tag nach dem Mapping in beiden Listen, gewinnt "dabei".
+        let clash = CollectionRule(tagIDs: [new], excludedTagIDs: [old])
+        XCTAssertEqual(clash.remappingTags { $0 == old ? new : $0 }.excludedTagIDs, [])
+        XCTAssertEqual(rule.remappingTags { _ in nil }.allTagIDs, [])
+    }
+
+    func testAllTagIDsIncludesGroups() {
+        let a = UUID(), b = UUID(), c = UUID()
+        let rule = CollectionRule(tagIDs: [a], excludedTagIDs: [b], groups: [CollectionRule(tagIDs: [c])])
+        XCTAssertEqual(rule.allTagIDs, [a, b, c])
+    }
+
+    func testGroupLabels() {
+        let night = UUID(), gone = UUID()
+        let names = [night: "Night"]
+        let rule = CollectionRule(groups: [CollectionRule(tagIDs: [night, gone], statusNames: ["Demo"], excludedStatusNames: ["Leak"], matchAny: true)])
+        let labels = rule.groupLabels(tagName: { names[$0] })
+        XCTAssertEqual(labels.count, 1)
+        XCTAssertEqual(labels[0].include, ["Demo", "Night"])
+        XCTAssertEqual(labels[0].exclude, ["Leak"])
+        XCTAssertTrue(labels[0].matchAny)
+    }
 }

@@ -594,3 +594,15 @@
 "Similar to %@" = "Similar a %@";
 "Plays songs similar to this one" = "Reproduce canciones similares";
 "Similar Songs" = "Canciones similares";
+"Rule Groups" = "Grupos de reglas";
+"Add Group" = "Añadir grupo";
+"No conditions yet" = "Aún sin condiciones";
+"Edit Group" = "Editar grupo";
+"A song must match every group too. A group can hold alternatives, e.g. (A or B) and not C." = "Una canción también debe cumplir cada grupo. Un grupo puede contener alternativas, p. ej. (A o B) y no C.";
+"Last 3 Months" = "Últimos 3 meses";
+"Last 12 Months" = "Últimos 12 meses";
+"Custom Range" = "Intervalo personalizado";
+"Custom Range…" = "Intervalo personalizado…";
+"Start Date" = "Fecha de inicio";
+"End Date" = "Fecha de fin";
+"Listening Review" = "Resumen de escucha";

@@ -41,7 +41,12 @@ struct SearchView: View {
                     }
                 }
             }
-            .safeAreaInset(edge: .top, spacing: 0) { completionBar(SearchCompletion.make(for: query, songs: snapshot)) }
+            .safeAreaInset(edge: .top, spacing: 0) {
+                VStack(spacing: 0) {
+                    completionBar(SearchCompletion.make(for: query, songs: snapshot))
+                    pinnedChips(SavedSearches.chips(for: query, in: pinned))
+                }
+            }
             .navigationTitle("Search")
             .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Title, artist, album, tag, version")
             .searchFocused($focused)
@@ -91,6 +96,26 @@ struct SearchView: View {
                     ForEach(options) { option in
                         Button { query = option.query.hasSuffix(":") ? option.query : option.query + " " } label: {
                             Text(option.label).font(.subheadline)
+                                .padding(.horizontal, 12).padding(.vertical, 6)
+                                .background(.thinMaterial, in: Capsule())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal).padding(.vertical, 6)
+            }
+            .background(.bar)
+        }
+    }
+
+    /// Gepinnte Suchen als Chips ueber den Treffern; Tipp wendet die Suche an.
+    @ViewBuilder private func pinnedChips(_ chips: [SavedSearch]) -> some View {
+        if !query.trimmingCharacters(in: .whitespaces).isEmpty, !chips.isEmpty {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(chips) { saved in
+                        Button { query = saved.query } label: {
+                            Label(saved.query, systemImage: "pin.fill").font(.subheadline)
                                 .padding(.horizontal, 12).padding(.vertical, 6)
                                 .background(.thinMaterial, in: Capsule())
                         }

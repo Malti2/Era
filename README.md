@@ -10,6 +10,7 @@ Era is a private-first music library for iPhone, iPad, and Mac. It keeps release
 
 - Import MP3, M4A, WAV, FLAC, and other audio files from the Files app
 - Organize music with tags, packs, playlists, song status, and alternate versions
+- Build collections with rule groups, e.g. (A or B) and not C, plus an optional saved search as an extra condition
 - Create smart playlists from a natural-language description with Apple Intelligence (on supported devices)
 - Edit metadata without changing the original audio files, including track numbers and drag-to-reorder album order
 - Compare versions of a song A/B at the same position with one tap
@@ -18,8 +19,9 @@ Era is a private-first music library for iPhone, iPad, and Mac. It keeps release
 - Keep music playing in the background with lock screen and Control Center controls
 - Switch on optional vinyl crackle, gapless playback, or crossfade transitions
 - Review local listening stats: monthly plays, time listened, top tracks, and top artists
+- Revisit any period with Year in Review — a calendar year, the last months, or a custom range — and share it as a card
 - Find songs through Core Spotlight and control playback with App Shortcuts and Siri
-- Search across title, artist, album, tags, and versions with filters such as `tag:demo`, `status:leak`, `year:2018-2020`, `has:notes`, `plays:>5`, `unplayed`, and `fav`; exclude with `-tag:demo`, get completions while typing, and save any search as a collection
+- Search across title, artist, album, tags, and versions with filters such as `tag:demo`, `status:leak`, `year:2018-2020`, `has:notes`, `plays:>5`, `unplayed`, and `fav`; exclude with `-tag:demo`, get completions while typing, pin searches to recall them as chips above the results, and save any search as a collection
 - Browse your library by era, in chronological order with year range and status mix
 - Add songs to playlists from any song menu and reorder playlists by dragging
 - Pick up where you left off: the queue and position survive app restarts, and the sleep timer can stop after the current track
