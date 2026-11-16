@@ -606,3 +606,12 @@
 "Start Date" = "Startdatum";
 "End Date" = "Enddatum";
 "Listening Review" = "Hör-Rückblick";
+"Minimum Rating" = "Mindestbewertung";
+"Any Rating" = "Beliebig";
+"1 Star or More" = "Mind. 1 Stern";
+"2 Stars or More" = "Mind. 2 Sterne";
+"3 Stars or More" = "Mind. 3 Sterne";
+"4 Stars or More" = "Mind. 4 Sterne";
+"5 Stars" = "5 Sterne";
+"Clear Rating" = "Bewertung löschen";
+"Disc Number" = "Disc-Nummer";
