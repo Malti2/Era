@@ -18,6 +18,8 @@ struct HealthSong: Equatable {
     var versions: [HealthVersion]
     var album: String = ""
     var trackNumber: Int = 0
+    /// 0 = keine Disc-Angabe (zaehlt als Disc 1).
+    var discNumber: Int = 0
 }
 
 struct LibraryFilesSnapshot: Equatable {
@@ -40,11 +42,28 @@ struct LibraryHealthReport: Equatable {
     }
 
     /// Album mit doppelten oder fehlenden Track-Nummern ("Track 3 fehlt"); `songIDs` in Album-Reihenfolge.
+    /// Nummern gelten je Disc: Track 1 auf Disc 1 und Track 1 auf Disc 2 ist kein Duplikat.
     struct TrackIssue: Equatable {
+        /// Probleme einer einzelnen Disc (nur Discs mit Luecken/Doppelten).
+        struct DiscIssue: Equatable {
+            var disc: Int
+            var duplicates: [Int]
+            var missing: [Int]
+        }
         var album: String
         var songIDs: [UUID]
+        /// Vereinigung ueber alle Discs (Kurztext); Details stehen in `discs`.
         var duplicates: [Int]
         var missing: [Int]
+        /// Discs, die komplett fehlen ("Disc 2 ohne Disc 1").
+        var missingDiscs: [Int] = []
+        var discs: [DiscIssue] = []
+
+        /// true, wenn Neunummerieren etwas reparieren kann (Luecken/Doppelte).
+        /// Nur fehlende Discs lassen sich so nicht fixen – die Disc selbst fehlt.
+        var fixableByRenumbering: Bool {
+            !missing.isEmpty || !duplicates.isEmpty || discs.contains { !$0.missing.isEmpty || !$0.duplicates.isEmpty }
+        }
     }
 
     var missingAudio: [MissingAudio] = []
@@ -124,6 +143,9 @@ enum LibraryHealth {
     }
 
     /// Alben mit mindestens zwei nummerierten Songs, bei denen Nummern doppelt vorkommen oder Luecken haben.
+    /// Geprueft wird je Disc (0 = keine Angabe, zaehlt als Disc 1); zusaetzlich melden wir Discs,
+    /// die komplett fehlen (z.B. nur Disc 2 importiert). Ein Mehr-CD-Album mit Track 1 auf jeder
+    /// Disc ist damit kein falscher Fund mehr.
     static func trackIssues(in songs: [HealthSong]) -> [LibraryHealthReport.TrackIssue] {
         var albums: [String: [HealthSong]] = [:]
         var names: [String: String] = [:]
@@ -135,13 +157,30 @@ enum LibraryHealth {
             albums[key, default: []].append(song)
         }
         let issues: [LibraryHealthReport.TrackIssue] = albums.compactMap { key, members in
-            let numbers = members.map(\.trackNumber)
-            guard numbers.filter({ $0 > 0 }).count >= 2 else { return nil }
-            let duplicates = TrackOrder.duplicates(in: numbers).sorted()
-            let missing = TrackOrder.missing(in: numbers)
-            guard !duplicates.isEmpty || !missing.isEmpty else { return nil }
-            let order = TrackOrder.sorted(members.map { TrackItem(id: $0.id, trackNumber: $0.trackNumber, title: $0.title) })
-            return .init(album: names[key] ?? "", songIDs: order, duplicates: duplicates, missing: missing)
+            let numbered = members.filter { $0.trackNumber > 0 }
+            guard numbered.count >= 2 else { return nil }
+            var byDisc: [Int: [HealthSong]] = [:]
+            for song in members {
+                byDisc[song.discNumber > 0 ? song.discNumber : 1, default: []].append(song)
+            }
+            var discIssues: [LibraryHealthReport.TrackIssue.DiscIssue] = []
+            for disc in byDisc.keys.sorted() {
+                let numbers = byDisc[disc, default: []].map(\.trackNumber)
+                guard numbers.filter({ $0 > 0 }).count >= 2 else { continue }
+                let duplicates = TrackOrder.duplicates(in: numbers).sorted()
+                let missing = TrackOrder.missing(in: numbers)
+                guard !duplicates.isEmpty || !missing.isEmpty else { continue }
+                discIssues.append(.init(disc: disc, duplicates: duplicates, missing: missing))
+            }
+            // Fehlende Discs nur bei Alben mit Disc-Angaben (einzelne Disc-2-Songs nerven nicht).
+            let presentDiscs = Set(members.compactMap { $0.discNumber > 0 ? $0.discNumber : nil })
+            let missingDiscs = presentDiscs.isEmpty ? [] : (1...(presentDiscs.max() ?? 1)).filter { !presentDiscs.contains($0) }
+            guard !discIssues.isEmpty || !missingDiscs.isEmpty else { return nil }
+            let order = TrackOrder.sorted(members.map { TrackItem(id: $0.id, trackNumber: $0.trackNumber, discNumber: $0.discNumber, title: $0.title) })
+            return .init(album: names[key] ?? "", songIDs: order,
+                         duplicates: Array(Set(discIssues.flatMap(\.duplicates))).sorted(),
+                         missing: Array(Set(discIssues.flatMap(\.missing))).sorted(),
+                         missingDiscs: missingDiscs, discs: discIssues)
         }
         return issues.sorted { $0.album.localizedStandardCompare($1.album) == .orderedAscending }
     }

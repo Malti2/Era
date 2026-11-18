@@ -32,6 +32,7 @@ enum SearchHelp {
             SearchHelpEntry(example: "fav", title: "Favorites"),
             SearchHelpEntry(example: "unplayed", title: "Songs you have never played"),
             SearchHelpEntry(example: "rating:>=4", title: "Rated four stars or more"),
+            SearchHelpEntry(example: "rating:3-5", title: "Rated three to five stars"),
             SearchHelpEntry(example: "rating:0", title: "Songs you have not rated"),
             SearchHelpEntry(example: "plays:>5", title: "Played more than five times"),
             SearchHelpEntry(example: "played:30d", title: "Played in the last 30 days"),

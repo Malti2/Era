@@ -41,7 +41,7 @@ extension EraStore {
         let songs = ((try? allSongs()) ?? []).map { song in
             HealthSong(id: song.id, title: song.title, artist: song.artist, versions: song.versions.map {
                 HealthVersion(id: $0.id, name: $0.name, fileName: $0.fileName, artworkFile: $0.artworkFile)
-            }, album: song.album, trackNumber: song.trackNumber)
+            }, album: song.album, trackNumber: song.trackNumber, discNumber: song.discNumber)
         }
         return LibraryHealth.analyze(songs: songs, files: LibraryFiles.snapshot())
     }

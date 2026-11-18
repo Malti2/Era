@@ -6,8 +6,11 @@ import UniformTypeIdentifiers
 // Bibliotheks-Check. Eigener Unterbildschirm, damit die Einstellungen ruhig bleiben.
 struct LibraryToolsView: View {
     @EnvironmentObject private var store: EraStore
+    @Query private var songs: [Song]
+    @Query private var playlists: [Playlist]
     @State private var shareItem: ShareItem?
     @State private var showRestorePicker = false
+    @State private var showM3UPicker = false
     @State private var report: LibraryHealthReport?
     @State private var alert: ToolAlert?
     @State private var pending: PendingAction?
@@ -63,6 +66,16 @@ struct LibraryToolsView: View {
                     Text("Last backup: \(Date(timeIntervalSince1970: lastBackup).formatted(date: .abbreviated, time: .shortened))")
                 }
                 Text("Backups contain your library data, not the audio files. Restoring adds songs back whose audio is still on this device and never overwrites anything.")
+            }
+
+            Section {
+                Button { showM3UPicker = true } label: {
+                    Label("Import Playlist (M3U)", systemImage: "square.and.arrow.down")
+                }
+            } header: {
+                Text("Import")
+            } footer: {
+                Text("Import a playlist file (.m3u). Songs are matched by file name first, then by title and artist.")
             }
 
             Section {
@@ -130,6 +143,12 @@ struct LibraryToolsView: View {
                 if let url = urls.first { restore(.success(url)) }
             }, onCancel: { showRestorePicker = false })
         }
+        .sheet(isPresented: $showM3UPicker) {
+            DocumentPicker(contentTypes: m3uTypes, onPicked: { urls in
+                showM3UPicker = false
+                if let url = urls.first { importM3U(url) }
+            }, onCancel: { showM3UPicker = false })
+        }
         .confirmationDialog("Restore this backup?", isPresented: Binding(get: { pendingAutoRestore != nil }, set: { if !$0 { pendingAutoRestore = nil } }), titleVisibility: .visible) {
             Button("Restore") {
                 if let file = pendingAutoRestore { restoreAuto(file) }
@@ -170,9 +189,15 @@ struct LibraryToolsView: View {
                     action: String(localized: "Delete")) { pending = .deleteOrphans }
         }
         ForEach(report.trackIssues, id: \.songIDs) { issue in
-            finding(issue.album, symbol: "list.number", tint: .yellow,
-                    detail: trackIssueDetail(issue),
-                    action: String(localized: "Fix")) { store.renumberAlbum(songIDs: issue.songIDs); runCheck() }
+            if issue.fixableByRenumbering {
+                finding(issue.album, symbol: "list.number", tint: .yellow,
+                        detail: trackIssueDetail(issue),
+                        action: String(localized: "Fix")) { store.renumberAlbum(songIDs: issue.songIDs); runCheck() }
+            } else {
+                // Nur fehlende Discs: Neunummerieren repariert nichts – Hinweis statt Fix-Knopf.
+                finding(issue.album, symbol: "list.number", tint: .yellow,
+                        detail: trackIssueDetail(issue) + "\n" + String(localized: "Renumbering can't fix this — the disc itself is missing. Import the missing disc to complete the album."))
+            }
         }
         ForEach(report.duplicates, id: \.songIDs) { group in
             finding(group.title, symbol: "square.on.square", tint: .blue,
@@ -194,8 +219,20 @@ struct LibraryToolsView: View {
 
     private func trackIssueDetail(_ issue: LibraryHealthReport.TrackIssue) -> String {
         var parts: [String] = []
-        if !issue.missing.isEmpty { parts.append(String(localized: "Missing track numbers: \(TrackNumberList.text(issue.missing))")) }
-        if !issue.duplicates.isEmpty { parts.append(String(localized: "Used twice: \(TrackNumberList.text(issue.duplicates))")) }
+        if !issue.missingDiscs.isEmpty {
+            parts.append(String(localized: "Missing disc: \(TrackNumberList.text(issue.missingDiscs))"))
+        }
+        if issue.discs.count > 1 || !issue.missingDiscs.isEmpty {
+            for disc in issue.discs {
+                var bits: [String] = []
+                if !disc.missing.isEmpty { bits.append(String(localized: "Missing track numbers: \(TrackNumberList.text(disc.missing))")) }
+                if !disc.duplicates.isEmpty { bits.append(String(localized: "Used twice: \(TrackNumberList.text(disc.duplicates))")) }
+                parts.append(String(localized: "Disc \(disc.disc): \(bits.joined(separator: " · "))"))
+            }
+        } else {
+            if !issue.missing.isEmpty { parts.append(String(localized: "Missing track numbers: \(TrackNumberList.text(issue.missing))")) }
+            if !issue.duplicates.isEmpty { parts.append(String(localized: "Used twice: \(TrackNumberList.text(issue.duplicates))")) }
+        }
         return parts.joined(separator: "\n")
     }
 
@@ -205,15 +242,76 @@ struct LibraryToolsView: View {
         ignoredSimilarRaw = (ignoredSimilarRaw.isEmpty ? "" : ignoredSimilarRaw + "\n") + key
     }
 
-    private func finding(_ title: String, symbol: String, tint: Color, detail: String = "", action: String, perform: @escaping () -> Void) -> some View {
+    // MARK: - M3U-Import
+
+    private var m3uTypes: [UTType] {
+        [UTType(filenameExtension: "m3u") ?? .text, UTType(filenameExtension: "m3u8") ?? .text]
+    }
+
+    private func m3uText(_ url: URL) -> String? {
+        guard let data = try? Data(contentsOf: url) else { return nil }
+        if let text = String(data: data, encoding: .utf8) { return text }
+        return String(data: data, encoding: .isoLatin1)
+    }
+
+    private func importM3U(_ url: URL) {
+        guard let text = m3uText(url) else {
+            alert = ToolAlert(title: String(localized: "Couldn't Read Playlist"),
+                              message: String(localized: "This file doesn't look like a playlist."))
+            return
+        }
+        let entries = PlaylistM3UImport.parse(text)
+        guard !entries.isEmpty else {
+            alert = ToolAlert(title: String(localized: "The playlist is empty."), message: "")
+            return
+        }
+        let library = songs.map { song in
+            PlaylistM3UImport.LibraryTrack(id: song.id, title: song.title, artist: song.artist,
+                                           fileNames: song.versions.map(\.fileName))
+        }
+        let result = PlaylistM3UImport.match(entries, against: library)
+        guard !result.matched.isEmpty else {
+            alert = ToolAlert(title: String(localized: "No Songs Matched"),
+                              message: String(localized: "Not found: \(missingNames(result.unmatched))"))
+            return
+        }
+        let matchedSongs = result.matched.compactMap { id in songs.first { $0.id == id } }
+        let name = uniquePlaylistName(from: url.deletingPathExtension().lastPathComponent)
+        store.createPlaylist(named: name, songs: matchedSongs)
+        var message = String(localized: "Added \(result.matched.count) of \(entries.count) tracks.")
+        if !result.unmatched.isEmpty {
+            message += "\n" + String(localized: "Not found: \(missingNames(result.unmatched))")
+        }
+        alert = ToolAlert(title: String(localized: "Playlist Imported"), message: message)
+    }
+
+    /// "Artist - Titel", max. 5 Eintraege, danach "…".
+    private func missingNames(_ unmatched: [M3UEntry]) -> String {
+        let names = unmatched.prefix(5).map { $0.artist.isEmpty ? $0.title : "\($0.artist) - \($0.title)" }
+        return names.joined(separator: ", ") + (unmatched.count > 5 ? ", …" : "")
+    }
+
+    /// Playlist-Name aus dem Dateinamen; bei Kollision "Name 2", "Name 3", …
+    private func uniquePlaylistName(from raw: String) -> String {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        let name = trimmed.isEmpty ? String(localized: "Imported Playlist") : trimmed
+        guard playlists.contains(where: { $0.name == name }) else { return name }
+        var number = 2
+        while playlists.contains(where: { $0.name == "\(name) \(number)" }) { number += 1 }
+        return "\(name) \(number)"
+    }
+
+    private func finding(_ title: String, symbol: String, tint: Color, detail: String = "", action: String? = nil, perform: (() -> Void)? = nil) -> some View {
         HStack(spacing: 12) {
             Image(systemName: symbol).foregroundStyle(tint).frame(width: 26)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                if !detail.isEmpty { Text(detail).font(.caption).foregroundStyle(.secondary).lineLimit(2) }
+                if !detail.isEmpty { Text(detail).font(.caption).foregroundStyle(.secondary).lineLimit(3) }
             }
             Spacer(minLength: 8)
-            Button(action, action: perform).buttonStyle(.bordered).controlSize(.small)
+            if let action, let perform {
+                Button(action, action: perform).buttonStyle(.bordered).controlSize(.small)
+            }
         }
         .accessibilityElement(children: .combine)
     }

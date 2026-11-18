@@ -106,4 +106,32 @@ final class VersionMarkersTests: XCTestCase {
         XCTAssertEqual(VersionMarkers.listText(m), "0:12\n0:40 Hook\n1:30 Drop")
         XCTAssertEqual(VersionMarkers.listText([]), "")
     }
+
+    func testMergedCopiesNewMarkersWithFreshIDsAndSkipsNearDuplicates() {
+        let target = [VersionMarker(time: 10, label: "Hook")]
+        let source = [
+            VersionMarker(time: 10.5, label: "Hook 2"), // Dublett (Fenster 1s) -> uebersprungen
+            VersionMarker(time: 30, label: "Drop"),
+        ]
+        let merged = VersionMarkers.merged(source, into: target)
+        XCTAssertEqual(merged.added, 1)
+        XCTAssertEqual(merged.markers.map(\.label), ["Hook", "Drop"])
+        XCTAssertEqual(merged.markers.map(\.time), [10, 30])
+        XCTAssertNotEqual(merged.markers[1].id, source[1].id, "kopierte Marker bekommen frische IDs")
+    }
+
+    func testMergedKeepsTargetLabelOnConflictAndSorts() {
+        let target = [VersionMarker(time: 50, label: "Outro")]
+        let source = [VersionMarker(time: 5, label: "Intro"), VersionMarker(time: 50.4, label: "Ende")]
+        let merged = VersionMarkers.merged(source, into: target)
+        XCTAssertEqual(merged.added, 1)
+        XCTAssertEqual(merged.markers.map(\.label), ["Intro", "Outro"])
+    }
+
+    func testMergedRespectsMaximum() {
+        let target = (0..<VersionMarkers.maxCount).map { VersionMarker(time: Double($0) * 10, label: "") }
+        let merged = VersionMarkers.merged([VersionMarker(time: 9999, label: "Neu")], into: target)
+        XCTAssertEqual(merged.added, 0)
+        XCTAssertEqual(merged.markers.count, VersionMarkers.maxCount)
+    }
 }

@@ -31,15 +31,25 @@ struct SleepTimerState: Equatable {
     mutating func startEndOfTrack() { mode = .endOfTrack }
     mutating func cancel() { mode = nil }
 
-    mutating func tick() -> Event {
-        guard case .countdown(let seconds) = mode else { return .none }
-        let left = seconds - 1
-        if left <= 0 {
-            mode = nil
-            return .expired
+    /// Ein Tick (Sekunde). `remainingSeconds` ist die Restzeit des laufenden Titels
+    /// und nur im End-Of-Track-Modus relevant: dort blendet der Timer in den letzten
+    /// `fadeSeconds` aus, statt abrupt zu stoppen. Der Countdown-Modus ignoriert den Wert.
+    mutating func tick(remainingSeconds: Double? = nil) -> Event {
+        switch mode {
+        case .none:
+            return .none
+        case .countdown(let seconds):
+            let left = seconds - 1
+            if left <= 0 {
+                mode = nil
+                return .expired
+            }
+            mode = .countdown(remaining: left)
+            return left <= Self.fadeSeconds ? .fade(Float(left) / Float(Self.fadeSeconds)) : .none
+        case .endOfTrack:
+            guard let remaining = remainingSeconds, remaining > 0 else { return .none }
+            return remaining <= Double(Self.fadeSeconds) ? .fade(Float(remaining) / Float(Self.fadeSeconds)) : .none
         }
-        mode = .countdown(remaining: left)
-        return left <= Self.fadeSeconds ? .fade(Float(left) / Float(Self.fadeSeconds)) : .none
     }
 
     /// true = Wiedergabe soll jetzt enden (statt zum naechsten Titel zu wechseln).

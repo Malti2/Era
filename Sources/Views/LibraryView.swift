@@ -618,6 +618,13 @@ struct SongListView: View {
 
     var body: some View {
         List {
+            if songs.isEmpty {
+                ContentUnavailableView {
+                    Label("No Songs Here", systemImage: "music.note")
+                } description: {
+                    Text("This list is empty.")
+                }
+            } else {
             if songs.count > 1 && !selecting {
                 Section {
                     Button {
@@ -652,6 +659,7 @@ struct SongListView: View {
                         .contextMenu { SongContextMenu(song: song, showNowPlaying: $showNowPlaying) }
                     }
                 }
+            }
             }
         }
         .navigationTitle(selecting ? selectionTitle : title)
@@ -732,9 +740,30 @@ struct CollectionDetailView: View {
             LazyVStack(spacing: 0) {
                 header
                 Divider().padding(.horizontal, 18)
-                ForEach(Array(songs.enumerated()), id: \.element.id) { index, song in
-                    row(index: index, song: song)
-                    Divider().padding(.leading, 54)
+                if songs.isEmpty {
+                    ContentUnavailableView {
+                        Label("No Songs Here", systemImage: "music.note")
+                    } description: {
+                        Text("This collection is empty.")
+                    }
+                    .padding(.top, 40)
+                } else if discSections.isEmpty {
+                    ForEach(Array(songs.enumerated()), id: \.element.id) { index, song in
+                        row(index: index, song: song)
+                        Divider().padding(.leading, 54)
+                    }
+                } else {
+                    // Mehr-CD-Album: Disc-Ueberschriften statt "2-5" vor jeder Nummer.
+                    ForEach(discSections, id: \.disc) { section in
+                        Text("Disc \(section.disc)")
+                            .font(.headline).foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 18).padding(.top, 14).padding(.bottom, 4)
+                        ForEach(Array(section.songs.enumerated()), id: \.element.id) { index, song in
+                            row(index: index, song: song)
+                            Divider().padding(.leading, 54)
+                        }
+                    }
                 }
             }
         }
@@ -908,12 +937,31 @@ struct CollectionDetailView: View {
     }
 
     /// Alben zeigen die Track-Nummer (falls gesetzt), sonst die Position in der Liste.
-    /// Mit Disc-Nummer als "2-5" (Disc 2, Track 5), damit Mehr-CD-Alben lesbar bleiben.
+    /// Mit Disc-Nummer als "2-5" (Disc 2, Track 5), damit Mehr-CD-Alben lesbar bleiben;
+    /// bei Disc-Abschnitten steht die Disc in der Ueberschrift, die Nummer reicht dann.
     private var showsDiscNumbers: Bool { kind == .album && songs.contains { $0.discNumber > 0 } }
+
+    /// Disc-Abschnitte fuer Mehr-CD-Alben (Songs laufen schon in Disc-/Track-Reihenfolge).
+    /// Leer bei einer Disc oder ohne Disc-Angaben - dann keine Ueberschriften.
+    private var discSections: [(disc: Int, songs: [Song])] {
+        guard kind == .album else { return [] }
+        let discs = Set(songs.map { $0.discNumber > 0 ? $0.discNumber : 1 })
+        guard discs.count > 1 else { return [] }
+        var sections: [(disc: Int, songs: [Song])] = []
+        for song in songs {
+            let disc = song.discNumber > 0 ? song.discNumber : 1
+            if sections.last?.disc == disc {
+                sections[sections.count - 1].songs.append(song)
+            } else {
+                sections.append((disc, [song]))
+            }
+        }
+        return sections
+    }
 
     private func displayedNumber(index: Int, song: Song) -> String {
         if kind == .album && song.trackNumber > 0 {
-            return song.discNumber > 0 ? "\(song.discNumber)-\(song.trackNumber)" : "\(song.trackNumber)"
+            return song.discNumber > 0 && discSections.isEmpty ? "\(song.discNumber)-\(song.trackNumber)" : "\(song.trackNumber)"
         }
         return "\(index + 1)"
     }

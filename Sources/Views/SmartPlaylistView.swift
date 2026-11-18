@@ -16,6 +16,7 @@ struct SmartPlaylistView: View {
     @State private var matched: [Song] = []
     @State private var excluded: Set<UUID> = []
     @State private var editingPrompt = false
+    @State private var didGenerate = false
 
     private var hasResult: Bool { !matched.isEmpty }
     private var included: [Song] { matched.filter { !excluded.contains($0.id) } }
@@ -54,6 +55,15 @@ struct SmartPlaylistView: View {
                     }
                 }
 
+                if didGenerate && !hasResult && !isWorking && error == nil {
+                    Section {
+                        Label("No songs matched.", systemImage: "magnifyingglass")
+                            .foregroundStyle(.secondary)
+                    } footer: {
+                        Text("Try a different description.")
+                    }
+                }
+
                 if hasResult {
                     Section {
                         TextField("Playlist Name", text: $suggestionName)
@@ -69,7 +79,7 @@ struct SmartPlaylistView: View {
                             }.buttonStyle(.plain)
                         }
                         Button("Generate Again", systemImage: "arrow.clockwise") { generate() }
-                        Button("Edit Description", systemImage: "pencil") { matched = []; excluded = [] }
+                        Button("Edit Description", systemImage: "pencil") { matched = []; excluded = []; didGenerate = false }
 
                     } header: {
                         Text("\(included.count) songs")
@@ -107,6 +117,7 @@ struct SmartPlaylistView: View {
         error = nil
         matched = []
         excluded = []
+        didGenerate = false
         guard IntelligenceService.isAvailable else {
             error = String(localized: "Apple Intelligence is not available on this device.")
             return
@@ -133,6 +144,7 @@ struct SmartPlaylistView: View {
             } catch {
                 self.error = error.localizedDescription
             }
+            didGenerate = true
         }
     }
 

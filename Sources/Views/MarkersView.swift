@@ -48,6 +48,17 @@ struct MarkersSheet: View {
                         Button { shareText = MarkerShareText(text: shareBody) } label: { Label("Share Markers", systemImage: "square.and.arrow.up") }
                     }
                 }
+                ToolbarItem(placement: .topBarTrailing) {
+                    if !copySources.isEmpty {
+                        Menu {
+                            ForEach(copySources) { source in
+                                Button { _ = store.copyMarkers(from: source, to: version) } label: {
+                                    Label(copySourceLabel(source), systemImage: "mappin")
+                                }
+                            }
+                        } label: { Label("Copy Markers", systemImage: "square.on.square") }
+                    }
+                }
                 ToolbarItem(placement: .topBarTrailing) { Button("Done") { dismiss() }.fontWeight(.semibold) }
             }
             .sheet(item: $shareText) { ShareSheet(items: [$0.text]) }
@@ -68,6 +79,18 @@ struct MarkersSheet: View {
         return title + "\n" + VersionMarkers.listText(version.markers)
     }
 
+    /// Andere Versionen desselben Songs, die Marker haben - als Quelle zum Kopieren.
+    private var copySources: [SongVersion] {
+        guard let song = version.song else { return [] }
+        return song.sortedVersions.filter { $0.id != version.id && !$0.markers.isEmpty }
+    }
+
+    private func copySourceLabel(_ source: SongVersion) -> String {
+        let name = source.name.isEmpty ? "OG" : source.name
+        if let year = source.year { return "\(name) (\(year))" }
+        return name
+    }
+
     private func beginRename(_ marker: VersionMarker) {
         renameText = marker.label
         markerToRename = marker
@@ -77,6 +100,12 @@ struct MarkersSheet: View {
 private struct MarkerShareText: Identifiable {
     let text: String
     var id: String { text }
+}
+
+/// "Name, mm:ss" – ein Label fuer Marker, in Liste und Scrubber gleich.
+private func markerAccessibilityLabel(_ marker: VersionMarker) -> String {
+    let name = marker.label.isEmpty ? String(localized: "Marker") : marker.label
+    return "\(name), \(TimeFormatting.mmss(marker.time))"
 }
 
 struct MarkerRow: View {
@@ -95,6 +124,7 @@ struct MarkerRow: View {
         }
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
+        .accessibilityLabel(markerAccessibilityLabel(marker))
     }
 }
 
@@ -136,11 +166,6 @@ struct ScrubberOverlay: View {
             }
         }
         .frame(height: 12)
-    }
-
-    private func markerAccessibilityLabel(_ marker: VersionMarker) -> String {
-        let name = marker.label.isEmpty ? String(localized: "Marker") : marker.label
-        return "\(name), \(TimeFormatting.mmss(marker.time))"
     }
 
     private func x(_ time: Double, _ width: CGFloat) -> CGFloat {

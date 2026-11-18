@@ -30,6 +30,17 @@ struct SongSelectionToolbar: ToolbarContent {
                     Label("Start Radio", systemImage: "dot.radiowaves.left.and.right")
                 }
                 .disabled(chosen.isEmpty)
+                Menu {
+                    ForEach(Array(SongRating.range), id: \.self) { stars in
+                        Button { store.setRating(stars, for: chosen) } label: {
+                            Label(SongRating.stars(stars), systemImage: "star")
+                        }
+                    }
+                    Button { store.setRating(0, for: chosen) } label: {
+                        Label("Clear Rating", systemImage: "star.slash")
+                    }
+                } label: { Label("Rating", systemImage: "star") }
+                .disabled(chosen.isEmpty)
             } label: { Label("More", systemImage: "ellipsis.circle") }
                 .disabled(chosen.isEmpty)
             Spacer()

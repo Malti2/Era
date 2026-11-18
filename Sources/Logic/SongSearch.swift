@@ -67,9 +67,9 @@ struct SearchHit: Equatable {
     let matchedFields: Set<SearchField>
 }
 
-/// Zahlenvergleich fuer `plays:>5`, `versions:2`, `plays:<=1`.
+/// Zahlenvergleich fuer `plays:>5`, `versions:2`, `plays:<=1`, `rating:3-5`.
 struct CountComparison: Equatable {
-    enum Op: Equatable { case equal, greater, less, atLeast, atMost }
+    enum Op: Equatable { case equal, greater, less, atLeast, atMost, between(ClosedRange<Int>) }
     var op: Op
     var value: Int
 
@@ -78,7 +78,7 @@ struct CountComparison: Equatable {
         self.value = value
     }
 
-    /// "5", ">5", ">=5", "<5", "<=5"; alles andere ist kein Vergleich.
+    /// "5", ">5", ">=5", "<5", "<=5", "3-5" (Bereich, Reihenfolge egal); alles andere ist kein Vergleich.
     init?(_ text: String) {
         var rest = Substring(text)
         var parsed = Op.equal
@@ -87,8 +87,15 @@ struct CountComparison: Equatable {
             rest = rest.dropFirst(prefix.count)
             break
         }
-        guard let number = Int(rest), number >= 0 else { return nil }
-        self.init(op: parsed, value: number)
+        if let number = Int(rest), number >= 0 {
+            self.init(op: parsed, value: number)
+            return
+        }
+        // Bereich nur ohne Operator-Praefix ("3-5", nicht ">3-5").
+        guard parsed == .equal else { return nil }
+        let parts = rest.split(separator: "-", omittingEmptySubsequences: false)
+        guard parts.count == 2, let low = Int(parts[0]), let high = Int(parts[1]), low >= 0, high >= 0 else { return nil }
+        self.init(op: .between(min(low, high)...max(low, high)), value: low)
     }
 
     func matches(_ count: Int) -> Bool {
@@ -98,6 +105,7 @@ struct CountComparison: Equatable {
         case .less: count < value
         case .atLeast: count >= value
         case .atMost: count <= value
+        case .between(let range): range.contains(count)
         }
     }
 }

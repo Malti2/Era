@@ -27,6 +27,26 @@ final class SleepTimerStateTests: XCTestCase {
         XCTAssertFalse(timer.trackFinished())
     }
 
+    func testEndOfTrackFadesInLastSeconds() {
+        var timer = SleepTimerState()
+        timer.startEndOfTrack()
+        XCTAssertEqual(timer.tick(remainingSeconds: 120), .none)
+        XCTAssertEqual(timer.tick(remainingSeconds: 6), .none)
+        XCTAssertEqual(timer.tick(remainingSeconds: 5), .fade(1.0))
+        XCTAssertEqual(timer.tick(remainingSeconds: 2.5), .fade(0.5))
+        XCTAssertEqual(timer.tick(remainingSeconds: 0.5), .fade(0.1))
+        XCTAssertEqual(timer.tick(remainingSeconds: nil), .none)
+        XCTAssertEqual(timer.tick(remainingSeconds: 0), .none)
+        XCTAssertTrue(timer.isActive, "fade ticks must not disarm the timer")
+    }
+
+    func testCountdownIgnoresRemainingSeconds() {
+        var timer = SleepTimerState()
+        timer.start(minutes: 1)
+        XCTAssertEqual(timer.tick(remainingSeconds: 1), .none, "one second left in countdown, no fade yet")
+        XCTAssertEqual(timer.remaining, 59)
+    }
+
     func testCancelAndRestartReplaceMode() {
         var timer = SleepTimerState()
         timer.start(minutes: 5)

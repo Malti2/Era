@@ -52,6 +52,8 @@ enum PlaylistTextExport {
         var title: String
         var artist: String
         var duration: Double
+        /// Dateiname im App-Container (fuer M3U); leer = nur Titel bekannt.
+        var fileName: String = ""
     }
 
     /// Nummerierte Liste zum Teilen ("1. Titel – Artist (3:21)"); `header` ist die fertig lokalisierte Titelzeile.
@@ -69,5 +71,20 @@ enum PlaylistTextExport {
     static func clock(_ seconds: Double) -> String {
         let total = max(0, Int(seconds.rounded()))
         return String(format: "%d:%02d", total / 60, total % 60)
+    }
+}
+
+/// M3U-Export: `#EXTM3U` + je Track `#EXTINF:<sekunden>,Artist - Titel` und Dateiname.
+/// Andere Player koennen die Liste so direkt importieren, wenn die Dateien daneben liegen.
+enum PlaylistM3UExport {
+    static func m3u(items: [PlaylistTextExport.Item]) -> String {
+        var lines = ["#EXTM3U"]
+        for item in items {
+            let seconds = item.duration > 0 ? Int(item.duration.rounded()) : -1
+            let label = item.artist.isEmpty ? item.title : "\(item.artist) - \(item.title)"
+            lines.append("#EXTINF:\(seconds),\(label)")
+            lines.append(item.fileName.isEmpty ? item.title : item.fileName)
+        }
+        return lines.joined(separator: "\n")
     }
 }

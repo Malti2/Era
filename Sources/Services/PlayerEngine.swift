@@ -631,6 +631,15 @@ final class PlayerEngine: NSObject, ObservableObject, AVAudioPlayerDelegate {
                     }
                     self.currentTime = a.currentTime
                     self.isPlaying = a.isPlaying
+                    // Sleep-Timer "bis Titelende": in den letzten Sekunden ausblenden,
+                    // davor (z. B. nach Zurueckspulen) die Lautstaerke wieder herstellen.
+                    if self.sleepTimer.stopsAtTrackEnd, self.duration > 0 {
+                        switch self.sleepTimer.tick(remainingSeconds: self.duration - a.currentTime) {
+                        case .fade(let volume): a.volume = volume
+                        case .none: a.volume = 1
+                        case .expired: break
+                        }
+                    }
                     self.checkTransition()
                 } else if self.isPlaying {
                     self.currentTime = min(self.currentTime + 0.25, self.duration)
@@ -652,6 +661,7 @@ final class PlayerEngine: NSObject, ObservableObject, AVAudioPlayerDelegate {
                         self.isPlaying = false
                         self.currentTime = 0
                         self.audio?.currentTime = 0
+                        self.audio?.volume = 1
                         self.updateNowPlaying()
                         self.persistSession()
                     } else {

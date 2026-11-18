@@ -8,6 +8,13 @@ extension EraStore {
         save()
     }
 
+    /// Setzt die Bewertung fuer alle ausgewaehlten Songs (0 = keine Bewertung).
+    func setRating(_ rating: Int, for songs: [Song]) {
+        let value = SongRating.clamp(rating)
+        for song in songs { resolve(song).rating = value }
+        save()
+    }
+
     func add(_ tag: Tag, to songs: [Song]) {
         let tag = resolve(tag)
         let targets = songs.map { resolve($0) }

@@ -38,4 +38,23 @@ final class PlaylistToolsTests: XCTestCase {
         ])
         XCTAssertEqual(text, "Night (2 tracks)\n\n1. One – A (3:21)\n2. Two")
     }
+
+    func testM3UExportWritesExtinfAndFileNames() {
+        let m3u = PlaylistM3UExport.m3u(items: [
+            .init(title: "One", artist: "A", duration: 201, fileName: "one.m4a"),
+            .init(title: "Two", artist: "", duration: 0),
+        ])
+        XCTAssertEqual(m3u, """
+            #EXTM3U
+            #EXTINF:201,A - One
+            one.m4a
+            #EXTINF:-1,Two
+            Two
+            """)
+    }
+
+    func testM3UExportRoundsDurations() {
+        let m3u = PlaylistM3UExport.m3u(items: [.init(title: "X", artist: "Y", duration: 90.6, fileName: "x.mp3")])
+        XCTAssertTrue(m3u.contains("#EXTINF:91,Y - X\nx.mp3"))
+    }
 }

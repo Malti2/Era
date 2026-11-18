@@ -117,6 +117,10 @@ struct PlaylistDetailView: View {
                         Label("Share as Text", systemImage: "square.and.arrow.up")
                     }
                     .disabled(playlist.entries.isEmpty)
+                    Button { shareText = ShareTextItem(text: exportM3U) } label: {
+                        Label("Share as M3U", systemImage: "music.note.list")
+                    }
+                    .disabled(playlist.entries.isEmpty)
                     Divider()
                     Button(role: .destructive) { confirmDelete = true } label: { Label("Delete Playlist", systemImage: "trash") }
                 } label: { Image(systemName: "ellipsis") }
@@ -185,14 +189,22 @@ struct PlaylistDetailView: View {
         .padding(.horizontal, 18).padding(.bottom, 12)
     }
 
-    private var exportText: String {
-        let items = playlist.sortedEntries.compactMap { entry -> PlaylistTextExport.Item? in
+    private var exportItems: [PlaylistTextExport.Item] {
+        playlist.sortedEntries.compactMap { entry -> PlaylistTextExport.Item? in
             guard let song = entry.song else { return nil }
             let version = entry.resolvedVersion
             let override = version?.artistOverride ?? ""
-            return .init(title: version?.displayTitle ?? song.title, artist: override.isEmpty ? song.artist : override, duration: version?.duration ?? 0)
+            return .init(title: version?.displayTitle ?? song.title, artist: override.isEmpty ? song.artist : override,
+                         duration: version?.duration ?? 0, fileName: version?.fileName ?? "")
         }
-        return PlaylistTextExport.text(header: "\(playlist.name) (\(summary))", items: items)
+    }
+
+    private var exportText: String {
+        PlaylistTextExport.text(header: "\(playlist.name) (\(summary))", items: exportItems)
+    }
+
+    private var exportM3U: String {
+        PlaylistM3UExport.m3u(items: exportItems)
     }
 
     private var summary: String {

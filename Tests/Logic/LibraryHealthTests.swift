@@ -74,4 +74,89 @@ final class LibraryHealthTests: XCTestCase {
         XCTAssertEqual(key, LibraryHealthReport.groupKey([base.id, demo.id]), "order does not matter")
         XCTAssertTrue(report.visibleSimilar(ignoring: [key]).isEmpty)
     }
+
+    // MARK: Track-Nummern je Disc
+
+    private func albumSong(_ title: String, album: String, track: Int, disc: Int = 0) -> HealthSong {
+        var s = song(title, versions: [("\(title).m4a", nil)])
+        s.album = album
+        s.trackNumber = track
+        s.discNumber = disc
+        return s
+    }
+
+    private func files(for songs: [HealthSong]) -> LibraryFilesSnapshot {
+        LibraryFilesSnapshot(audio: Dictionary(uniqueKeysWithValues: songs.flatMap { $0.versions.map { ($0.fileName, 1) } }))
+    }
+
+    func testMultiDiscAlbumWithSameTrackNumbersIsHealthy() {
+        // Frueher ein falscher Fund: Track 1 auf Disc 1 und Disc 2 zaehlte als Duplikat.
+        let songs = [
+            albumSong("A1", album: "Double", track: 1, disc: 1),
+            albumSong("A2", album: "Double", track: 2, disc: 1),
+            albumSong("B1", album: "Double", track: 1, disc: 2),
+            albumSong("B2", album: "Double", track: 2, disc: 2),
+        ]
+        let report = LibraryHealth.analyze(songs: songs, files: files(for: songs))
+        XCTAssertTrue(report.trackIssues.isEmpty)
+        XCTAssertTrue(report.isHealthy)
+    }
+
+    func testMissingDiscIsReported() {
+        let songs = [
+            albumSong("B1", album: "Double", track: 1, disc: 2),
+            albumSong("B2", album: "Double", track: 2, disc: 2),
+        ]
+        let report = LibraryHealth.analyze(songs: songs, files: files(for: songs))
+        XCTAssertEqual(report.trackIssues.count, 1)
+        XCTAssertEqual(report.trackIssues[0].missingDiscs, [1])
+        XCTAssertTrue(report.trackIssues[0].discs.isEmpty)
+        XCTAssertFalse(report.trackIssues[0].fixableByRenumbering, "only a missing disc – renumbering fixes nothing")
+        XCTAssertFalse(report.isHealthy)
+    }
+
+    func testPerDiscMissingAndDuplicatesAreSeparate() {
+        let songs = [
+            albumSong("A1", album: "Double", track: 1, disc: 1),
+            albumSong("A3", album: "Double", track: 3, disc: 1),
+            albumSong("B1", album: "Double", track: 1, disc: 2),
+            albumSong("B1b", album: "Double", track: 1, disc: 2),
+            albumSong("B2", album: "Double", track: 2, disc: 2),
+        ]
+        let report = LibraryHealth.analyze(songs: songs, files: files(for: songs))
+        XCTAssertEqual(report.trackIssues.count, 1)
+        let issue = report.trackIssues[0]
+        XCTAssertEqual(issue.discs, [
+            .init(disc: 1, duplicates: [], missing: [2]),
+            .init(disc: 2, duplicates: [1], missing: []),
+        ])
+        XCTAssertEqual(issue.duplicates, [1])
+        XCTAssertEqual(issue.missing, [2])
+        XCTAssertTrue(issue.missingDiscs.isEmpty)
+        XCTAssertTrue(issue.fixableByRenumbering, "gaps and duplicates can be renumbered")
+    }
+
+    func testSingleDiscDuplicatesStillReported() {
+        let songs = [
+            albumSong("A1", album: "Solo", track: 1),
+            albumSong("A2", album: "Solo", track: 2),
+            albumSong("A2b", album: "Solo", track: 2),
+        ]
+        let report = LibraryHealth.analyze(songs: songs, files: files(for: songs))
+        XCTAssertEqual(report.trackIssues.count, 1)
+        XCTAssertEqual(report.trackIssues[0].duplicates, [2])
+        XCTAssertEqual(report.trackIssues[0].missing, [])
+        XCTAssertEqual(report.trackIssues[0].discs, [.init(disc: 1, duplicates: [2], missing: [])])
+    }
+
+    func testSingleTrackOnSecondDiscIsNotAnIssue() {
+        let songs = [
+            albumSong("B1", album: "Double", track: 1, disc: 2),
+            albumSong("A2", album: "Double", track: 2, disc: 1),
+            albumSong("A1", album: "Double", track: 1, disc: 1),
+        ]
+        let report = LibraryHealth.analyze(songs: songs, files: files(for: songs))
+        // Disc 1 hat nur Track 1 und 2 - kein Fund; Disc 2 allein reicht nicht.
+        XCTAssertTrue(report.trackIssues.isEmpty)
+    }
 }

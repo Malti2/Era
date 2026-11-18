@@ -50,4 +50,18 @@ extension EraStore {
         version.markersJSON = ""
         save()
     }
+
+    /// Uebernimmt die Marker einer anderen Version (A/B-Abgleich): was in der Ziel-Version
+    /// schon fast an derselben Stelle steht, wird uebersprungen. Gibt zurueck, wie viele
+    /// Marker dazugekommen sind.
+    @discardableResult
+    func copyMarkers(from source: SongVersion, to target: SongVersion) -> Int {
+        let source = resolve(source), target = resolve(target)
+        guard source.id != target.id else { return 0 }
+        let merged = VersionMarkers.merged(source.markers, into: target.markers)
+        guard merged.added > 0 else { return 0 }
+        target.markers = merged.markers
+        save()
+        return merged.added
+    }
 }

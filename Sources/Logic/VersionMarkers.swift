@@ -84,6 +84,23 @@ enum VersionMarkers {
         return markers.map { min(1, max(0, $0.time / duration)) }
     }
 
+    /// Uebernimmt die Marker einer anderen Version, ohne nahe beieinanderliegende zu doppeln.
+    /// Neue Marker bekommen frische IDs, damit Umbenennen/Loeschen sie nicht verwechselt.
+    /// Gibt die uebernommenen Marker und die Anzahl uebersprungener Dubletten zurueck.
+    static func merged(_ source: [VersionMarker], into target: [VersionMarker]) -> (markers: [VersionMarker], added: Int) {
+        var result = sorted(target)
+        var added = 0
+        for marker in sorted(source) {
+            guard result.count < maxCount else { break }
+            guard !result.contains(where: { abs($0.time - marker.time) < mergeWindow }) else { continue }
+            var copy = marker
+            copy.id = UUID()
+            result.append(copy)
+            added += 1
+        }
+        return (sorted(result), added)
+    }
+
     /// Beim Zusammenfuehren von Songs bleiben beide Notizen erhalten.
     static func mergedNotes(_ target: String, _ source: String) -> String {
         let a = target.trimmingCharacters(in: .whitespacesAndNewlines)

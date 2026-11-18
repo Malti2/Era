@@ -149,6 +149,17 @@ final class SongSearchTests: XCTestCase {
         XCTAssertNil(CountComparison("abc"))
         XCTAssertNil(CountComparison(">"))
         XCTAssertEqual(CountComparison(">=4"), CountComparison(op: .atLeast, value: 4))
+        XCTAssertEqual(CountComparison("3-5"), CountComparison(op: .between(3...5), value: 3))
+        XCTAssertEqual(CountComparison("5-3"), CountComparison(op: .between(3...5), value: 5))
+        XCTAssertNil(CountComparison(">3-5"))
+        XCTAssertNil(CountComparison("3-"))
+        XCTAssertNil(CountComparison("-5"))
+        XCTAssertTrue(CountComparison("3-5")!.matches(3))
+        XCTAssertTrue(CountComparison("3-5")!.matches(5))
+        XCTAssertFalse(CountComparison("3-5")!.matches(2))
+        XCTAssertFalse(CountComparison("3-5")!.matches(6))
+        XCTAssertEqual(extraTitles("rating:0-0"), ["Finished", "Sketch One", "Sketch Two"])
+        XCTAssertEqual(extraTitles("plays:1-2"), ["Finished"])
     }
 
     func testEraFilter() {
