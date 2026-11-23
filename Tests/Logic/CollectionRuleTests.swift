@@ -228,4 +228,15 @@ final class CollectionRuleTests: XCTestCase {
         XCTAssertEqual(labels[0].exclude, ["Leak"])
         XCTAssertTrue(labels[0].matchAny)
     }
+
+    func testQueryWithDuplicatesOperator() {
+        let rule = CollectionRule(query: "duplicates:yes")
+        let dup = SearchableSong(title: "Same", isDuplicate: true)
+        let single = SearchableSong(title: "Other")
+        XCTAssertTrue(rule.matches(tagIDs: [], statuses: [], searchable: { dup }))
+        XCTAssertFalse(rule.matches(tagIDs: [], statuses: [], searchable: { single }))
+        let notDup = CollectionRule(query: "duplicates:no")
+        XCTAssertFalse(notDup.matches(tagIDs: [], statuses: [], searchable: { dup }))
+        XCTAssertTrue(notDup.matches(tagIDs: [], statuses: [], searchable: { single }))
+    }
 }

@@ -6,6 +6,7 @@ struct EraApp: App {
     let container = Persistence.shared
     @State private var store: EraStore
     @StateObject private var playlistPicker = PlaylistPickerCoordinator()
+    @StateObject private var libraryActions = LibraryActionCoordinator()
 
     init() {
         let context = ModelContext(container)
@@ -45,6 +46,7 @@ struct EraApp: App {
                 .environmentObject(PlayerEngine.shared)
                 .environmentObject(ImportManager.shared)
                 .environmentObject(playlistPicker)
+                .environmentObject(libraryActions)
         }
         .modelContainer(container)
         .commands {

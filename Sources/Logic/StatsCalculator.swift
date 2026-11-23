@@ -23,12 +23,16 @@ enum StatsCalculator {
         let title: String
         let artist: String
         let plays: Int
+        /// Gehoerte Sekunden (fuer die Sortierung nach Hoerzeit).
+        var seconds: Double = 0
     }
 
     struct ArtistCount: Identifiable, Equatable {
         var id: String { name }
         let name: String
         let plays: Int
+        /// Gehoerte Sekunden (fuer die Sortierung nach Hoerzeit).
+        var seconds: Double = 0
     }
 
     enum Period: String, CaseIterable, Identifiable {
@@ -85,7 +89,9 @@ enum StatsCalculator {
         var counts: [String: TrackCount] = [:]
         for record in records {
             let key = record.title + "\u{1F}" + record.artist
-            counts[key] = TrackCount(title: record.title, artist: record.artist, plays: (counts[key]?.plays ?? 0) + 1)
+            let current = counts[key] ?? TrackCount(title: record.title, artist: record.artist, plays: 0)
+            counts[key] = TrackCount(title: record.title, artist: record.artist,
+                                     plays: current.plays + 1, seconds: current.seconds + record.seconds)
         }
         return Array(counts.values.sorted { lhs, rhs in
             if lhs.plays != rhs.plays { return lhs.plays > rhs.plays }
@@ -95,10 +101,35 @@ enum StatsCalculator {
         }.prefix(limit))
     }
 
+    /// Top-Tracks nach gehoerter Zeit statt nach Plays (Tie-Break: mehr Plays, dann Titel).
+    static func topTracksByTime(_ records: [PlayRecord], limit: Int) -> [TrackCount] {
+        let tracks = topTracks(records, limit: Int.max)
+        return Array(tracks.sorted { lhs, rhs in
+            if lhs.seconds != rhs.seconds { return lhs.seconds > rhs.seconds }
+            if lhs.plays != rhs.plays { return lhs.plays > rhs.plays }
+            let byTitle = lhs.title.localizedCaseInsensitiveCompare(rhs.title)
+            if byTitle != .orderedSame { return byTitle == .orderedAscending }
+            return lhs.artist.localizedCaseInsensitiveCompare(rhs.artist) == .orderedAscending
+        }.prefix(limit))
+    }
+
     static func topArtists(_ records: [PlayRecord], limit: Int) -> [ArtistCount] {
-        var counts: [String: Int] = [:]
-        for record in records { counts[record.artist, default: 0] += 1 }
-        return Array(counts.map { ArtistCount(name: $0.key, plays: $0.value) }.sorted { lhs, rhs in
+        var counts: [String: ArtistCount] = [:]
+        for record in records {
+            let current = counts[record.artist] ?? ArtistCount(name: record.artist, plays: 0, seconds: 0)
+            counts[record.artist] = ArtistCount(name: record.artist, plays: current.plays + 1, seconds: current.seconds + record.seconds)
+        }
+        return Array(counts.values.sorted { lhs, rhs in
+            if lhs.plays != rhs.plays { return lhs.plays > rhs.plays }
+            return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+        }.prefix(limit))
+    }
+
+    /// Top-Kuenstler nach gehoerter Zeit statt nach Plays (Tie-Break: mehr Plays, dann Name).
+    static func topArtistsByTime(_ records: [PlayRecord], limit: Int) -> [ArtistCount] {
+        let artists = topArtists(records, limit: Int.max)
+        return Array(artists.sorted { lhs, rhs in
+            if lhs.seconds != rhs.seconds { return lhs.seconds > rhs.seconds }
             if lhs.plays != rhs.plays { return lhs.plays > rhs.plays }
             return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
         }.prefix(limit))

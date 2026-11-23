@@ -55,4 +55,15 @@ final class LibraryInsightsTests: XCTestCase {
         XCTAssertEqual(insights.addedPerYear.map(\.year), [2022, 2023, 2024, 2025])
         XCTAssertEqual(insights.addedPerYear.map(\.count), [2, 0, 0, 1])
     }
+
+    func testDuplicatesCountGroupsAndSongs() {
+        let insights = LibraryInsights.make(from: [
+            song(), song(), // untitled: never duplicates
+            InsightSong(title: "Same", artist: "Neon", statuses: [], era: "", dateAdded: calendar.date(from: DateComponents(year: 2025, month: 6, day: 1))!, versionCount: 1, duration: 100, playCount: 0, isFavorite: false, hasNotes: false, markerCount: 0),
+            InsightSong(title: "same", artist: "NEON", statuses: [], era: "", dateAdded: calendar.date(from: DateComponents(year: 2025, month: 6, day: 1))!, versionCount: 1, duration: 100, playCount: 0, isFavorite: false, hasNotes: false, markerCount: 0),
+            InsightSong(title: "Same", artist: "Other", statuses: [], era: "", dateAdded: calendar.date(from: DateComponents(year: 2025, month: 6, day: 1))!, versionCount: 1, duration: 100, playCount: 0, isFavorite: false, hasNotes: false, markerCount: 0),
+        ], calendar: calendar)
+        XCTAssertEqual(insights.duplicateGroups, 1)
+        XCTAssertEqual(insights.duplicateSongs, 2)
+    }
 }

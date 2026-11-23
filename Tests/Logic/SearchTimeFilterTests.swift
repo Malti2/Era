@@ -5,9 +5,11 @@ final class SearchTimeFilterTests: XCTestCase {
     private let now = Date(timeIntervalSince1970: 1_800_000_000) // 2027-01-15
     private let day = 86_400.0
 
-    private func song(_ title: String, added: Double? = nil, played: Double? = nil, length: Double = 0) -> SearchableSong {
+    private func song(_ title: String, added: Double? = nil, played: Double? = nil, length: Double = 0,
+                      rating: Int = 0, hasArtwork: Bool = false) -> SearchableSong {
         SearchableSong(title: title, dateAdded: added.map { now.addingTimeInterval(-$0 * day) },
-                       lastPlayedAt: played.map { now.addingTimeInterval(-$0 * day) }, duration: length)
+                       lastPlayedAt: played.map { now.addingTimeInterval(-$0 * day) }, duration: length,
+                       rating: rating, hasArtwork: hasArtwork)
     }
 
     private func titles(_ query: String, _ songs: [SearchableSong]) -> [String] {
@@ -22,10 +24,31 @@ final class SearchTimeFilterTests: XCTestCase {
         XCTAssertEqual(DateCondition(">=1y"), .olderThan(days: 365))
         XCTAssertEqual(DateCondition("2024"), .years(2024...2024))
         XCTAssertEqual(DateCondition("2025-2022"), .years(2022...2025))
+        XCTAssertEqual(DateCondition("today"), .today)
+        XCTAssertEqual(DateCondition("TODAY"), .today)
         XCTAssertNil(DateCondition("soon"))
         XCTAssertNil(DateCondition(">2024"))
         XCTAssertNil(DateCondition("12"))
         XCTAssertNil(DateCondition(""))
+    }
+
+    func testAddedTodayMatchesOnlyThisCalendarDay() {
+        let songs = [song("today", added: 0.1), song("yesterday", added: 1), song("unknown")]
+        XCTAssertEqual(titles("added:today", songs), ["today"])
+        XCTAssertEqual(titles("played:today", [song("played-today", played: 0.1), song("played-old", played: 2)]), ["played-today"])
+    }
+
+    func testHasArtworkAndNoArtwork() {
+        let songs = [song("covered", hasArtwork: true), song("bare", hasArtwork: false)]
+        XCTAssertEqual(titles("has:artwork", songs), ["covered"])
+        XCTAssertEqual(titles("has:no-artwork", songs), ["bare"])
+        XCTAssertEqual(titles("-has:artwork", songs), ["bare"], "negierter Filter laesst Songs ohne Cover durch")
+    }
+
+    func testIsUnratedMatchesRatingZero() {
+        let songs = [song("rated", rating: 4), song("plain", rating: 0)]
+        XCTAssertEqual(titles("is:unrated", songs), ["plain"])
+        XCTAssertEqual(titles("rating:0", songs), ["plain"])
     }
 
     func testAddedWithinAndOlder() {

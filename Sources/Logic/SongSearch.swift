@@ -30,11 +30,17 @@ struct SearchableSong: Equatable {
     var rating: Int
     /// 0 = keine Tracknummer (fuer `track:`).
     var trackNumber: Int
+    /// Mindestens eine Version hat ein Cover (fuer `has:artwork`).
+    var hasArtwork: Bool
+    /// Teil einer Dubletten-Gruppe (gleicher Titel + Kuenstler, fuer `duplicates:`).
+    /// Wird vom Aufrufer gesetzt - die Suche sieht nur einen Song, nicht die Bibliothek.
+    var isDuplicate: Bool
 
     init(id: UUID = UUID(), title: String, artist: String = "", album: String = "", era: String = "",
          year: Int? = nil, tags: [String] = [], statuses: [String] = [], versionNames: [String] = [],
          isFavorite: Bool = false, playCount: Int = 0, notes: String = "", markerLabels: [String] = [], markerCount: Int? = nil,
-         dateAdded: Date? = nil, lastPlayedAt: Date? = nil, duration: Double = 0, rating: Int = 0, trackNumber: Int = 0) {
+         dateAdded: Date? = nil, lastPlayedAt: Date? = nil, duration: Double = 0, rating: Int = 0, trackNumber: Int = 0,
+         hasArtwork: Bool = false, isDuplicate: Bool = false) {
         self.id = id
         self.title = title
         self.artist = artist
@@ -54,6 +60,8 @@ struct SearchableSong: Equatable {
         self.duration = duration
         self.rating = rating
         self.trackNumber = trackNumber
+        self.hasArtwork = hasArtwork
+        self.isDuplicate = isDuplicate
     }
 }
 
@@ -110,14 +118,16 @@ struct CountComparison: Equatable {
     }
 }
 
-/// Zeitbedingung fuer `added:` und `played:`: `7d` / `<2w` (innerhalb), `>3m` (aelter als), `2024` oder `2022-2024` (Kalenderjahr).
+/// Zeitbedingung fuer `added:` und `played:`: `7d` / `<2w` (innerhalb), `>3m` (aelter als), `2024` oder `2022-2024` (Kalenderjahr), `today`.
 enum DateCondition: Equatable {
     case within(days: Int)
     case olderThan(days: Int)
     case years(ClosedRange<Int>)
+    case today
 
     /// Einheiten: d = Tage, w = Wochen, m = Monate (30 Tage), y = Jahre (365 Tage).
     init?(_ text: String) {
+        if text.lowercased() == "today" { self = .today; return }
         var rest = Substring(text)
         var older = false
         if rest.hasPrefix(">=") { older = true; rest = rest.dropFirst(2) }
@@ -146,6 +156,7 @@ enum DateCondition: Equatable {
         case .within(let days): return date >= now.addingTimeInterval(-Double(days) * 86_400)
         case .olderThan(let days): return date < now.addingTimeInterval(-Double(days) * 86_400)
         case .years(let range): return range.contains(calendar.component(.year, from: date))
+        case .today: return calendar.startOfDay(for: date) == calendar.startOfDay(for: now)
         }
     }
 }
@@ -197,6 +208,8 @@ indirect enum SearchFilter: Equatable {
     case era(String)
     case hasNotes
     case hasMarkers
+    case hasArtwork
+    case noArtwork
     case unplayed
     case plays(CountComparison)
     case versionCount(CountComparison)
@@ -205,6 +218,8 @@ indirect enum SearchFilter: Equatable {
     case length(DurationComparison)
     case rating(CountComparison)
     case track(CountComparison)
+    /// `duplicates:yes` / `is:duplicate`: Song ist Teil einer Dubletten-Gruppe.
+    case isDuplicate
     /// `-tag:demo`, `-fav`: Songs, die den Filter NICHT erfuellen.
     case not(SearchFilter)
 }
@@ -281,16 +296,28 @@ struct SongSearchQuery: Equatable {
         case "added": return DateCondition(value).map(SearchFilter.added)
         case "played": return DateCondition(value).map(SearchFilter.played)
         case "length", "len": return DurationComparison(value).map(SearchFilter.length)
+        case "duplicates":
+            switch value {
+            case "yes", "true", "1", "y": return .isDuplicate
+            case "no", "false", "0", "n": return .not(.isDuplicate)
+            default: return nil
+            }
         case "has":
             switch value {
             case "notes", "note": return .hasNotes
             case "markers", "marker": return .hasMarkers
+            case "artwork": return .hasArtwork
+            case "no-artwork", "noartwork": return .noArtwork
             default: return nil
             }
         case "is":
             switch value {
             case "fav", "favorite": return .favorite
+            case "played": return .plays(CountComparison(op: .greater, value: 0))
             case "unplayed": return .unplayed
+            case "rated": return .rating(CountComparison(op: .greater, value: 0))
+            case "unrated": return .rating(CountComparison(op: .equal, value: 0))
+            case "duplicate", "duplicates": return .isDuplicate
             default: return nil
             }
         default: return nil
@@ -397,6 +424,12 @@ enum SongSearch {
             return song.notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : [.note]
         case .hasMarkers:
             return song.markerCount > 0 ? [.note] : nil
+        case .hasArtwork:
+            return song.hasArtwork ? [] : nil
+        case .noArtwork:
+            return song.hasArtwork ? nil : []
+        case .isDuplicate:
+            return song.isDuplicate ? [] : nil
         case .unplayed:
             return song.playCount == 0 ? [] : nil
         case .plays(let comparison):
@@ -484,14 +517,15 @@ enum RecentSearches {
 /// Schlaegt fuer das letzte Wort der Eingabe Operatoren (`ta` -> `tag:`) und, nach dem Doppelpunkt,
 /// vorhandene Werte (`tag:sy` -> `tag:synth`) vor. `query` ist jeweils die komplette neue Eingabe.
 enum SearchCompletion {
-    static let operators = ["tag:", "status:", "year:", "version:", "artist:", "album:", "era:", "has:", "plays:", "rating:", "track:", "versions:", "is:", "added:", "played:", "length:"]
+    static let operators = ["tag:", "status:", "year:", "version:", "artist:", "album:", "era:", "has:", "plays:", "rating:", "track:", "versions:", "is:", "added:", "played:", "length:", "duplicates:"]
     private static let fixedValues: [String: [String]] = [
-        "has": ["notes", "markers"],
-        "is": ["fav", "unplayed"],
+        "has": ["notes", "markers", "artwork", "no-artwork"],
+        "is": ["fav", "played", "unplayed", "rated", "unrated", "duplicate"],
+        "duplicates": ["yes", "no"],
         "rating": [">=4", "5", "0"],
         "track": ["0", "1"],
-        "added": ["7d", "30d", ">1y"],
-        "played": ["7d", "30d", ">90d"],
+        "added": ["today", "7d", "30d", ">1y"],
+        "played": ["today", "7d", "30d", ">90d"],
         "length": [">5m", "<1m", "2m-4m"],
     ]
 

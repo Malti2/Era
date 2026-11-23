@@ -320,6 +320,25 @@ struct PlaylistEntryRow: View {
             .accessibilityLabel("More")
             }
         }
+        .swipeActions(edge: .leading) {
+            if isSelected == nil {
+                Button { song.isFavorite.toggle(); store.save() } label: {
+                    Label("Favorite", systemImage: song.isFavorite ? "heart.slash" : "heart.fill")
+                }.tint(.pink)
+                if song.rating < 5 {
+                    Button { song.rating = 5; store.save() } label: {
+                        Label("5 Stars", systemImage: "star.fill")
+                    }.tint(.yellow)
+                }
+            }
+        }
+        .swipeActions {
+            if isSelected == nil, song.rating > 0 {
+                Button { song.rating = 0; store.save() } label: {
+                    Label("Clear Rating", systemImage: "star.slash")
+                }.tint(.gray)
+            }
+        }
         .contentShape(Rectangle())
         .onTapGesture {
             if isSelected != nil { toggle() } else if let v = version { player.play(v, from: queue) }

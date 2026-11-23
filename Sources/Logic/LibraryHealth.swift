@@ -28,6 +28,13 @@ struct LibraryFilesSnapshot: Equatable {
     var artwork: [String: Int] = [:]
 }
 
+struct HealthPlaylist: Equatable {
+    var id: UUID
+    var name: String
+    /// Song-IDs in Eintragsreihenfolge (Eintraege ohne Song fallen raus).
+    var songIDs: [UUID]
+}
+
 struct LibraryHealthReport: Equatable {
     struct MissingAudio: Equatable {
         var songID: UUID
@@ -39,6 +46,20 @@ struct LibraryHealthReport: Equatable {
         var title: String
         var artist: String
         var songIDs: [UUID]
+    }
+    /// Derselbe Song mehrfach in einer Playlist (doppelte Eintraege, nicht Versionen).
+    struct PlaylistDuplicate: Equatable {
+        struct SongCount: Equatable {
+            var songID: UUID
+            var title: String
+            /// Zusaetzliche Kopien neben dem ersten Eintrag.
+            var extraCount: Int
+        }
+        var playlistID: UUID
+        var playlistName: String
+        var songs: [SongCount]
+        /// Wie viele Eintraege der Fix entfernen wuerde.
+        var removedCount: Int { songs.map(\.extraCount).reduce(0, +) }
     }
 
     /// Album mit doppelten oder fehlenden Track-Nummern ("Track 3 fehlt"); `songIDs` in Album-Reihenfolge.
@@ -76,6 +97,8 @@ struct LibraryHealthReport: Equatable {
     /// Songs mit gleichem Basis-Titel ("Song", "Song (Demo)"): vermutlich Versionen desselben Songs. Reiner Hinweis, kein Fehler.
     var similar: [DuplicateGroup] = []
     var trackIssues: [TrackIssue] = []
+    /// Playlists mit doppelten Eintraegen desselben Songs.
+    var playlistDuplicates: [PlaylistDuplicate] = []
 
     /// Stabiler Schluessel einer Gruppe, damit "Ignorieren" ueber Starts hinweg haelt.
     static func groupKey(_ ids: [UUID]) -> String { ids.map(\.uuidString).sorted().joined(separator: "+") }
@@ -87,6 +110,7 @@ struct LibraryHealthReport: Equatable {
     var isHealthy: Bool {
         missingAudio.isEmpty && emptySongIDs.isEmpty && brokenArtworkVersionIDs.isEmpty
             && orphanAudioFiles.isEmpty && orphanArtworkFiles.isEmpty && duplicates.isEmpty && trackIssues.isEmpty
+            && playlistDuplicates.isEmpty
     }
     var orphanCount: Int { orphanAudioFiles.count + orphanArtworkFiles.count }
 }
@@ -99,7 +123,7 @@ enum LibraryHealth {
         return ["mp3", "m4a", "aac", "wav", "aif", "aiff", "caf", "flac"].contains(ext)
     }
 
-    static func analyze(songs: [HealthSong], files: LibraryFilesSnapshot) -> LibraryHealthReport {
+    static func analyze(songs: [HealthSong], files: LibraryFilesSnapshot, playlists: [HealthPlaylist] = []) -> LibraryHealthReport {
         var report = LibraryHealthReport()
         var referencedAudio = Set<String>()
         var referencedArtwork = Set<String>()
@@ -121,13 +145,7 @@ enum LibraryHealth {
         report.orphanBytes = report.orphanAudioFiles.reduce(0) { $0 + (files.audio[$1] ?? 0) }
             + report.orphanArtworkFiles.reduce(0) { $0 + (files.artwork[$1] ?? 0) }
 
-        var groups: [String: [HealthSong]] = [:]
-        for song in songs where !song.title.trimmingCharacters(in: .whitespaces).isEmpty {
-            groups[SongSearch.fold(song.title) + "\u{1F}" + SongSearch.fold(song.artist), default: []].append(song)
-        }
-        report.duplicates = groups.values.filter { $0.count > 1 }
-            .map { LibraryHealthReport.DuplicateGroup(title: $0[0].title, artist: $0[0].artist, songIDs: $0.map(\.id)) }
-            .sorted { $0.title.localizedStandardCompare($1.title) == .orderedAscending }
+        report.duplicates = duplicateGroups(in: songs)
 
         let byID = Dictionary(songs.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         let candidates = songs.map { TitleCandidate(id: $0.id, title: $0.title, artist: $0.artist) }
@@ -139,7 +157,56 @@ enum LibraryHealth {
         }
         .sorted { $0.title.localizedStandardCompare($1.title) == .orderedAscending }
         report.trackIssues = trackIssues(in: songs)
+        report.playlistDuplicates = playlistDuplicates(in: playlists, songs: songs)
         return report
+    }
+
+    /// Exakte Dubletten: gleicher gefalteter Titel + Kuenstler, nach Titel sortiert.
+    /// Songs ohne Titel zaehlen nie als Dublette (leerer Titel ist kein Titel).
+    static func duplicateGroups(in songs: [HealthSong]) -> [LibraryHealthReport.DuplicateGroup] {
+        var groups: [String: [HealthSong]] = [:]
+        for song in songs where !song.title.trimmingCharacters(in: .whitespaces).isEmpty {
+            groups[SongSearch.fold(song.title) + "\u{1F}" + SongSearch.fold(song.artist), default: []].append(song)
+        }
+        return groups.values.filter { $0.count > 1 }
+            .map { LibraryHealthReport.DuplicateGroup(title: $0[0].title, artist: $0[0].artist, songIDs: $0.map(\.id)) }
+            .sorted { $0.title.localizedStandardCompare($1.title) == .orderedAscending }
+    }
+
+    /// IDs aller Songs, die Teil einer Dubletten-Gruppe sind (fuer die Suche, `duplicates:`).
+    static func duplicateIDs(in songs: [HealthSong]) -> Set<UUID> {
+        Set(duplicateGroups(in: songs).flatMap(\.songIDs))
+    }
+
+    /// Playlists, in denen derselbe Song mehrfach vorkommt. Derselbe Song in
+    /// verschiedenen Playlists ist kein Fund. Pro Playlist eine Gruppe, Songs nach
+    /// Titel sortiert; der Fix behaelt jeweils den ersten Eintrag.
+    static func playlistDuplicates(in playlists: [HealthPlaylist], songs: [HealthSong]) -> [LibraryHealthReport.PlaylistDuplicate] {
+        let byID = Dictionary(songs.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        return playlists.compactMap { playlist in
+            var counts: [UUID: Int] = [:]
+            for id in playlist.songIDs { counts[id, default: 0] += 1 }
+            let dups = counts.filter { $0.value > 1 }.compactMap { id, count -> LibraryHealthReport.PlaylistDuplicate.SongCount? in
+                guard let song = byID[id] else { return nil }
+                return .init(songID: id, title: song.title, extraCount: count - 1)
+            }.sorted { $0.title.localizedStandardCompare($1.title) == .orderedAscending }
+            guard !dups.isEmpty else { return nil }
+            return .init(playlistID: playlist.id, playlistName: playlist.name, songs: dups)
+        }
+        .sorted { $0.playlistName.localizedStandardCompare($1.playlistName) == .orderedAscending }
+    }
+
+    /// Positionen (0-basiert, in Eintragsreihenfolge), die ein Dubletten-Fix
+    /// entfernen wuerde: von jedem Song bleibt nur der erste Eintrag stehen.
+    /// Eintraege ohne Song (nil) zaehlen nie als Dublette.
+    static func duplicateEntryPositions(in songIDs: [UUID?]) -> [Int] {
+        var seen = Set<UUID>()
+        var positions: [Int] = []
+        for (index, id) in songIDs.enumerated() {
+            guard let id else { continue }
+            if seen.contains(id) { positions.append(index) } else { seen.insert(id) }
+        }
+        return positions
     }
 
     /// Alben mit mindestens zwei nummerierten Songs, bei denen Nummern doppelt vorkommen oder Luecken haben.

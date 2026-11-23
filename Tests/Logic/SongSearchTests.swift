@@ -185,7 +185,7 @@ final class SongSearchTests: XCTestCase {
         XCTAssertEqual(SearchCompletion.make(for: "tag:s", songs: extra).map(\.query), ["tag:synth"])
         XCTAssertEqual(SearchCompletion.make(for: "-tag:d", songs: extra).map(\.query), ["-tag:demo"])
         XCTAssertEqual(SearchCompletion.make(for: "era:", songs: extra).map(\.query), ["era:\"Pop Era\"", "era:\"Synth Era\""])
-        XCTAssertEqual(SearchCompletion.make(for: "has:", songs: extra).map(\.query), ["has:notes", "has:markers"])
+        XCTAssertEqual(SearchCompletion.make(for: "has:", songs: extra).map(\.query), ["has:notes", "has:markers", "has:artwork", "has:no-artwork"])
         XCTAssertTrue(SearchCompletion.make(for: "tag:synth", songs: extra).isEmpty, "already complete")
         XCTAssertTrue(SearchCompletion.make(for: "tag:\"late n", songs: extra).isEmpty, "open quote = phrase in progress")
     }
@@ -204,5 +204,44 @@ final class TrackSearchTests: XCTestCase {
         XCTAssertEqual(titles("track:0"), ["Loose"])
         XCTAssertEqual(titles("track:>=2"), ["Three"])
         XCTAssertEqual(titles("-track:0").sorted(), ["One", "Three"])
+    }
+}
+
+final class DuplicateSearchTests: XCTestCase {
+    func testDuplicatesOperatorFiltersByFlag() {
+        let dup = SearchableSong(title: "Same", artist: "Neon", isDuplicate: true)
+        let single = SearchableSong(title: "Other", artist: "Neon")
+        let songs = [dup, single]
+        func ids(_ query: String) -> [UUID] { SongSearch.search(query, in: songs).map(\.id) }
+        XCTAssertEqual(ids("duplicates:yes"), [dup.id])
+        XCTAssertEqual(ids("duplicates:no"), [single.id])
+        XCTAssertEqual(ids("is:duplicate"), [dup.id])
+        XCTAssertEqual(ids("-duplicates:yes"), [single.id])
+        XCTAssertEqual(ids("duplicates:maybe"), [], "unknown value is not a filter")
+        XCTAssertEqual(ids("duplicates:yes neon"), [dup.id], "combines with terms")
+    }
+
+    func testIsPlayedAndIsRated() {
+        let played = SearchableSong(title: "P", playCount: 3, rating: 4)
+        let unplayedRated = SearchableSong(title: "U", playCount: 0, rating: 5)
+        let playedUnrated = SearchableSong(title: "N", playCount: 1, rating: 0)
+        let songs = [played, unplayedRated, playedUnrated]
+        func ids(_ query: String) -> [UUID] { SongSearch.search(query, in: songs).map(\.id) }
+        XCTAssertEqual(Set(ids("is:played")), [played.id, playedUnrated.id])
+        XCTAssertEqual(Set(ids("is:rated")), [played.id, unplayedRated.id])
+        XCTAssertEqual(ids("-is:played"), [unplayedRated.id])
+        XCTAssertEqual(ids("is:played is:rated"), [played.id])
+    }
+
+    func testCompletionSuggestsIsPlayedAndIsRated() {
+        let songs = [SearchableSong(title: "A", playCount: 1, rating: 3)]
+        XCTAssertEqual(SearchCompletion.make(for: "is:", songs: songs).map(\.label).sorted(),
+                       ["duplicate", "fav", "played", "rated", "unplayed", "unrated"])
+    }
+
+    func testCompletionSuggestsDuplicatesOperatorAndValues() {
+        let songs = [SearchableSong(title: "A", isDuplicate: true)]
+        XCTAssertTrue(SearchCompletion.make(for: "du", songs: songs).contains { $0.query == "duplicates:" })
+        XCTAssertEqual(SearchCompletion.make(for: "duplicates:", songs: songs).map(\.label), ["yes", "no"])
     }
 }

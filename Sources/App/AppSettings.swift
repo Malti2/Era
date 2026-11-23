@@ -28,6 +28,9 @@ enum AppSettings {
     static let autoplayKey = "settings.autoplaySimilar"
     static let recentSearchesKey = "search.recents"
     static let savedSearchesKey = "search.saved"
+    /// Einmalige Suchanfrage fuer den Sprung aus dem Bibliotheks-Check (wird beim Erscheinen der Suche gelesen und geloescht).
+    static let pendingSearchQueryKey = "search.pendingQuery"
+    static let weeklyGoalMinutesKey = "stats.weeklyGoalMinutes"
 
     static let skipIntervals = [5, 10, 15, 30]
     static let rates: [Double] = [0.75, 1.0, 1.25, 1.5, 2.0]

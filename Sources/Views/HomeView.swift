@@ -22,6 +22,7 @@ struct HomeView: View {
     @AppStorage(AppSettings.ratingPromptSnoozeKey) private var ratingSnooze = 0.0
     @AppStorage(AppSettings.lastBackupKey) private var lastBackup = 0.0
     @AppStorage(AppSettings.backupSnoozeKey) private var backupSnooze = 0.0
+    @AppStorage(AppSettings.weeklyGoalMinutesKey) private var weeklyGoalMinutes = 0
 
     private var lastPlayed: [Song] {
         songs.filter { $0.lastPlayedAt != nil }.sorted { ($0.lastPlayedAt ?? .distantPast) > ($1.lastPlayedAt ?? .distantPast) }
@@ -29,7 +30,7 @@ struct HomeView: View {
     private var suggestions: [Pack] { packs.filter { !$0.confirmed } }
     private var favorites: [Song] { songs.filter(\.isFavorite) }
     private var shelfSongs: [ShelfSong] {
-        songs.map { ShelfSong(id: $0.id, playCount: $0.playCount, lastPlayedAt: $0.lastPlayedAt, dateAdded: $0.dateAdded, isFavorite: $0.isFavorite, rating: $0.rating) }
+        songs.map { ShelfSong(id: $0.id, playCount: $0.playCount, lastPlayedAt: $0.lastPlayedAt, dateAdded: $0.dateAdded, isFavorite: $0.isFavorite, rating: $0.rating, resumePosition: $0.resumePosition, duration: $0.duration) }
     }
     private func resolveSongs(_ ids: [UUID]) -> [Song] {
         let byID = Dictionary(songs.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
@@ -49,12 +50,33 @@ struct HomeView: View {
         years == 1 ? String(localized: "This Time Last Year") : String(localized: "\(years) Years Ago")
     }
 
+    private func onThisDayTitle(_ years: Int) -> String {
+        years == 1 ? String(localized: "On This Day Last Year") : String(localized: "On This Day, \(years) Years Ago")
+    }
+
+    /// Alle Events als PlayRecords (fuer "On This Day" braucht es auch alte Events,
+    /// nicht nur die letzten zwei Wochen wie der Wochenrueckblick).
+    private var onThisDayRecords: [PlayRecord] {
+        events.map { PlayRecord(date: $0.date, seconds: $0.seconds, title: $0.title, artist: $0.artist, songID: $0.songID) }
+    }
+
     /// Events are sorted newest first, so only the last two weeks need to be mapped.
-    private var weeklyRecap: WeeklyRecap {
+    private var recentRecords: [PlayRecord] {
         let cutoff = Calendar.current.date(byAdding: .day, value: -15, to: Date()) ?? .distantPast
-        let recent = events.prefix { $0.date >= cutoff }
+        return events.prefix { $0.date >= cutoff }
             .map { PlayRecord(date: $0.date, seconds: $0.seconds, title: $0.title, artist: $0.artist) }
-        return WeeklyRecap.make(from: recent)
+    }
+
+    private var weeklyRecap: WeeklyRecap {
+        WeeklyRecap.make(from: recentRecords)
+    }
+
+    /// Zwölf Wochen reichen für den Ziel-Streak; ältere Events braucht das Ziel nicht.
+    private var listeningGoal: ListeningGoal {
+        let cutoff = Calendar.current.date(byAdding: .day, value: -84, to: Date()) ?? .distantPast
+        let records = events.prefix { $0.date >= cutoff }
+            .map { PlayRecord(date: $0.date, seconds: $0.seconds, title: $0.title, artist: $0.artist) }
+        return ListeningGoal.make(minutesPerWeek: weeklyGoalMinutes, from: records)
     }
 
     private func mixTitle(_ kind: MixKind) -> String {
@@ -187,6 +209,24 @@ struct HomeView: View {
                 if let top = recap.topTrack {
                     Text("Top track: \(top.title)").font(.caption).foregroundStyle(.secondary).lineLimit(1)
                 }
+                let goal = listeningGoal
+                if goal.isEnabled {
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 6) {
+                            Text(goalText(goal)).font(.caption).foregroundStyle(.secondary)
+                            Spacer()
+                            if goal.reached {
+                                Label("Goal Reached", systemImage: "checkmark.circle.fill")
+                                    .font(.caption.weight(.semibold)).foregroundStyle(.green)
+                            } else if goal.streak > 0 {
+                                Label(String(format: String(localized: "%lld-week streak"), goal.streak), systemImage: "flame.fill")
+                                    .font(.caption.weight(.semibold)).foregroundStyle(.orange)
+                            }
+                        }
+                        ProgressView(value: goal.progress)
+                            .tint(goal.reached ? .green : .accentColor)
+                    }
+                }
             }
             .padding(14)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -205,6 +245,11 @@ struct HomeView: View {
         case .up(let percent): Text("\(percent)% more than last week").font(.footnote).foregroundStyle(.green)
         case .down(let percent): Text("\(percent)% less than last week").font(.footnote).foregroundStyle(.secondary)
         }
+    }
+
+    private func goalText(_ goal: ListeningGoal) -> String {
+        String(format: String(localized: "%@ of %@ this week"),
+               TimeFormatting.spoken(goal.secondsThisWeek), TimeFormatting.spoken(goal.targetSeconds))
     }
 
     private var backupDue: Bool {
@@ -280,8 +325,13 @@ struct HomeView: View {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 26) {
                             if backupDue { backupCard }
-                            if let resume = lastPlayed.first {
-                                resumeCard(resume)
+                            // Ein Song mit Position = die alte Resume-Karte; ab zwei Songs wird
+                            // daraus ein Regal, damit die Karte nicht denselben Song doppelt zeigt.
+                            let resumed = resolveSongs(HomeShelves.continueListening(shelfSongs, limit: 12))
+                            if resumed.count == 1, let song = resumed.first {
+                                resumeCard(song)
+                            } else if resumed.count >= 2 {
+                                shelf(String(localized: "Continue Listening"), songs: resumed, resumeFromPosition: true)
                             }
                             let ratingList = ratingCandidates
                             if RatingReview.isPromptDue(candidates: ratingList, snoozedUntil: ratingSnooze > 0 ? Date(timeIntervalSince1970: ratingSnooze) : nil) {
@@ -303,6 +353,10 @@ struct HomeView: View {
                             if let throwback = HomeShelves.throwback(shelfSongs) {
                                 let older = resolveSongs(throwback.ids)
                                 if !older.isEmpty { shelf(throwbackTitle(throwback.yearsAgo), songs: older) }
+                            }
+                            if let onThisDay = PlayHistory.onThisDay(onThisDayRecords) {
+                                let heard = resolveSongs(onThisDay.ids)
+                                if !heard.isEmpty { shelf(onThisDayTitle(onThisDay.yearsAgo), songs: heard) }
                             }
                             shelf(String(localized: "Recently Imported"), songs: Array(songs.prefix(10)))
                             if !suggestions.isEmpty { suggestionsRow }
@@ -369,10 +423,16 @@ struct HomeView: View {
         .buttonStyle(.plain)
     }
 
-    private func shelf(_ title: String, songs: [Song], linksToHistory: Bool = false) -> some View {
+    /// Anteil der gehoerten Laenge, 0...1 - nur fuer das Weiterhoeren-Regal.
+    private func resumeProgress(of song: Song) -> Double {
+        guard song.duration > 0 else { return 0 }
+        return min(1, max(0, song.resumePosition / song.duration))
+    }
+
+    private func shelf(_ title: String, songs: [Song], linksToHistory: Bool = false, resumeFromPosition: Bool = false) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline) {
-                Text(title).font(.title2.bold())
+                Text(title).font(.title2.bold()).accessibilityAddTraits(.isHeader)
                 Spacer()
                 if linksToHistory {
                     NavigationLink { HistoryView() } label: {
@@ -388,14 +448,26 @@ struct HomeView: View {
                     ForEach(songs) { song in
                         Button {
                             // The shelf becomes the queue, so playback continues with its next songs.
-                            if let v = song.primaryVersion { player.play(v, from: songs.compactMap(\.primaryVersion)) }
+                            if let v = song.primaryVersion {
+                                player.play(v, from: songs.compactMap(\.primaryVersion))
+                                if resumeFromPosition, song.resumePosition > 10 {
+                                    player.seek(song.resumePosition)
+                                }
+                            }
                         } label: {
                             VStack(alignment: .leading, spacing: 6) {
                                 Artwork(song: song, radius: 12).frame(width: 150, height: 150)
+                                if resumeFromPosition {
+                                    ProgressView(value: resumeProgress(of: song))
+                                        .tint(.accentColor)
+                                        .accessibilityLabel(Text("Listening progress"))
+                                        .accessibilityValue(Text("\(Int(resumeProgress(of: song) * 100))%"))
+                                }
                                 Text(song.title).font(.subheadline.weight(.semibold)).lineLimit(1)
                                 Text(song.displayArtist).font(.caption).foregroundStyle(.secondary).lineLimit(1)
                             }
                             .frame(width: 150, alignment: .leading)
+                            .accessibilityElement(children: .combine)
                         }
                         .buttonStyle(.plain)
                         .contextMenu { SongContextMenu(song: song, showNowPlaying: $showNowPlaying) }

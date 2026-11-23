@@ -10,7 +10,6 @@ struct LibraryToolsView: View {
     @Query private var playlists: [Playlist]
     @State private var shareItem: ShareItem?
     @State private var showRestorePicker = false
-    @State private var showM3UPicker = false
     @State private var report: LibraryHealthReport?
     @State private var alert: ToolAlert?
     @State private var pending: PendingAction?
@@ -30,13 +29,15 @@ struct LibraryToolsView: View {
     }
 
     private enum PendingAction: Identifiable {
-        case removeMissing, deleteOrphans, merge(LibraryHealthReport.DuplicateGroup), mergeSimilar(LibraryHealthReport.DuplicateGroup)
+        case removeMissing, deleteOrphans, merge(LibraryHealthReport.DuplicateGroup), mergeSimilar(LibraryHealthReport.DuplicateGroup),
+             deduplicate(LibraryHealthReport.PlaylistDuplicate)
         var id: String {
             switch self {
             case .removeMissing: "missing"
             case .deleteOrphans: "orphans"
             case .merge(let group): "merge-\(group.songIDs.first?.uuidString ?? "")"
             case .mergeSimilar(let group): "similar-\(group.songIDs.first?.uuidString ?? "")"
+            case .deduplicate(let group): "dedupe-\(group.playlistID.uuidString)"
             }
         }
     }
@@ -69,9 +70,7 @@ struct LibraryToolsView: View {
             }
 
             Section {
-                Button { showM3UPicker = true } label: {
-                    Label("Import Playlist (M3U)", systemImage: "square.and.arrow.down")
-                }
+                M3UImportButton(songs: songs, playlists: playlists)
             } header: {
                 Text("Import")
             } footer: {
@@ -143,12 +142,6 @@ struct LibraryToolsView: View {
                 if let url = urls.first { restore(.success(url)) }
             }, onCancel: { showRestorePicker = false })
         }
-        .sheet(isPresented: $showM3UPicker) {
-            DocumentPicker(contentTypes: m3uTypes, onPicked: { urls in
-                showM3UPicker = false
-                if let url = urls.first { importM3U(url) }
-            }, onCancel: { showM3UPicker = false })
-        }
         .confirmationDialog("Restore this backup?", isPresented: Binding(get: { pendingAutoRestore != nil }, set: { if !$0 { pendingAutoRestore = nil } }), titleVisibility: .visible) {
             Button("Restore") {
                 if let file = pendingAutoRestore { restoreAuto(file) }
@@ -199,10 +192,20 @@ struct LibraryToolsView: View {
                         detail: trackIssueDetail(issue) + "\n" + String(localized: "Renumbering can't fix this — the disc itself is missing. Import the missing disc to complete the album."))
             }
         }
+        ForEach(report.playlistDuplicates, id: \.playlistID) { group in
+            finding(group.playlistName, symbol: "music.note.list", tint: .purple,
+                    detail: playlistDuplicateDetail(group),
+                    action: String(localized: "Remove Duplicates")) { pending = .deduplicate(group) }
+        }
         ForEach(report.duplicates, id: \.songIDs) { group in
             finding(group.title, symbol: "square.on.square", tint: .blue,
                     detail: String(localized: "\(group.songIDs.count) copies") + (group.artist.isEmpty ? "" : " · \(group.artist)"),
                     action: String(localized: "Merge")) { pending = .merge(group) }
+        }
+        if !report.duplicates.isEmpty {
+            Button { showDuplicatesInSearch() } label: {
+                Label("Show Duplicates in Search", systemImage: "magnifyingglass")
+            }
         }
         ForEach(similar, id: \.songIDs) { group in
             finding(group.title, symbol: "rectangle.stack", tint: .teal,
@@ -215,6 +218,13 @@ struct LibraryToolsView: View {
                     Button { ignore(group) } label: { Label("Not the Same Song", systemImage: "eye.slash") }.tint(.gray)
                 }
         }
+    }
+
+    private func playlistDuplicateDetail(_ group: LibraryHealthReport.PlaylistDuplicate) -> String {
+        let names = group.songs.prefix(2).map { "\($0.title) (\($0.extraCount + 1)×)" }
+        var text = names.joined(separator: ", ")
+        if group.songs.count > 2 { text += ", …" }
+        return text + "\n" + String(localized: "\(group.removedCount) duplicate entries")
     }
 
     private func trackIssueDetail(_ issue: LibraryHealthReport.TrackIssue) -> String {
@@ -242,65 +252,6 @@ struct LibraryToolsView: View {
         ignoredSimilarRaw = (ignoredSimilarRaw.isEmpty ? "" : ignoredSimilarRaw + "\n") + key
     }
 
-    // MARK: - M3U-Import
-
-    private var m3uTypes: [UTType] {
-        [UTType(filenameExtension: "m3u") ?? .text, UTType(filenameExtension: "m3u8") ?? .text]
-    }
-
-    private func m3uText(_ url: URL) -> String? {
-        guard let data = try? Data(contentsOf: url) else { return nil }
-        if let text = String(data: data, encoding: .utf8) { return text }
-        return String(data: data, encoding: .isoLatin1)
-    }
-
-    private func importM3U(_ url: URL) {
-        guard let text = m3uText(url) else {
-            alert = ToolAlert(title: String(localized: "Couldn't Read Playlist"),
-                              message: String(localized: "This file doesn't look like a playlist."))
-            return
-        }
-        let entries = PlaylistM3UImport.parse(text)
-        guard !entries.isEmpty else {
-            alert = ToolAlert(title: String(localized: "The playlist is empty."), message: "")
-            return
-        }
-        let library = songs.map { song in
-            PlaylistM3UImport.LibraryTrack(id: song.id, title: song.title, artist: song.artist,
-                                           fileNames: song.versions.map(\.fileName))
-        }
-        let result = PlaylistM3UImport.match(entries, against: library)
-        guard !result.matched.isEmpty else {
-            alert = ToolAlert(title: String(localized: "No Songs Matched"),
-                              message: String(localized: "Not found: \(missingNames(result.unmatched))"))
-            return
-        }
-        let matchedSongs = result.matched.compactMap { id in songs.first { $0.id == id } }
-        let name = uniquePlaylistName(from: url.deletingPathExtension().lastPathComponent)
-        store.createPlaylist(named: name, songs: matchedSongs)
-        var message = String(localized: "Added \(result.matched.count) of \(entries.count) tracks.")
-        if !result.unmatched.isEmpty {
-            message += "\n" + String(localized: "Not found: \(missingNames(result.unmatched))")
-        }
-        alert = ToolAlert(title: String(localized: "Playlist Imported"), message: message)
-    }
-
-    /// "Artist - Titel", max. 5 Eintraege, danach "…".
-    private func missingNames(_ unmatched: [M3UEntry]) -> String {
-        let names = unmatched.prefix(5).map { $0.artist.isEmpty ? $0.title : "\($0.artist) - \($0.title)" }
-        return names.joined(separator: ", ") + (unmatched.count > 5 ? ", …" : "")
-    }
-
-    /// Playlist-Name aus dem Dateinamen; bei Kollision "Name 2", "Name 3", …
-    private func uniquePlaylistName(from raw: String) -> String {
-        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        let name = trimmed.isEmpty ? String(localized: "Imported Playlist") : trimmed
-        guard playlists.contains(where: { $0.name == name }) else { return name }
-        var number = 2
-        while playlists.contains(where: { $0.name == "\(name) \(number)" }) { number += 1 }
-        return "\(name) \(number)"
-    }
-
     private func finding(_ title: String, symbol: String, tint: Color, detail: String = "", action: String? = nil, perform: (() -> Void)? = nil) -> some View {
         HStack(spacing: 12) {
             Image(systemName: symbol).foregroundStyle(tint).frame(width: 26)
@@ -320,6 +271,13 @@ struct LibraryToolsView: View {
 
     private func runCheck() { report = store.healthReport() }
 
+    /// Springt in die Suche mit `duplicates:yes`: Die Suche liest die hinterlegte
+    /// Anfrage beim Erscheinen und loescht sie danach (ein Tab-Wechsel allein uebergibt keine Anfrage).
+    private func showDuplicatesInSearch() {
+        UserDefaults.standard.set("duplicates:yes", forKey: AppSettings.pendingSearchQueryKey)
+        NotificationCenter.default.post(name: .eraSwitchScreen, object: nil, userInfo: ["screen": AppScreen.search.rawValue])
+    }
+
     private func export(_ make: () throws -> URL) {
         do { shareItem = ShareItem(url: try make()) } catch { exportFailed = true }
     }
@@ -331,6 +289,7 @@ struct LibraryToolsView: View {
         case .deleteOrphans: store.deleteOrphans(audio: report.orphanAudioFiles, artwork: report.orphanArtworkFiles)
         case .merge(let group): store.mergeDuplicates(songIDs: group.songIDs)
         case .mergeSimilar(let group): store.mergeSimilar(songIDs: group.songIDs)
+        case .deduplicate(let group): store.deduplicatePlaylist(playlistID: group.playlistID)
         }
         runCheck()
     }
@@ -341,6 +300,7 @@ struct LibraryToolsView: View {
         case .deleteOrphans: String(localized: "Delete Unused Files?")
         case .merge: String(localized: "Merge Duplicates?")
         case .mergeSimilar: String(localized: "Merge as Versions?")
+        case .deduplicate: String(localized: "Remove Duplicates?")
         case nil: ""
         }
     }
@@ -349,6 +309,7 @@ struct LibraryToolsView: View {
         case .removeMissing: String(localized: "Remove")
         case .deleteOrphans: String(localized: "Delete")
         case .merge, .mergeSimilar: String(localized: "Merge")
+        case .deduplicate: String(localized: "Remove")
         case nil: ""
         }
     }
@@ -358,6 +319,7 @@ struct LibraryToolsView: View {
         case .deleteOrphans: String(localized: "Files that no song uses are permanently deleted from this device.")
         case .merge: String(localized: "All copies become versions of one song.")
         case .mergeSimilar: String(localized: "The songs become versions of one song. Each keeps its original title as the version title.")
+        case .deduplicate: String(localized: "Duplicate entries are removed from this playlist. The first entry of each song stays.")
         case nil: ""
         }
     }

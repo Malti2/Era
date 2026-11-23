@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import Charts
 
 // Jahresrueckblick: persoenliche Zusammenfassung eines Jahres aus der lokalen
 // Hoerhistorie, mit teilbarer Karte. Alles bleibt auf dem Geraet.
@@ -11,6 +12,9 @@ struct YearReviewView: View {
     @State private var showCustomRange = false
     @State private var customStart = Date()
     @State private var customEnd = Date()
+    @State private var artistsShowTime = false
+    @State private var tracksShowTime = false
+    @State private var monthsShowTime = false
 
     private var records: [PlayRecord] {
         events.map { PlayRecord(date: $0.date, seconds: $0.seconds, title: $0.title, artist: $0.artist, songID: $0.songID) }
@@ -43,10 +47,21 @@ struct YearReviewView: View {
                     if let comparison {
                         comparisonCard(comparison)
                     }
-                    if !review.topTracks.isEmpty { rankedCard("Top Tracks", rows: review.topTracks.map { ($0.title, artistName($0.artist), $0.plays) }) }
-                    if !review.topArtists.isEmpty { rankedCard("Top Artists", rows: review.topArtists.map { (artistName($0.name), nil, $0.plays) }) }
+                    if !review.monthlySeries.isEmpty { monthSection(review.monthlySeries) }
+                    if !review.topTracks.isEmpty {
+                        rankedCard("Top Tracks",
+                                   rows: (tracksShowTime ? review.topTracksByTime : review.topTracks)
+                                    .map { ($0.title, artistName($0.artist), tracksShowTime ? TimeFormatting.spoken($0.seconds) : "\($0.plays)×") },
+                                   timeToggle: $tracksShowTime)
+                    }
+                    if !review.topArtists.isEmpty {
+                        rankedCard("Top Artists",
+                                   rows: (artistsShowTime ? review.topArtistsByTime : review.topArtists)
+                                    .map { (artistName($0.name), nil, artistsShowTime ? TimeFormatting.spoken($0.seconds) : "\($0.plays)×") },
+                                   timeToggle: $artistsShowTime)
+                    }
                     let albums = topAlbums(in: selectedRange, from: all)
-                    if albums.count > 0 { rankedCard("Top Albums", rows: albums.map { ($0.name, nil, $0.plays) }) }
+                    if albums.count > 0 { rankedCard("Top Albums", rows: albums.map { ($0.name, nil, "\($0.plays)×") }) }
                 }
             }
             .padding()
@@ -220,9 +235,66 @@ struct YearReviewView: View {
         return rows
     }
 
-    private func rankedCard(_ title: LocalizedStringKey, rows: [(String, String?, Int)]) -> some View {
+    private func monthSection(_ series: [StatsCalculator.MonthBucket]) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(title).font(.headline)
+            HStack {
+                Text("Listening by Month").font(.headline)
+                Spacer()
+                Picker("Chart", selection: $monthsShowTime) {
+                    Text("Plays").tag(false)
+                    Text("Time").tag(true)
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 140)
+            }
+            monthChart(series, showsTime: monthsShowTime)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
+    private func monthName(_ date: Date) -> String {
+        date.formatted(.dateTime.month(.abbreviated))
+    }
+
+    private func monthChart(_ series: [StatsCalculator.MonthBucket], showsTime: Bool) -> some View {
+        Chart(series) { bucket in
+            BarMark(
+                x: .value(String(localized: "Month"), bucket.month, unit: .month),
+                y: .value(String(localized: showsTime ? "Time Listened" : "Plays"),
+                          showsTime ? bucket.seconds / 3600 : Double(bucket.plays))
+            )
+            .foregroundStyle(Color.accentColor.gradient)
+            .cornerRadius(4)
+        }
+        .chartYAxis { AxisMarks(position: .leading) }
+        .chartXAxis {
+            AxisMarks(values: .stride(by: .month, count: max(1, series.count / 6))) { value in
+                AxisValueLabel { if let month = value.as(Date.self) { Text(monthName(month)) } }
+            }
+        }
+        .frame(height: 150)
+        .padding(.vertical, 6)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text("Listening by Month"))
+        .accessibilityValue(series.map { "\(monthName($0.month)): \(showsTime ? TimeFormatting.spoken($0.seconds) : "\($0.plays)")" }.joined(separator: ", "))
+    }
+
+    private func rankedCard(_ title: LocalizedStringKey, rows: [(String, String?, String)], timeToggle: Binding<Bool>? = nil) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text(title).font(.headline)
+                Spacer()
+                if let timeToggle {
+                    Picker("Sort", selection: timeToggle) {
+                        Text("Plays").tag(false)
+                        Text("Time").tag(true)
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(width: 140)
+                }
+            }
             ForEach(Array(rows.enumerated()), id: \.offset) { index, row in
                 HStack(spacing: 12) {
                     Text("\(index + 1)").font(.headline.monospacedDigit()).foregroundStyle(.secondary).frame(width: 24)
@@ -231,7 +303,7 @@ struct YearReviewView: View {
                         if let subtitle = row.1 { Text(subtitle).font(.caption).foregroundStyle(.secondary).lineLimit(1) }
                     }
                     Spacer()
-                    Text("\(row.2)×").foregroundStyle(.secondary).monospacedDigit()
+                    Text(row.2).foregroundStyle(.secondary).monospacedDigit()
                 }
                 .accessibilityElement(children: .combine)
             }

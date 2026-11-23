@@ -58,6 +58,26 @@ final class SleepTimerStateTests: XCTestCase {
         timer.cancel()
         XCTAssertFalse(timer.isActive)
     }
+
+    func testExtendAddsMinutesToCountdown() {
+        var timer = SleepTimerState()
+        timer.start(minutes: 5)
+        _ = timer.tick()
+        timer.extend(minutes: 15)
+        XCTAssertEqual(timer.remaining, 299 + 900)
+        timer.extend(minutes: 0)
+        XCTAssertEqual(timer.remaining, 299 + 900, "zero minutes change nothing")
+    }
+
+    func testExtendDoesNothingWithoutCountdown() {
+        var timer = SleepTimerState()
+        timer.extend(minutes: 15)
+        XCTAssertFalse(timer.isActive)
+        timer.startEndOfTrack()
+        timer.extend(minutes: 15)
+        XCTAssertTrue(timer.stopsAtTrackEnd)
+        XCTAssertNil(timer.remaining)
+    }
 }
 
 final class PlaybackSnapshotTests: XCTestCase {

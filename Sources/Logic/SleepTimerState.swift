@@ -31,6 +31,13 @@ struct SleepTimerState: Equatable {
     mutating func startEndOfTrack() { mode = .endOfTrack }
     mutating func cancel() { mode = nil }
 
+    /// Verlaengert einen laufenden Countdown um `minutes` (End-Of-Track und
+    /// inaktiver Timer: nichts zu verlaengern).
+    mutating func extend(minutes: Int) {
+        guard case .countdown(let seconds) = mode, minutes > 0 else { return }
+        mode = .countdown(remaining: seconds + minutes * 60)
+    }
+
     /// Ein Tick (Sekunde). `remainingSeconds` ist die Restzeit des laufenden Titels
     /// und nur im End-Of-Track-Modus relevant: dort blendet der Timer in den letzten
     /// `fadeSeconds` aus, statt abrupt zu stoppen. Der Countdown-Modus ignoriert den Wert.

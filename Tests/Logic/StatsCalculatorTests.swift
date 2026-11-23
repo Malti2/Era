@@ -46,6 +46,28 @@ final class StatsCalculatorTests: XCTestCase {
         XCTAssertEqual(Set(top.map(\.id)).count, 3, "Same title by different artists must have distinct ids")
     }
 
+    func testTopTracksByTimeOrdersBySecondsAndBreaksTiesByPlays() {
+        let day = date(2026, 10, 2)
+        let records = [
+            play("Short", "A", on: day, seconds: 30), play("Short", "A", on: day, seconds: 30),
+            play("Long", "A", on: day, seconds: 500),
+            play("Mid", "A", on: day, seconds: 200), play("Mid", "A", on: day, seconds: 200),
+        ]
+        let top = StatsCalculator.topTracksByTime(records, limit: 3)
+        XCTAssertEqual(top.map(\.title), ["Long", "Mid", "Short"])
+        XCTAssertEqual(top.map(\.seconds), [500, 400, 60])
+        XCTAssertEqual(top.map(\.plays), [1, 2, 2])
+    }
+
+    func testTopTracksByTimeBreaksSecondTiesByPlaysThenTitle() {
+        let day = date(2026, 10, 2)
+        let records = [
+            play("Once", "A", on: day, seconds: 300),
+            play("Twice", "A", on: day, seconds: 150), play("Twice", "A", on: day, seconds: 150),
+        ]
+        XCTAssertEqual(StatsCalculator.topTracksByTime(records, limit: 2).map(\.title), ["Twice", "Once"])
+    }
+
     func testTopArtistsRespectsLimit() {
         let day = date(2026, 10, 2)
         let records = [play("1", "B", on: day), play("2", "B", on: day), play("3", "A", on: day), play("4", "C", on: day)]
@@ -92,5 +114,29 @@ final class StatsCalculatorTests: XCTestCase {
         ]
         XCTAssertEqual(StatsCalculator.averageSecondsPerActiveDay(records, calendar: calendar), 300, accuracy: 0.001)
         XCTAssertEqual(StatsCalculator.averageSecondsPerActiveDay([], calendar: calendar), 0)
+    }
+
+    func testTopArtistsSumListeningTimeAndByTimeReorders() {
+        let day = date(2026, 10, 2)
+        let records = [
+            play("a", "X", on: day, seconds: 100), play("b", "X", on: day, seconds: 50),
+            play("c", "Y", on: day, seconds: 200),
+        ]
+        let byPlays = StatsCalculator.topArtists(records, limit: 5)
+        XCTAssertEqual(byPlays.map(\.name), ["X", "Y"], "two plays beat one")
+        XCTAssertEqual(byPlays.first?.seconds, 150)
+        XCTAssertEqual(byPlays.last?.seconds, 200)
+        XCTAssertEqual(StatsCalculator.topArtistsByTime(records, limit: 5).map(\.name), ["Y", "X"],
+                       "more seconds beat more plays")
+    }
+
+    func testTopArtistsByTimeBreaksTiesByPlaysThenName() {
+        let day = date(2026, 10, 2)
+        let records = [
+            play("a", "B", on: day, seconds: 60), play("b", "B", on: day, seconds: 60),
+            play("c", "A", on: day, seconds: 120),
+            play("d", "C", on: day, seconds: 60),
+        ]
+        XCTAssertEqual(StatsCalculator.topArtistsByTime(records, limit: 5).map(\.name), ["B", "A", "C"])
     }
 }

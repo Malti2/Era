@@ -19,6 +19,7 @@ struct SettingsView: View {
     @AppStorage(AppSettings.crackleVolumeKey) private var crackleVolume = 0.18
     @AppStorage(AppSettings.transitionStyleKey) private var transitionStyle = "off"
     @AppStorage(AppSettings.crossfadeSecondsKey) private var crossfadeSeconds = 6
+    @AppStorage(AppSettings.weeklyGoalMinutesKey) private var weeklyGoalMinutes = 0
 
     @State private var spotlightRebuilt = false
     @State private var showOnboarding = false
@@ -80,6 +81,14 @@ struct SettingsView: View {
                     }
                 }
                 Section("Stats") {
+                    Picker(selection: $weeklyGoalMinutes) {
+                        Text("Off").tag(0)
+                        ForEach(ListeningGoal.presets.filter { $0 > 0 }, id: \.self) { minutes in
+                            Text(TimeFormatting.spoken(Double(minutes) * 60)).tag(minutes)
+                        }
+                    } label: {
+                        Label("Weekly Listening Goal", systemImage: "target")
+                    }
                     NavigationLink {
                         StatsView(showsDoneButton: false)
                     } label: {

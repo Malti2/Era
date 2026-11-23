@@ -10,7 +10,7 @@ struct LibraryInsightsView: View {
 
     private var insights: LibraryInsights {
         LibraryInsights.make(from: songs.map { song in
-            InsightSong(statuses: song.statusTags.map(\.name), era: song.era, dateAdded: song.dateAdded,
+            InsightSong(title: song.title, artist: song.artist, statuses: song.statusTags.map(\.name), era: song.era, dateAdded: song.dateAdded,
                         versionCount: song.versions.count, duration: song.duration, playCount: song.playCount,
                         isFavorite: song.isFavorite, hasNotes: !song.notes.isEmpty,
                         markerCount: song.versions.reduce(0) { $0 + $1.markers.count })
@@ -39,6 +39,9 @@ struct LibraryInsightsView: View {
                     LabeledContent("Not Played Yet", value: "\(insights.neverPlayed)")
                     LabeledContent("Songs with Notes", value: "\(insights.withNotes)")
                     LabeledContent("Markers", value: "\(insights.markers)")
+                    if insights.duplicateSongs > 0 {
+                        LabeledContent("Duplicate Songs", value: "\(insights.duplicateSongs)")
+                    }
                 }
                 ratingSection(RatingStats.make(from: songs.map(\.rating)))
                 if !insights.statuses.isEmpty { statusSection(insights) }

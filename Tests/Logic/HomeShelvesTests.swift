@@ -45,4 +45,19 @@ final class HomeShelvesTests: XCTestCase {
         XCTAssertNil(HomeShelves.throwback([tooFar], now: now, calendar: calendar))
         XCTAssertNil(HomeShelves.throwback([], now: now, calendar: calendar))
     }
+
+    func testContinueListeningNeedsRealPositionAndSortsByLastPlayed() {
+        let first = ShelfSong(playCount: 2, lastPlayedAt: days(1), resumePosition: 120, duration: 240)
+        let second = ShelfSong(playCount: 1, lastPlayedAt: days(3), resumePosition: 60, duration: 200)
+        let tooEarly = ShelfSong(playCount: 1, lastPlayedAt: days(0), resumePosition: 5, duration: 240)
+        let almostDone = ShelfSong(playCount: 1, lastPlayedAt: days(0), resumePosition: 235, duration: 240)
+        let unknownLength = ShelfSong(playCount: 1, lastPlayedAt: days(0), resumePosition: 120, duration: 0)
+        let result = HomeShelves.continueListening([second, tooEarly, almostDone, unknownLength, first])
+        XCTAssertEqual(result, [first.id, second.id])
+    }
+
+    func testContinueListeningHonorsLimit() {
+        let songs = (0..<5).map { ShelfSong(playCount: 1, lastPlayedAt: days(Double($0)), resumePosition: 60, duration: 200) }
+        XCTAssertEqual(HomeShelves.continueListening(songs, limit: 2).count, 2)
+    }
 }

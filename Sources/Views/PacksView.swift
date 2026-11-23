@@ -153,7 +153,8 @@ struct PacksView: View {
 
     func matching(_ pack: Pack) -> [Song] {
         let rule = pack.rule
-        return songs.filter { $0.matches(rule) }
+        let dups = songs.duplicateIDs
+        return songs.filter { $0.matches(rule, duplicateIDs: dups) }
     }
 }
 
@@ -190,7 +191,8 @@ struct PackDetailView: View {
 
     private var matching: [Song] {
         let rule = pack.rule
-        let hits = songs.filter { $0.matches(rule) }
+        let dups = songs.duplicateIDs
+        let hits = songs.filter { $0.matches(rule, duplicateIDs: dups) }
         let byID = Dictionary(hits.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         return sort.ordered(hits.map(\.sortRow)).compactMap { byID[$0] }
     }

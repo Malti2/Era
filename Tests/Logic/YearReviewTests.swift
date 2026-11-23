@@ -142,4 +142,39 @@ final class YearReviewTests: XCTestCase {
         XCTAssertEqual(YearReviewRange.interval(interval(date(2025, 11, 1, 0), date(2026, 3, 1, 0))).title(calendar: calendar), "Nov 2025 – Feb 2026")
         XCTAssertEqual(YearReviewRange.interval(interval(date(2026, 3, 1, 0), date(2026, 4, 1, 0))).title(calendar: calendar), "Mar 2026")
     }
+
+    func testMonthlySeriesCoversTheWholeYearOldestFirst() {
+        let records = [
+            play("a", date(2026, 1, 15), seconds: 100),
+            play("b", date(2026, 6, 10), seconds: 50),
+            play("c", date(2026, 12, 24), seconds: 70),
+            play("old", date(2025, 6, 1), seconds: 999),
+        ]
+        let review = YearReview.make(year: 2026, from: records, calendar: calendar)
+        XCTAssertEqual(review.monthlySeries.count, 12)
+        XCTAssertEqual(review.monthlySeries.first?.month, date(2026, 1, 1, 0))
+        XCTAssertEqual(review.monthlySeries.last?.month, date(2026, 12, 1, 0))
+        XCTAssertEqual(review.monthlySeries.map(\.plays), [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1])
+        XCTAssertEqual(review.monthlySeries.map(\.seconds), [100, 0, 0, 0, 0, 50, 0, 0, 0, 0, 0, 70])
+    }
+
+    func testTopArtistsByTimeIsPartOfTheReview() {
+        let day = date(2026, 5, 2)
+        let records = [
+            play("a", day, artist: "X", seconds: 100), play("b", day, artist: "X", seconds: 50),
+            play("c", day, artist: "Y", seconds: 200),
+        ]
+        let review = YearReview.make(year: 2026, from: records, calendar: calendar)
+        XCTAssertEqual(review.topArtists.map(\.name), ["X", "Y"])
+        XCTAssertEqual(review.topArtistsByTime.map(\.name), ["Y", "X"])
+    }
+
+    func testMonthlySeriesCapsLongRangesAt24Months() {
+        let records = [play("a", date(2024, 1, 5)), play("b", date(2026, 11, 5))]
+        let range = YearReviewRange.interval(DateInterval(start: date(2024, 1, 1, 0), end: date(2026, 12, 1, 0)))
+        let review = YearReview.make(range: range, from: records, calendar: calendar)
+        XCTAssertEqual(review.monthlySeries.count, 24)
+        XCTAssertEqual(review.monthlySeries.first?.month, date(2024, 12, 1, 0))
+        XCTAssertEqual(review.monthlySeries.last?.month, date(2026, 11, 1, 0))
+    }
 }

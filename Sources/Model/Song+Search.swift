@@ -9,7 +9,8 @@ extension Song {
             versionNames: versions.map(\.name), isFavorite: isFavorite, playCount: playCount,
             notes: notes, markerLabels: versions.flatMap { $0.markers.map(\.label).filter { !$0.isEmpty } },
             markerCount: versions.reduce(0) { $0 + $1.markers.count },
-            dateAdded: dateAdded, lastPlayedAt: lastPlayedAt, duration: duration, rating: rating, trackNumber: trackNumber
+            dateAdded: dateAdded, lastPlayedAt: lastPlayedAt, duration: duration, rating: rating, trackNumber: trackNumber,
+            hasArtwork: versions.contains { $0.artworkFile != nil }
         )
     }
 }
@@ -23,6 +24,28 @@ extension Song {
             versionNames: versions.map(\.name), isFavorite: isFavorite, playCount: playCount,
             notes: notes, rating: rating
         )
+    }
+}
+
+extension Song {
+    /// Wie `searchable`, nur mit gesetztem Dubletten-Flag (fuer `duplicates:` in gespeicherten Suchen).
+    func searchableCopy(isDuplicate: Bool) -> SearchableSong {
+        var copy = searchable
+        copy.isDuplicate = isDuplicate
+        return copy
+    }
+}
+
+extension Array where Element == Song {
+    /// IDs der Songs, die Teil einer Dubletten-Gruppe sind (gleicher Titel + Kuenstler, wie im Library Check).
+    var duplicateIDs: Set<UUID> {
+        LibraryHealth.duplicateIDs(in: map { HealthSong(id: $0.id, title: $0.title, artist: $0.artist, versions: []) })
+    }
+
+    /// SearchableSong-Snapshots mit gesetztem Dubletten-Flag - ein Durchlauf statt pro Song neu.
+    var searchables: [SearchableSong] {
+        let dups = duplicateIDs
+        return map { $0.searchableCopy(isDuplicate: dups.contains($0.id)) }
     }
 }
 

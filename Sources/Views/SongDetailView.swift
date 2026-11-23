@@ -20,7 +20,15 @@ struct SongDetailView: View {
     @State private var shareItem: ShareItem?
     @State private var rank: SongRank?
     @State private var similar: [Song] = []
+    @State private var albumSongs: [Song] = []
+    @State private var artistSongs: [Song] = []
     @Query private var playEvents: [PlayEvent]
+    @Query private var playlists: [Playlist]
+
+    /// Playlists, die diesen Song enthalten.
+    private var containingPlaylists: [Playlist] {
+        playlists.filter { $0.entries.contains { $0.song?.id == song.id } }
+    }
 
     init(song: Song, showNowPlaying: Binding<Bool>) {
         self.song = song
@@ -111,6 +119,46 @@ struct SongDetailView: View {
                     FlowTags(tags: song.personalTags)
                 }
             }
+
+            if !containingPlaylists.isEmpty {
+                Section("In Playlists") {
+                    ForEach(containingPlaylists) { playlist in
+                        NavigationLink {
+                            PlaylistDetailView(playlist: playlist, showNowPlaying: $showNowPlaying)
+                        } label: {
+                            HStack(spacing: 14) {
+                                PlaylistMosaic(playlist: playlist)
+                                    .scaledSquare(44)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(playlist.name)
+                                    Text("\(playlist.entries.count) tracks")
+                                        .font(.caption).foregroundStyle(.secondary)
+                                }
+                            }
+                            .padding(.vertical, 2)
+                        }
+                    }
+                }
+            }
+
+            if !albumSongs.isEmpty || artistSongs.count > 1 {
+                Section("Go to") {
+                    if !albumSongs.isEmpty {
+                        NavigationLink {
+                            CollectionDetailView(title: song.album, songs: albumSongs, kind: .album, showNowPlaying: $showNowPlaying)
+                        } label: {
+                            Label(song.album, systemImage: "square.stack")
+                        }
+                    }
+                    if artistSongs.count > 1 {
+                        NavigationLink {
+                            CollectionDetailView(title: song.artist, songs: artistSongs, kind: .artist, showNowPlaying: $showNowPlaying)
+                        } label: {
+                            Label(String(localized: "More from \(song.artist)"), systemImage: "person")
+                        }
+                    }
+                }
+            }
         }
         .navigationTitle(song.title)
         .navigationBarTitleDisplayMode(.inline)
@@ -126,7 +174,7 @@ struct SongDetailView: View {
         }
         .sheet(isPresented: $showNotes) { SongNotesView(song: song) }
         .task(id: song.playCount) { loadRank() }
-        .task(id: song.id) { loadSimilar() }
+        .task(id: song.id) { loadSimilar(); loadSiblings() }
         .alert("Versionsname", isPresented: Binding(get: { versionToRename != nil }, set: { if !$0 { versionToRename = nil } })) {
             TextField("Name", text: $renameText)
             Button("Save") { if let version = versionToRename { store.renameVersion(version, to: renameText) }; versionToRename = nil }
@@ -139,6 +187,13 @@ struct SongDetailView: View {
         let byID = Dictionary(all.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         let ids = SimilarSongs.rank(seed: song.similarityProfile, in: all.map(\.similarityProfile), limit: 5)
         similar = ids.compactMap { byID[$0] }.filter { $0.primaryVersion != nil }
+    }
+
+    /// Album- und Kuenstler-Nachbarn fuer die "Go to"-Links (gleicher Album-Name bzw. Kuenstler wie in der Library-Gruppierung).
+    private func loadSiblings() {
+        guard let all = try? store.allSongs() else { return }
+        if !song.album.isEmpty { albumSongs = all.filter { $0.album == song.album } }
+        if !song.artist.isEmpty { artistSongs = all.filter { $0.artist == song.artist } }
     }
 
     @ViewBuilder private var listeningSection: some View {

@@ -16,6 +16,64 @@ final class PlayHistoryTests: XCTestCase {
         HistoryEntry(date: when, seconds: seconds, title: title, artist: artist, songID: song)
     }
 
+    private func dated(_ year: Int, _ month: Int, _ day: Int, _ hour: Int = 12) -> Date {
+        calendar.date(from: DateComponents(year: year, month: month, day: day, hour: hour))!
+    }
+
+    private func record(_ when: Date, song: UUID, seconds: Double = 100) -> PlayRecord {
+        PlayRecord(date: when, seconds: seconds, title: "t", artist: "a", songID: song)
+    }
+
+    func testOnThisDayFindsYoungestYearWithHits() {
+        let a = UUID(), b = UUID(), c = UUID()
+        let records = [
+            record(dated(2025, 11, 22, 9), song: a),
+            record(dated(2025, 11, 22, 10), song: a),
+            record(dated(2025, 11, 22, 11), song: b),
+            record(dated(2024, 11, 22, 9), song: c),
+            record(dated(2025, 11, 21, 9), song: c),
+        ]
+        let found = PlayHistory.onThisDay(records, now: dated(2026, 11, 22), calendar: calendar)
+        XCTAssertEqual(found?.yearsAgo, 1)
+        XCTAssertEqual(found?.ids, [a, b])
+    }
+
+    func testOnThisDaySkipsEmptyYears() {
+        let a = UUID()
+        let records = [record(dated(2023, 11, 22, 9), song: a)]
+        let found = PlayHistory.onThisDay(records, now: dated(2026, 11, 22), calendar: calendar)
+        XCTAssertEqual(found?.yearsAgo, 3)
+        XCTAssertEqual(found?.ids, [a])
+    }
+
+    func testOnThisDayIgnoresEntriesWithoutSongID() {
+        let records = [PlayRecord(date: dated(2025, 11, 22, 9), seconds: 100, title: "t", artist: "a", songID: nil)]
+        XCTAssertNil(PlayHistory.onThisDay(records, now: dated(2026, 11, 22), calendar: calendar))
+    }
+
+    func testOnThisDayReturnsNilWithoutHits() {
+        let a = UUID()
+        XCTAssertNil(PlayHistory.onThisDay([record(dated(2025, 5, 3), song: a)], now: dated(2026, 11, 22), calendar: calendar))
+        XCTAssertNil(PlayHistory.onThisDay([], now: dated(2026, 11, 22), calendar: calendar))
+    }
+
+    func testOnThisDayOrdersByLatestPlayOnTie() {
+        let a = UUID(), b = UUID()
+        let records = [
+            record(dated(2025, 11, 22, 9), song: a),
+            record(dated(2025, 11, 22, 18), song: b),
+        ]
+        let found = PlayHistory.onThisDay(records, now: dated(2026, 11, 22), calendar: calendar)
+        XCTAssertEqual(found?.ids, [b, a])
+    }
+
+    func testOnThisDayRespectsLimit() {
+        let ids = (0..<5).map { _ in UUID() }
+        let records = ids.map { record(dated(2025, 11, 22, 9), song: $0) }
+        let found = PlayHistory.onThisDay(records, now: dated(2026, 11, 22), limit: 3, calendar: calendar)
+        XCTAssertEqual(found?.ids.count, 3)
+    }
+
     func testDaysAreGroupedNewestFirst() {
         let entries = [entry("a", date(3, 1, 9)), entry("b", date(3, 2, 8)), entry("c", date(3, 1, 20)), entry("d", date(3, 2, 22))]
         let days = PlayHistory.days(entries, calendar: calendar)

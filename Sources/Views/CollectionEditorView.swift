@@ -19,7 +19,10 @@ struct CollectionEditorView: View {
     @State private var rule = CollectionRule()
 
     private var tagNames: [UUID: String] { Dictionary(tags.map { ($0.id, $0.name) }, uniquingKeysWith: { first, _ in first }) }
-    private var matchCount: Int { songs.filter { $0.matches(rule) }.count }
+    private var matchCount: Int {
+        let dups = songs.duplicateIDs
+        return songs.filter { $0.matches(rule, duplicateIDs: dups) }.count
+    }
     private var otherNames: [String] { packs.filter { $0.id != pack?.id }.map(\.name) }
     private var nameCheck: CollectionName.Check { CollectionName.validate(name, existing: otherNames) }
     private var canSave: Bool {

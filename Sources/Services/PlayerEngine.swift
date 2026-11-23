@@ -600,6 +600,11 @@ final class PlayerEngine: NSObject, ObservableObject, AVAudioPlayerDelegate {
         audio?.volume = 1
     }
 
+    /// Haengt `minutes` an einen laufenden Countdown an (End-Of-Track: nichts).
+    func extendSleep(minutes: Int) {
+        sleepTimer.extend(minutes: minutes)
+    }
+
     private func handleSleepTick() {
         switch sleepTimer.tick() {
         case .none:

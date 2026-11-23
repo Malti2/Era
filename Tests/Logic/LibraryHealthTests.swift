@@ -159,4 +159,54 @@ final class LibraryHealthTests: XCTestCase {
         // Disc 1 hat nur Track 1 und 2 - kein Fund; Disc 2 allein reicht nicht.
         XCTAssertTrue(report.trackIssues.isEmpty)
     }
+
+    func testPlaylistDuplicatesAreReportedPerPlaylist() {
+        let a = song("A", versions: [("a.m4a", nil)])
+        let b = song("B", versions: [("b.m4a", nil)])
+        let playlists = [
+            HealthPlaylist(id: UUID(), name: "Mix", songIDs: [a.id, b.id, a.id, a.id]),
+            HealthPlaylist(id: UUID(), name: "Clean", songIDs: [a.id, b.id]),
+        ]
+        let report = LibraryHealth.analyze(songs: [a, b], files: files(for: [a, b]), playlists: playlists)
+        XCTAssertEqual(report.playlistDuplicates.count, 1)
+        XCTAssertEqual(report.playlistDuplicates[0].playlistName, "Mix")
+        XCTAssertEqual(report.playlistDuplicates[0].songs, [.init(songID: a.id, title: "A", extraCount: 2)])
+        XCTAssertEqual(report.playlistDuplicates[0].removedCount, 2)
+        XCTAssertFalse(report.isHealthy)
+    }
+
+    func testSameSongInDifferentPlaylistsIsNotADuplicate() {
+        let a = song("A", versions: [("a.m4a", nil)])
+        let playlists = [
+            HealthPlaylist(id: UUID(), name: "One", songIDs: [a.id]),
+            HealthPlaylist(id: UUID(), name: "Two", songIDs: [a.id]),
+        ]
+        let report = LibraryHealth.analyze(songs: [a], files: files(for: [a]), playlists: playlists)
+        XCTAssertTrue(report.playlistDuplicates.isEmpty)
+        XCTAssertTrue(report.isHealthy)
+    }
+
+    func testDuplicateEntryPositionsKeepsFirstOccurrence() {
+        let a = UUID(), b = UUID()
+        XCTAssertEqual(LibraryHealth.duplicateEntryPositions(in: [a, b, a, a, b]), [2, 3, 4])
+        XCTAssertEqual(LibraryHealth.duplicateEntryPositions(in: [a, b]), [])
+        XCTAssertEqual(LibraryHealth.duplicateEntryPositions(in: [nil, a, nil, a]), [3])
+    }
+
+    func testDuplicateGroupsAndIDsAreSharedWithSearch() {
+        let one = song("Same", artist: "Neon", versions: [("1.m4a", nil)])
+        let two = song("same", artist: "neon", versions: [("2.m4a", nil)])
+        let other = song("Other", artist: "Neon", versions: [("3.m4a", nil)])
+        let groups = LibraryHealth.duplicateGroups(in: [one, two, other])
+        XCTAssertEqual(groups.count, 1)
+        XCTAssertEqual(Set(groups[0].songIDs), [one.id, two.id])
+        XCTAssertEqual(LibraryHealth.duplicateIDs(in: [one, two, other]), [one.id, two.id])
+        XCTAssertTrue(LibraryHealth.duplicateIDs(in: [other]).isEmpty)
+    }
+
+    func testDuplicateGroupsSkipUntitledSongs() {
+        let a = song("", artist: "Neon", versions: [("1.m4a", nil)])
+        let b = song("  ", artist: "Neon", versions: [("2.m4a", nil)])
+        XCTAssertTrue(LibraryHealth.duplicateGroups(in: [a, b]).isEmpty)
+    }
 }

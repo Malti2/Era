@@ -43,7 +43,31 @@ extension EraStore {
                 HealthVersion(id: $0.id, name: $0.name, fileName: $0.fileName, artworkFile: $0.artworkFile)
             }, album: song.album, trackNumber: song.trackNumber, discNumber: song.discNumber)
         }
-        return LibraryHealth.analyze(songs: songs, files: LibraryFiles.snapshot())
+        let playlists = ((try? allPlaylists()) ?? []).map { playlist in
+            HealthPlaylist(id: playlist.id, name: playlist.name,
+                           songIDs: playlist.sortedEntries.compactMap { $0.song?.id })
+        }
+        return LibraryHealth.analyze(songs: songs, files: LibraryFiles.snapshot(), playlists: playlists)
+    }
+
+    /// Entfernt doppelte Eintraege aus einer Playlist (der erste Eintrag je Song
+    /// bleibt stehen). Gibt die Anzahl entfernter Eintraege zurueck.
+    @discardableResult
+    func deduplicatePlaylist(playlistID: UUID) -> Int {
+        guard let playlist = ((try? allPlaylists()) ?? []).first(where: { $0.id == playlistID }) else { return 0 }
+        let playlist = resolve(playlist)
+        let ordered = playlist.sortedEntries
+        let positions = Set(LibraryHealth.duplicateEntryPositions(in: ordered.map { $0.song?.id }))
+        guard !positions.isEmpty else { return 0 }
+        var removed = 0
+        for (index, entry) in ordered.enumerated() where positions.contains(index) {
+            playlist.entries.removeAll { $0.id == entry.id }
+            context.delete(resolve(entry))
+            removed += 1
+        }
+        for (index, rest) in playlist.sortedEntries.enumerated() { rest.position = index }
+        save()
+        return removed
     }
 
     /// Nummeriert ein Album lueckenlos in seiner aktuellen Reihenfolge neu (loest doppelte Nummern und Luecken).

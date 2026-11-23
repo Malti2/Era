@@ -28,12 +28,11 @@ struct NavigationCommands: Commands {
         }
     }
 
-    /// Wechselt zur Bibliothek und loest die Aktion erst aus, wenn deren View sichtbar ist.
+    /// Wechselt zur Bibliothek und loest die Aktion sofort aus: Der Observer sitzt in
+    /// ContentView und lebt immer, es gibt keine Wartezeit mehr auf den Tab-Wechsel.
     private func libraryAction(_ name: Notification.Name) {
         show(.library)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-            NotificationCenter.default.post(name: name, object: nil)
-        }
+        NotificationCenter.default.post(name: name, object: nil)
     }
 }
 

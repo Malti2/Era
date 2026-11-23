@@ -23,6 +23,7 @@ struct LibraryView: View {
     @EnvironmentObject private var player: PlayerEngine
     @EnvironmentObject private var importer: ImportManager
     @EnvironmentObject private var playlistPicker: PlaylistPickerCoordinator
+    @EnvironmentObject private var libraryActions: LibraryActionCoordinator
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Song.dateAdded, order: .reverse) private var songs: [Song]
     @Query private var playlists: [Playlist]
@@ -31,11 +32,10 @@ struct LibraryView: View {
     @AppStorage(AppSettings.librarySectionKey) private var sectionRaw = LibrarySection.songs.rawValue
     @AppStorage(AppSettings.librarySortKey) private var sortRaw = LibrarySort.recent.rawValue
     @AppStorage(AppSettings.libraryFilterKey) private var filterRaw = ""
-    @State private var showImporter = false
     @State private var showFolderImporter = false
     @State private var showSettings = false
     @State private var newPlaylistName = ""
-    @State private var showNewPlaylist = false
+    @State private var pickerTestPending = false
     @State private var demoSongSheet = false
     @State private var demoPlaylistSheet = false
     @State private var demoSectionOnly = false
@@ -52,7 +52,7 @@ struct LibraryView: View {
         _showNowPlaying = showNowPlaying
         let args = ProcessInfo.processInfo.arguments
         if args.contains("--era-settings") { _showSettings = State(initialValue: true) }
-        if args.contains("--era-picker-test") { _showImporter = State(initialValue: true) }
+        if args.contains("--era-picker-test") { _pickerTestPending = State(initialValue: true) }
         if args.contains("--era-playlists") { _sectionRaw = AppStorage(wrappedValue: LibrarySection.playlists.rawValue, AppSettings.librarySectionKey); _demoSectionOnly = State(initialValue: true) }
         if args.contains("--era-song") { _demoSongSheet = State(initialValue: true) }
         if args.contains("--era-playlist") { _demoPlaylistSheet = State(initialValue: true) }
@@ -86,7 +86,7 @@ struct LibraryView: View {
                 } else {
                     ToolbarItem(placement: .topBarTrailing) {
                         Menu {
-                            Button { showImporter = true } label: { Label("Files", systemImage: "doc.on.doc") }
+                            Button { libraryActions.showImporter = true } label: { Label("Files", systemImage: "doc.on.doc") }
                             Button { showFolderImporter = true } label: { Label("Folder", systemImage: "folder") }
                             Button { importer.showMassImport = true } label: { Label("Files with Review", systemImage: "checklist") }
                         } label: { Label("Import Music", systemImage: "square.and.arrow.down") }
@@ -118,13 +118,19 @@ struct LibraryView: View {
             .navigationBarTitleDisplayMode(selecting ? .inline : .automatic)
             .toolbar(selecting ? .hidden : .automatic, for: .tabBar)
             .onChange(of: songs.count) { _, _ in selection.prune(to: Set(songs.map(\.id))) }
-            .onReceive(NotificationCenter.default.publisher(for: .eraImportMusic)) { _ in showImporter = true }
-            .onReceive(NotificationCenter.default.publisher(for: .eraNewPlaylist)) { _ in
-                sectionRaw = LibrarySection.playlists.rawValue
-                Task { @MainActor in
-                    try? await Task.sleep(nanoseconds: 300_000_000)
-                    showNewPlaylist = true
+            .onAppear {
+                // Screenshot-Modus: Datei-Import einmalig oeffnen (sonst wuerde er bei jedem Tab-Wechsel wieder aufpoppen).
+                if pickerTestPending { pickerTestPending = false; libraryActions.showImporter = true }
+            }
+            // Alert auf Library-Ebene statt in der Playlists-Sektion: sonst verpufft
+            // Cmd+N bei leerer Bibliothek, weil die Sektion dann gar nicht existiert.
+            .alert("New Playlist", isPresented: $libraryActions.showNewPlaylist) {
+                TextField("Name", text: $newPlaylistName)
+                Button("Erstellen") {
+                    store.createPlaylist(named: newPlaylistName)
+                    newPlaylistName = ""
                 }
+                Button("Cancel", role: .cancel) { newPlaylistName = "" }
             }
             .sheet(isPresented: $showBulkTags) { BulkTagSheet(songs: selectedSongs) }
             .confirmationDialog("Delete Songs?", isPresented: $confirmBulkDelete, titleVisibility: .visible) {
@@ -149,12 +155,12 @@ struct LibraryView: View {
                     }
                 }
             }
-            .sheet(isPresented: $showImporter) {
+            .sheet(isPresented: $libraryActions.showImporter) {
                 DocumentPicker(contentTypes: ImportManager.importableTypes) { urls in
-                    showImporter = false
+                    libraryActions.showImporter = false
                     guard !urls.isEmpty else { noFilesNotice(); return }
                     Task { await importer.importFiles(urls, into: store) }
-                } onCancel: { showImporter = false }
+                } onCancel: { libraryActions.showImporter = false }
             }
             .sheet(isPresented: $showFolderImporter) {
                 DocumentPicker(contentTypes: [.folder], asCopy: false) { urls in
@@ -534,20 +540,13 @@ struct LibraryView: View {
                     Button("Delete Playlist", systemImage: "trash", role: .destructive) { playlistToDelete = playlist }
                 }
             }
-            Button { showNewPlaylist = true } label: { Label("New Playlist", systemImage: "plus") }
+            Button { libraryActions.showNewPlaylist = true } label: { Label("New Playlist", systemImage: "plus") }
+            M3UImportButton(songs: songs, playlists: playlists)
             if IntelligenceService.isAvailable || demoForceSmartPlaylist {
                 Button { showSmartPlaylist = true } label: {
                     Label("Smart Playlist", systemImage: "sparkles")
                 }
             }
-        }
-        .alert("New Playlist", isPresented: $showNewPlaylist) {
-            TextField("Name", text: $newPlaylistName)
-            Button("Erstellen") {
-                store.createPlaylist(named: newPlaylistName)
-                newPlaylistName = ""
-            }
-            Button("Cancel", role: .cancel) { newPlaylistName = "" }
         }
     }
 
@@ -586,7 +585,7 @@ struct LibraryView: View {
         } description: {
             Text("Import MP3, M4A, WAV, FLAC, and more from the Files app.")
         } actions: {
-            Button { showImporter = true } label: { Label("Import Songs", systemImage: "square.and.arrow.down") }
+            Button { libraryActions.showImporter = true } label: { Label("Import Songs", systemImage: "square.and.arrow.down") }
                 .eraProminentButton()
         }
     }
@@ -655,6 +654,18 @@ struct SongListView: View {
                             Button { song.isFavorite.toggle(); store.save() } label: {
                                 Label("Favorite", systemImage: song.isFavorite ? "heart.slash" : "heart.fill")
                             }.tint(.pink)
+                            if song.rating < 5 {
+                                Button { song.rating = 5; store.save() } label: {
+                                    Label("5 Stars", systemImage: "star.fill")
+                                }.tint(.yellow)
+                            }
+                        }
+                        .swipeActions {
+                            if song.rating > 0 {
+                                Button { song.rating = 0; store.save() } label: {
+                                    Label("Clear Rating", systemImage: "star.slash")
+                                }.tint(.gray)
+                            }
                         }
                         .contextMenu { SongContextMenu(song: song, showNowPlaying: $showNowPlaying) }
                     }
@@ -736,37 +747,46 @@ struct CollectionDetailView: View {
     }
 
     var body: some View {
-        ScrollView {
-            LazyVStack(spacing: 0) {
+        // List statt ScrollView/LazyVStack, damit die Zeilen Swipe-Aktionen
+        // (Favorit, 5 Sterne, Bewertung loeschen) bekommen wie in der Song-Liste.
+        List {
+            Section {
                 header
-                Divider().padding(.horizontal, 18)
-                if songs.isEmpty {
+                    .listRowInsets(EdgeInsets())
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+            }
+            if songs.isEmpty {
+                Section {
                     ContentUnavailableView {
                         Label("No Songs Here", systemImage: "music.note")
                     } description: {
                         Text("This collection is empty.")
                     }
                     .padding(.top, 40)
-                } else if discSections.isEmpty {
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+                }
+            } else if discSections.isEmpty {
+                Section {
                     ForEach(Array(songs.enumerated()), id: \.element.id) { index, song in
                         row(index: index, song: song)
-                        Divider().padding(.leading, 54)
+                            .listRowInsets(EdgeInsets())
                     }
-                } else {
-                    // Mehr-CD-Album: Disc-Ueberschriften statt "2-5" vor jeder Nummer.
-                    ForEach(discSections, id: \.disc) { section in
-                        Text("Disc \(section.disc)")
-                            .font(.headline).foregroundStyle(.secondary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.horizontal, 18).padding(.top, 14).padding(.bottom, 4)
+                }
+            } else {
+                // Mehr-CD-Album: Disc-Ueberschriften statt "2-5" vor jeder Nummer.
+                ForEach(discSections, id: \.disc) { section in
+                    Section("Disc \(section.disc)") {
                         ForEach(Array(section.songs.enumerated()), id: \.element.id) { index, song in
                             row(index: index, song: song)
-                            Divider().padding(.leading, 54)
+                                .listRowInsets(EdgeInsets())
                         }
                     }
                 }
             }
         }
+        .listStyle(.plain)
         .navigationTitle(selecting ? selectionTitle : title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -999,6 +1019,23 @@ struct CollectionDetailView: View {
             .contentShape(Rectangle())
             .onTapGesture { if let v = song.primaryVersion { player.play(v, from: songs.compactMap(\.primaryVersion)) } }
             .accessibilityAddTraits(.isButton)
+            .swipeActions(edge: .leading) {
+                Button { song.isFavorite.toggle(); store.save() } label: {
+                    Label("Favorite", systemImage: song.isFavorite ? "heart.slash" : "heart.fill")
+                }.tint(.pink)
+                if song.rating < 5 {
+                    Button { song.rating = 5; store.save() } label: {
+                        Label("5 Stars", systemImage: "star.fill")
+                    }.tint(.yellow)
+                }
+            }
+            .swipeActions {
+                if song.rating > 0 {
+                    Button { song.rating = 0; store.save() } label: {
+                        Label("Clear Rating", systemImage: "star.slash")
+                    }.tint(.gray)
+                }
+            }
             .contextMenu { SongContextMenu(song: song, showNowPlaying: $showNowPlaying) }
         }
     }

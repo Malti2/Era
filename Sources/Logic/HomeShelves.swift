@@ -9,19 +9,37 @@ struct ShelfSong: Equatable {
     var dateAdded: Date
     var isFavorite: Bool
     var rating: Int
+    /// Abspielposition in Sekunden, 0 = von vorn (fuer "Weiterhoeren").
+    var resumePosition: Double
+    /// Songlaenge in Sekunden, 0 = unbekannt.
+    var duration: Double
 
     init(id: UUID = UUID(), playCount: Int = 0, lastPlayedAt: Date? = nil,
-         dateAdded: Date = Date(timeIntervalSince1970: 0), isFavorite: Bool = false, rating: Int = 0) {
+         dateAdded: Date = Date(timeIntervalSince1970: 0), isFavorite: Bool = false, rating: Int = 0,
+         resumePosition: Double = 0, duration: Double = 0) {
         self.id = id
         self.playCount = playCount
         self.lastPlayedAt = lastPlayedAt
         self.dateAdded = dateAdded
         self.isFavorite = isFavorite
         self.rating = rating
+        self.resumePosition = resumePosition
+        self.duration = duration
     }
 }
 
 enum HomeShelves {
+    /// Songs mit einer echten Fortsetz-Position: mehr als 10 s gehoert und nicht fast zu Ende
+    /// (gleiche Schwelle wie die Resume-Karte), zuletzt gespielte zuerst. `duration` 0 =
+    /// unbekannt, dann nie fortsetzbar - eine Position ohne Laenge laesst sich nicht einordnen.
+    static func continueListening(_ songs: [ShelfSong], limit: Int = 12) -> [UUID] {
+        songs
+            .filter { $0.resumePosition > 10 && $0.resumePosition < max(0, $0.duration - 10) }
+            .sorted { ($0.lastPlayedAt ?? .distantPast) > ($1.lastPlayedAt ?? .distantPast) }
+            .prefix(limit)
+            .map(\.id)
+    }
+
     /// Die am besten bewerteten Songs (ab `SongRating.topRatedMinimum` Sternen), bei Gleichstand die oefter gespielten.
     static func topRated(_ songs: [ShelfSong], limit: Int = 20) -> [UUID] {
         songs

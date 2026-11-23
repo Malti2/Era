@@ -67,6 +67,12 @@ struct YearReview: Equatable {
     let newTracks: Int
     let topTracks: [StatsCalculator.TrackCount]
     let topArtists: [StatsCalculator.ArtistCount]
+    /// Top-Tracks nach gehoerter Zeit (gleiche Songs, andere Reihenfolge).
+    var topTracksByTime: [StatsCalculator.TrackCount] = []
+    /// Top-Kuenstler nach gehoerter Zeit (gleiche Songs, andere Reihenfolge).
+    var topArtistsByTime: [StatsCalculator.ArtistCount] = []
+    /// Hoerzeit/Wiedergaben je Monat der Spanne, aelteste zuerst (max. 24 Monate).
+    var monthlySeries: [StatsCalculator.MonthBucket] = []
     let busiestMonth: StatsCalculator.MonthBucket?
     let peakHour: Int?
     /// Index wie `StatsCalculator.weekdayDistribution` (0 = erster Wochentag des Kalenders).
@@ -128,9 +134,23 @@ struct YearReview: Equatable {
             newTracks: newTracks,
             topTracks: StatsCalculator.topTracks(inRange, limit: 5),
             topArtists: StatsCalculator.topArtists(inRange, limit: 5),
+            topTracksByTime: StatsCalculator.topTracksByTime(inRange, limit: 5),
+            topArtistsByTime: StatsCalculator.topArtistsByTime(inRange, limit: 5),
+            monthlySeries: monthlySeries(range: range, records: inRange, calendar: calendar),
             busiestMonth: busiestMonth,
             peakHour: StatsCalculator.peakHour(inRange, calendar: calendar),
             busiestWeekdayIndex: busiestWeekday)
+    }
+
+    /// Monatsverlauf ueber die gewaehlte Spanne, aelteste zuerst. Lange Spannen
+    /// ("All Time") werden auf die letzten 24 Monate begrenzt, damit das Diagramm lesbar bleibt.
+    static func monthlySeries(range: YearReviewRange, records: [PlayRecord], calendar: Calendar = .current) -> [StatsCalculator.MonthBucket] {
+        guard let interval = range.resolve(calendar: calendar) else { return [] }
+        let end = calendar.date(byAdding: .day, value: -1, to: interval.end) ?? interval.end
+        let startMonth = StatsCalculator.monthStart(interval.start, calendar: calendar)
+        let endMonth = StatsCalculator.monthStart(end, calendar: calendar)
+        let span = (calendar.dateComponents([.month], from: startMonth, to: endMonth).month ?? 0) + 1
+        return StatsCalculator.monthlySeries(records, months: max(1, min(24, span)), now: end, calendar: calendar)
     }
 
     /// Laengste Folge aufeinanderfolgender Tage mit mindestens einer Wiedergabe.

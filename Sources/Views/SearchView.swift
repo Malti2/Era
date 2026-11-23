@@ -27,7 +27,7 @@ struct SearchView: View {
 
     var body: some View {
         // Ein Schnappschuss pro Render: Treffer, Vorschlaege und Vervollstaendigung teilen sich ihn (grosse Bibliotheken).
-        let snapshot = songs.map(\.searchable)
+        let snapshot = songs.searchables
         return NavigationStack {
             Group {
                 if query.trimmingCharacters(in: .whitespaces).isEmpty {
@@ -72,7 +72,14 @@ struct SearchView: View {
             .sheet(isPresented: $showHelp) { SearchHelpView { query = $0 } }
             .sheet(isPresented: $showSaveCollection) { CollectionEditorView(pack: nil, initialQuery: query.trimmingCharacters(in: .whitespacesAndNewlines)) }
             .onSubmit(of: .search) { remember(query) }
-            .onAppear { focused = true }
+            .onAppear {
+                focused = true
+                // Sprung aus dem Bibliotheks-Check (Dubletten): hinterlegte Anfrage einmalig uebernehmen.
+                if let pending = UserDefaults.standard.string(forKey: AppSettings.pendingSearchQueryKey), !pending.isEmpty {
+                    UserDefaults.standard.removeObject(forKey: AppSettings.pendingSearchQueryKey)
+                    query = pending
+                }
+            }
         }
     }
 

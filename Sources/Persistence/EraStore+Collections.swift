@@ -25,7 +25,13 @@ extension Pack {
 
 extension Song {
     func matches(_ rule: CollectionRule) -> Bool {
-        rule.matches(tagIDs: Set(tags.map(\.id)), statuses: Set(statusTags.map(\.name)), searchable: { searchable })
+        matches(rule, duplicateIDs: [])
+    }
+
+    /// Wie `matches(_:)`, nur dass `duplicates:` in der gespeicherten Suche greift.
+    func matches(_ rule: CollectionRule, duplicateIDs: Set<UUID>) -> Bool {
+        rule.matches(tagIDs: Set(tags.map(\.id)), statuses: Set(statusTags.map(\.name)),
+                     searchable: { searchableCopy(isDuplicate: duplicateIDs.contains(id)) })
     }
 }
 

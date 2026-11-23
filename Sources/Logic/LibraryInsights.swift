@@ -3,6 +3,8 @@ import Foundation
 // Bibliotheks-Uebersicht: Zahlen, Status-Verteilung, Eras und Zuwachs pro Jahr - reine Logik auf Snapshots.
 
 struct InsightSong: Equatable {
+    var title: String = ""
+    var artist: String = ""
     var statuses: [String]
     var era: String
     var dateAdded: Date
@@ -35,6 +37,10 @@ struct LibraryInsights: Equatable {
     var markers = 0
     /// Songs mit mehr als einer Version
     var multiVersion = 0
+    /// Songs, die Teil einer Dubletten-Gruppe sind (gleicher Titel + Kuenstler)
+    var duplicateSongs = 0
+    /// Dubletten-Gruppen (gleicher Titel + Kuenstler, mindestens zwei Songs)
+    var duplicateGroups = 0
     /// Status -> Anzahl, haeufigste zuerst; Songs ohne Status zaehlen unter `unknownName`
     var statuses: [Entry] = []
     var eras: [Entry] = []
@@ -67,6 +73,14 @@ struct LibraryInsights: Equatable {
         }
         result.statuses = sorted(statusCounts)
         result.eras = Array(sorted(eraCounts).prefix(eraLimit))
+        // Dubletten wie im Library Check: gleicher gefalteter Titel + Kuenstler.
+        var duplicateKeys: [String: Int] = [:]
+        for song in list where !song.title.trimmingCharacters(in: .whitespaces).isEmpty {
+            duplicateKeys[SongSearch.fold(song.title) + "\u{1F}" + SongSearch.fold(song.artist), default: 0] += 1
+        }
+        let groups = duplicateKeys.values.filter { $0 > 1 }
+        result.duplicateGroups = groups.count
+        result.duplicateSongs = groups.reduce(0, +)
         if let first = yearCounts.keys.min(), let last = yearCounts.keys.max() {
             result.addedPerYear = (first...last).map { YearCount(year: $0, count: yearCounts[$0] ?? 0) }
         }

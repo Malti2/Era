@@ -10,7 +10,9 @@ struct ContentView: View {
     @EnvironmentObject private var player: PlayerEngine
     @EnvironmentObject private var store: EraStore
     @EnvironmentObject private var playlistPicker: PlaylistPickerCoordinator
+    @EnvironmentObject private var libraryActions: LibraryActionCoordinator
     @State private var selection: AppScreen = .home
+    @AppStorage(AppSettings.librarySectionKey) private var librarySectionRaw = LibrarySection.songs.rawValue
     @State private var showNowPlaying = false
     @State private var showOnboarding = false
     @State private var showStats = false
@@ -78,6 +80,18 @@ struct ContentView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .eraSwitchScreen)) { note in
             if let raw = note.userInfo?["screen"] as? String, let screen = AppScreen(rawValue: raw) { selection = screen }
+        }
+        // Cmd+O / Cmd+N: Observer leben hier (ContentView ist immer gemountet), nicht erst
+        // in LibraryView - der Import und der Playlist-Dialog greifen sofort, auch wenn
+        // die Library in der Session noch nie offen war.
+        .onReceive(NotificationCenter.default.publisher(for: .eraImportMusic)) { _ in
+            selection = .library
+            libraryActions.requestImport()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .eraNewPlaylist)) { _ in
+            selection = .library
+            librarySectionRaw = LibrarySection.playlists.rawValue
+            libraryActions.requestNewPlaylist()
         }
         .onOpenURL { url in
             guard url.scheme == "era" else { return }

@@ -10,6 +10,9 @@ struct StatsView: View {
     var showsDoneButton = true
     @State private var period: StatsCalculator.Period = .month
     @State private var dimension: ListeningDimension = .status
+    @State private var chartShowsTime = false
+    @State private var artistsShowTime = false
+    @State private var tracksShowTime = false
 
     private var records: [PlayRecord] {
         events.map { PlayRecord(date: $0.date, seconds: $0.seconds, title: $0.title, artist: $0.artist, songID: $0.songID) }
@@ -47,7 +50,12 @@ struct StatsView: View {
                     NavigationLink { HistoryView() } label: { Label("History", systemImage: "clock.arrow.circlepath") }
                 }
                 Section("Last 6 Months") {
-                    activityChart(StatsCalculator.monthlySeries(all, months: 6))
+                    Picker("Chart", selection: $chartShowsTime) {
+                        Text("Plays").tag(false)
+                        Text("Time").tag(true)
+                    }
+                    .pickerStyle(.segmented)
+                    activityChart(StatsCalculator.monthlySeries(all, months: 6), showsTime: chartShowsTime)
                 }
                 Section {
                     Picker("Period", selection: $period) {
@@ -65,9 +73,14 @@ struct StatsView: View {
                 }
                 if !scoped.isEmpty { patternSection(scoped) }
                 if !scoped.isEmpty { breakdownSection(scoped) }
-                let tracks = StatsCalculator.topTracks(scoped, limit: 10)
+                let tracks = tracksShowTime ? StatsCalculator.topTracksByTime(scoped, limit: 10) : StatsCalculator.topTracks(scoped, limit: 10)
                 if !tracks.isEmpty {
                     Section("Top Tracks") {
+                        Picker("Sort", selection: $tracksShowTime) {
+                            Text("Plays").tag(false)
+                            Text("Time").tag(true)
+                        }
+                        .pickerStyle(.segmented)
                         ForEach(Array(tracks.enumerated()), id: \.element.id) { index, track in
                             HStack {
                                 Text("\(index + 1)")
@@ -79,17 +92,22 @@ struct StatsView: View {
                                     Text(artistName(track.artist)).font(.caption).foregroundStyle(.secondary).lineLimit(1)
                                 }
                                 Spacer()
-                                Text("\(track.plays)×").foregroundStyle(.secondary)
+                                Text(tracksShowTime ? TimeFormatting.spoken(track.seconds) : "\(track.plays)×").foregroundStyle(.secondary)
                             }
                             .accessibilityElement(children: .combine)
                         }
                     }
                 }
-                let artists = StatsCalculator.topArtists(scoped, limit: 5)
+                let artists = artistsShowTime ? StatsCalculator.topArtistsByTime(scoped, limit: 5) : StatsCalculator.topArtists(scoped, limit: 5)
                 if !artists.isEmpty {
                     Section("Top Artists") {
+                        Picker("Sort", selection: $artistsShowTime) {
+                            Text("Plays").tag(false)
+                            Text("Time").tag(true)
+                        }
+                        .pickerStyle(.segmented)
                         ForEach(artists) { artist in
-                            LabeledContent(artistName(artist.name), value: "\(artist.plays)×")
+                            LabeledContent(artistName(artist.name), value: artistsShowTime ? TimeFormatting.spoken(artist.seconds) : "\(artist.plays)×")
                         }
                     }
                 }
@@ -195,11 +213,12 @@ struct StatsView: View {
         }
     }
 
-    private func activityChart(_ series: [StatsCalculator.MonthBucket]) -> some View {
+    private func activityChart(_ series: [StatsCalculator.MonthBucket], showsTime: Bool) -> some View {
         Chart(series) { bucket in
             BarMark(
                 x: .value(String(localized: "Month"), bucket.month, unit: .month),
-                y: .value(String(localized: "Plays"), bucket.plays)
+                y: .value(String(localized: showsTime ? "Time Listened" : "Plays"),
+                          showsTime ? bucket.seconds / 3600 : Double(bucket.plays))
             )
             .foregroundStyle(Color.accentColor.gradient)
             .cornerRadius(4)
@@ -209,6 +228,6 @@ struct StatsView: View {
         .padding(.vertical, 6)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text("Last 6 Months"))
-        .accessibilityValue(series.map { "\(monthName($0.month)): \($0.plays)" }.joined(separator: ", "))
+        .accessibilityValue(series.map { "\(monthName($0.month)): \(showsTime ? TimeFormatting.spoken($0.seconds) : "\($0.plays)")" }.joined(separator: ", "))
     }
 }

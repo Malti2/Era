@@ -243,7 +243,7 @@ struct NowPlayingView: View {
                                 }
                             } label: { Label("Rating", systemImage: "star") }
                             Button { player.startRadio(from: song) } label: { Label("Start Radio", systemImage: "dot.radiowaves.left.and.right") }
-                            Button { showTimer = true } label: { Label("Sleep Timer", systemImage: "moon.zzz") }
+                            Button { showTimer = true } label: { Label(sleepTimerLabel, systemImage: "moon.zzz") }
                         } label: {
                             Image(systemName: "ellipsis")
                                 .font(.title2)
@@ -455,6 +455,9 @@ struct NowPlayingView: View {
                 ForEach(player.queue, id: \.id) { v in
                     HStack {
                         if let song = v.song { SongRow(song: song, version: v, isCurrent: player.current?.id == v.id) }
+                        if player.current?.id == v.id {
+                            Text("Now Playing").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                        }
                         if player.autoQueuedIDs.contains(v.id) {
                             Image(systemName: "dot.radiowaves.left.and.right")
                                 .font(.caption).foregroundStyle(.secondary)
@@ -464,9 +467,30 @@ struct NowPlayingView: View {
                     .contentShape(Rectangle())
                     .onTapGesture { player.play(v, from: player.queue) }
                     .accessibilityAddTraits(.isButton)
+                    .swipeActions(edge: .leading) {
+                        if player.current?.id != v.id {
+                            Button { moveToNext(v) } label: {
+                                Label("Play Next", systemImage: "text.line.first.and.arrowtriangle.forward")
+                            }.tint(.blue)
+                        }
+                    }
+                    .swipeActions {
+                        if player.current?.id != v.id {
+                            Button(role: .destructive) {
+                                if let index = player.queue.firstIndex(where: { $0.id == v.id }) {
+                                    player.removeFromQueue(at: IndexSet(integer: index))
+                                }
+                            } label: { Label("Delete", systemImage: "trash") }
+                        }
+                    }
                 }
                 .onMove { player.moveInQueue(from: $0, to: $1) }
-                .onDelete { player.removeFromQueue(at: $0) }
+                .onDelete { offsets in
+                    // Der laufende Titel laesst sich nicht loeschen (sonst springt die Wiedergabe).
+                    player.removeFromQueue(at: IndexSet(offsets.filter {
+                        player.queue.indices.contains($0) && player.queue[$0].id != player.current?.id
+                    }))
+                }
             }
             .navigationTitle("Up Next")
             .environment(\.editMode, .constant(queueEditing ? .active : .inactive))
@@ -502,12 +526,35 @@ struct NowPlayingView: View {
         .presentationDetents([.medium, .large])
     }
 
+    /// Schiebt einen Queue-Titel direkt hinter den aktuellen. `moveInQueue` rechnet
+    /// das Ziel auf die Liste nach dem Entfernen um, daher je nach Lage +1 oder nicht.
+    private func moveToNext(_ version: SongVersion) {
+        guard let current = player.current,
+              let currentIndex = player.queue.firstIndex(where: { $0.id == current.id }),
+              let index = player.queue.firstIndex(where: { $0.id == version.id }),
+              index != currentIndex, index != currentIndex + 1 else { return }
+        let destination = index > currentIndex ? currentIndex + 1 : currentIndex
+        player.moveInQueue(from: IndexSet(integer: index), to: destination)
+    }
+
+    /// Menue-Label mit Restzeit, damit man den Timer-Stand sieht, ohne das Sheet zu oeffnen.
+    private var sleepTimerLabel: String {
+        if let r = player.sleepRemaining {
+            String(localized: "Sleep Timer") + " · \(r / 60):\(String(format: "%02d", r % 60))"
+        } else if player.sleepTimer.stopsAtTrackEnd {
+            String(localized: "Sleep Timer") + " · " + String(localized: "End of Current Track")
+        } else {
+            String(localized: "Sleep Timer")
+        }
+    }
+
     private var timerSheet: some View {
         NavigationStack {
             List {
                 if let r = player.sleepRemaining {
                     Section {
                         Text("Remaining \(r / 60):\(String(format: "%02d", r % 60))").font(.title.bold())
+                        Button("+15 Minutes") { player.extendSleep(minutes: 15) }
                         Button("Stop Timer", role: .destructive) { player.cancelSleep(); showTimer = false }
                     }
                 } else if player.sleepTimer.stopsAtTrackEnd {
