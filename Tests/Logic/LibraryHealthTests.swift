@@ -42,6 +42,22 @@ final class LibraryHealthTests: XCTestCase {
         XCTAssertEqual(report.brokenArtworkVersionIDs, [a.versions[0].id])
     }
 
+    func testEmptyAudioFilesAreReportedAsBrokenNotMissing() {
+        let a = song("A", versions: [("a.m4a", nil), ("b.m4a", nil)])
+        let report = LibraryHealth.analyze(songs: [a], files: LibraryFilesSnapshot(audio: ["a.m4a": 0, "b.m4a": 100]))
+        XCTAssertEqual(report.brokenAudio.map(\.versionID), [a.versions[0].id])
+        XCTAssertEqual(report.brokenAudio.first?.title, "A")
+        XCTAssertTrue(report.missingAudio.isEmpty, "0 bytes is a broken file, not a missing one")
+        XCTAssertFalse(report.isHealthy)
+    }
+
+    func testEmptyArtworkFilesAreReportedAsBroken() {
+        let a = song("A", versions: [("a.m4a", "empty.img")])
+        let report = LibraryHealth.analyze(songs: [a], files: LibraryFilesSnapshot(audio: ["a.m4a": 10], artwork: ["empty.img": 0]))
+        XCTAssertEqual(report.brokenArtworkVersionIDs, [a.versions[0].id])
+        XCTAssertFalse(report.isHealthy)
+    }
+
     func testDuplicatesIgnoreCaseAccentsAndNeedSameArtist() {
         let one = song("Café", artist: "Neon", versions: [("1.m4a", nil)])
         let two = song("cafe", artist: "NEON", versions: [("2.m4a", nil)])

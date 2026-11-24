@@ -43,6 +43,17 @@ enum SavedSearches {
 
     static func decode(_ data: Data?) -> [SavedSearch] {
         guard let data, let list = try? JSONDecoder().decode([SavedSearch].self, from: data) else { return [] }
-        return list
+        // Von Hand veraenderte Payloads kommen hier ungeprueft durch: Limit und
+        // Deduplizierung gelten auch beim Laden, nicht nur beim Pinnen.
+        var seen: Set<String> = []
+        var out: [SavedSearch] = []
+        for item in list {
+            let k = key(item.query)
+            guard !k.isEmpty, !seen.contains(k) else { continue }
+            seen.insert(k)
+            out.append(item)
+            if out.count == limit { break }
+        }
+        return out
     }
 }

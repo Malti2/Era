@@ -50,17 +50,88 @@ enum BackupService {
             },
             playEvents: try context.fetch(FetchDescriptor<PlayEvent>(sortBy: [SortDescriptor(\.date)])).map {
                 LibraryBackup.PlayEventEntry(id: $0.id, date: $0.date, seconds: $0.seconds, songID: $0.songID, title: $0.title, artist: $0.artist)
-            }
+            },
+            settings: currentSettings()
         )
+        var stamped = backup
+        stamped.checksum = LibraryBackup.checksum(of: backup)
 
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        let data = try encoder.encode(backup)
+        let data = try encoder.encode(stamped)
         let stamp = ISO8601DateFormatter().string(from: Date()).replacingOccurrences(of: ":", with: "-")
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("Era-Backup-\(stamp).json")
         try data.write(to: url, options: .atomic)
         return url
+    }
+
+    // MARK: - Einstellungen im Backup
+
+    /// Nur gesetzte Werte landen im Backup (nil = Standard, bleibt beim Restore unberuehrt).
+    /// Ansichts-Zustand (Tab, Sortierung, Filter) und Geraete-Kram (Onboarding, Snoozes)
+    /// gehoeren nicht hierher - das Backup soll die Bibliothek retten, kein Geraet klonen.
+    static func currentSettings() -> LibraryBackup.SettingsEntry {
+        let defaults = UserDefaults.standard
+        func bool(_ key: String) -> Bool? { defaults.object(forKey: key) == nil ? nil : defaults.bool(forKey: key) }
+        func int(_ key: String) -> Int? { let v = defaults.integer(forKey: key); return v == 0 ? nil : v }
+        func double(_ key: String) -> Double? { let v = defaults.double(forKey: key); return v == 0 ? nil : v }
+        let saved = SavedSearches.decode(defaults.data(forKey: AppSettings.savedSearchesKey))
+        let recents = defaults.stringArray(forKey: AppSettings.recentSearchesKey) ?? []
+        let ignored = defaults.string(forKey: AppSettings.ignoredSimilarKey)?
+            .split(separator: "\n").map(String.init).filter { !$0.isEmpty } ?? []
+        return LibraryBackup.SettingsEntry(
+            defaultRate: double(AppSettings.defaultRateKey),
+            skipInterval: int(AppSettings.skipIntervalKey),
+            pauseOnRouteChange: bool(AppSettings.pauseOnRouteChangeKey),
+            resumeAfterInterruption: bool(AppSettings.resumeAfterInterruptionKey),
+            hapticsEnabled: bool(AppSettings.hapticsEnabledKey),
+            spotlightEnabled: bool(AppSettings.spotlightEnabledKey),
+            crackleEnabled: bool(AppSettings.crackleEnabledKey),
+            crackleVolume: double(AppSettings.crackleVolumeKey),
+            transitionStyle: defaults.string(forKey: AppSettings.transitionStyleKey),
+            crossfadeSeconds: int(AppSettings.crossfadeSecondsKey),
+            autoplay: bool(AppSettings.autoplayKey),
+            weeklyGoalMinutes: int(AppSettings.weeklyGoalMinutesKey),
+            savedSearches: saved.isEmpty ? nil : saved,
+            recentSearches: recents.isEmpty ? nil : recents,
+            ignoredSimilar: ignored.isEmpty ? nil : ignored
+        )
+    }
+
+    /// Schreibt die Einstellungen eines Backups in die UserDefaults. Gibt true zurueck,
+    /// wenn mindestens ein Wert uebernommen wurde (@AppStorage-Views lesen sie live).
+    @discardableResult
+    static func applySettings(_ settings: LibraryBackup.SettingsEntry) -> Bool {
+        let defaults = UserDefaults.standard
+        var applied = false
+        func set<T>(_ value: T?, forKey key: String) {
+            guard let value else { return }
+            defaults.set(value, forKey: key)
+            applied = true
+        }
+        set(settings.defaultRate, forKey: AppSettings.defaultRateKey)
+        set(settings.skipInterval, forKey: AppSettings.skipIntervalKey)
+        set(settings.pauseOnRouteChange, forKey: AppSettings.pauseOnRouteChangeKey)
+        set(settings.resumeAfterInterruption, forKey: AppSettings.resumeAfterInterruptionKey)
+        set(settings.hapticsEnabled, forKey: AppSettings.hapticsEnabledKey)
+        set(settings.spotlightEnabled, forKey: AppSettings.spotlightEnabledKey)
+        set(settings.crackleEnabled, forKey: AppSettings.crackleEnabledKey)
+        set(settings.crackleVolume, forKey: AppSettings.crackleVolumeKey)
+        set(settings.transitionStyle, forKey: AppSettings.transitionStyleKey)
+        set(settings.crossfadeSeconds, forKey: AppSettings.crossfadeSecondsKey)
+        set(settings.autoplay, forKey: AppSettings.autoplayKey)
+        set(settings.weeklyGoalMinutes, forKey: AppSettings.weeklyGoalMinutesKey)
+        if let saved = settings.savedSearches, let data = SavedSearches.encode(saved) {
+            defaults.set(data, forKey: AppSettings.savedSearchesKey)
+            applied = true
+        }
+        set(settings.recentSearches, forKey: AppSettings.recentSearchesKey)
+        if let ignored = settings.ignoredSimilar {
+            defaults.set(ignored.joined(separator: "\n"), forKey: AppSettings.ignoredSimilarKey)
+            applied = true
+        }
+        return applied
     }
 }
 

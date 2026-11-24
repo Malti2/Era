@@ -82,6 +82,27 @@ struct LibraryBackup: Codable, Equatable {
         var artist: String
     }
 
+    /// Einstellungen und Suchen (Wiedergabe, Hoerziel, gespeicherte Suchen,
+    /// ignorierte Dubletten-Hinweise). Alles optional: alte Backups haben den Block
+    /// nicht, und beim Restore gilt nur, was gesetzt ist - der Rest bleibt, wie er ist.
+    struct SettingsEntry: Codable, Equatable {
+        var defaultRate: Double?
+        var skipInterval: Int?
+        var pauseOnRouteChange: Bool?
+        var resumeAfterInterruption: Bool?
+        var hapticsEnabled: Bool?
+        var spotlightEnabled: Bool?
+        var crackleEnabled: Bool?
+        var crackleVolume: Double?
+        var transitionStyle: String?
+        var crossfadeSeconds: Int?
+        var autoplay: Bool?
+        var weeklyGoalMinutes: Int?
+        var savedSearches: [SavedSearch]?
+        var recentSearches: [String]?
+        var ignoredSimilar: [String]?
+    }
+
     var app: String = "Era"
     var formatVersion: Int = 1
     var createdAt: Date = Date()
@@ -91,6 +112,11 @@ struct LibraryBackup: Codable, Equatable {
     var packs: [PackEntry]
     var playlists: [PlaylistEntry2]
     var playEvents: [PlayEventEntry]?
+    /// Einstellungen, s. `SettingsEntry`. Fehlt in Backups vor diesem Stand.
+    var settings: SettingsEntry? = nil
+    /// FNV-1a-Pruefsumme ueber den Rest des Backups (ohne dieses Feld). Fehlt in
+    /// alten Backups - die bleiben lesbar, werden nur nicht geprueft.
+    var checksum: String? = nil
 }
 
 
@@ -100,10 +126,68 @@ enum BackupError: Error, Equatable {
     case unreadable
     case notAnEraBackup
     case newerFormat(Int)
+    /// Die Pruefsumme stimmt nicht: die Datei wurde veraendert oder ist beschaedigt.
+    case checksumMismatch
+    /// Inhaltlich unsinnige Werte (doppelte IDs, negative Dauer, Rating ausserhalb 0...5).
+    case invalidContent(String)
 }
 
 extension LibraryBackup {
     static let currentFormatVersion = 1
+
+    /// FNV-1a-64 ueber die kanonische JSON-Kodierung (sortierte Keys, ISO-8601),
+    /// ohne das Checksummen-Feld selbst. Kein CryptoKit noetig (Linux-faehig).
+    static func checksum(of backup: LibraryBackup) -> String {
+        var copy = backup
+        copy.checksum = nil
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        encoder.outputFormatting = [.sortedKeys]
+        guard let data = try? encoder.encode(copy) else { return "" }
+        var hash: UInt64 = 0xcbf29ce484222325
+        for byte in data {
+            hash ^= UInt64(byte)
+            hash &*= 0x100000001b3
+        }
+        let raw = String(hash, radix: 16)
+        return String(repeating: "0", count: max(0, 16 - raw.count)) + raw
+    }
+
+    /// Erste inhaltliche Auffaelligkeit, oder nil wenn alles plausibel ist.
+    /// Faengt beschaedigte oder von Hand verfaelschte Backups ab, bevor der
+    /// Restore sie einspielt (leere Listen und fehlende optionale Felder sind ok).
+    static func validate(_ backup: LibraryBackup) -> String? {
+        func duplicates<T: Hashable>(_ values: [T]) -> Bool { Set(values).count != values.count }
+        if duplicates(backup.songs.map(\.id)) { return "duplicate song id" }
+        if duplicates(backup.versions.map(\.id)) { return "duplicate version id" }
+        if duplicates(backup.tags.map(\.id)) { return "duplicate tag id" }
+        if duplicates(backup.packs.map(\.id)) { return "duplicate collection id" }
+        if duplicates(backup.playlists.map(\.id)) { return "duplicate playlist id" }
+        // Doppelte Play-Events sind ok: der Restore-Planer deduped sie (siehe Test).
+        for song in backup.songs {
+            if song.playCount < 0 { return "negative play count" }
+            if song.resumePosition < 0 { return "negative resume position" }
+            if let rating = song.rating, rating < 0 || rating > 5 { return "rating outside 0...5" }
+            if let track = song.trackNumber, track < 0 { return "negative track number" }
+            if let disc = song.discNumber, disc < 0 { return "negative disc number" }
+        }
+        for version in backup.versions {
+            if version.duration < 0 { return "negative duration" }
+            if version.sortIndex < 0 { return "negative sort index" }
+        }
+        for playlist in backup.playlists {
+            if playlist.entries.contains(where: { $0.position < 0 }) { return "negative playlist position" }
+        }
+        if let events = backup.playEvents, events.contains(where: { $0.seconds < 0 }) { return "negative play time" }
+        if let settings = backup.settings {
+            if let rate = settings.defaultRate, rate <= 0 { return "invalid default rate" }
+            if let skip = settings.skipInterval, skip <= 0 { return "invalid skip interval" }
+            if let goal = settings.weeklyGoalMinutes, goal < 0 { return "negative weekly goal" }
+            if let crossfade = settings.crossfadeSeconds, crossfade < 0 { return "negative crossfade" }
+            if let volume = settings.crackleVolume, volume < 0 || volume > 1 { return "crackle volume outside 0...1" }
+        }
+        return nil
+    }
 
     static func decode(from data: Data) throws -> LibraryBackup {
         let decoder = JSONDecoder()
@@ -112,6 +196,8 @@ extension LibraryBackup {
         do { backup = try decoder.decode(LibraryBackup.self, from: data) } catch { throw BackupError.unreadable }
         guard backup.app == "Era" else { throw BackupError.notAnEraBackup }
         guard backup.formatVersion <= currentFormatVersion else { throw BackupError.newerFormat(backup.formatVersion) }
+        if let expected = backup.checksum, expected != checksum(of: backup) { throw BackupError.checksumMismatch }
+        if let problem = validate(backup) { throw BackupError.invalidContent(problem) }
         return backup
     }
 }
@@ -183,8 +269,10 @@ struct RestoreSummary: Equatable {
     var playlists = 0
     var packs = 0
     var playEvents = 0
+    /// Einstellungen aus dem Backup wurden uebernommen.
+    var settingsRestored = false
     var skippedExisting = 0
     var skippedMissingAudio = 0
 
-    var restoredAnything: Bool { songs + playlists + packs + playEvents > 0 }
+    var restoredAnything: Bool { songs + playlists + packs + playEvents > 0 || settingsRestored }
 }

@@ -231,6 +231,8 @@
 "Downloading…" = "Downloading…";
 "Downloaded - use the share sheet to open it in your sideloading app." = "Downloaded - use the share sheet to open it in your sideloading app.";
 "%lld songs" = "%lld songs";
+"Stop after %lld songs" = "Stop after %lld songs";
+"Stops after %lld more songs" = "Stops after %lld more songs";
 "Apple Intelligence is not available on this device." = "Apple Intelligence is not available on this device.";
 "Apple Intelligence picks matching songs from your library. Everything stays on this iPhone." = "Apple Intelligence picks matching songs from your library. Everything stays on this iPhone.";
 "Create" = "Create";
@@ -662,3 +664,14 @@
 "Go to" = "Go to";
 "Songs you have played at least once" = "Songs you have played at least once";
 "Songs you have rated" = "Songs you have rated";
+"Settings restored." = "Settings restored.";
+"This backup is damaged and cannot be restored." = "This backup is damaged and cannot be restored.";
+"This backup contains invalid data." = "This backup contains invalid data.";
+"%lld empty audio files" = "%lld empty audio files";
+"These files are 0 bytes and cannot be played." = "These files are 0 bytes and cannot be played.";
+"Remove Broken Files?" = "Remove Broken Files?";
+"These audio files are empty (0 bytes) and cannot be played. They are removed from your library and playlists." = "These audio files are empty (0 bytes) and cannot be played. They are removed from your library and playlists.";
+"Reading file sizes…" = "Reading file sizes…";
+"Add marker" = "Add marker";
+"Toggle favorite" = "Toggle favorite";
+"Stop after this track" = "Stop after this track";

@@ -34,6 +34,38 @@
 			<string>%lld titres</string>
 		</dict>
 	</dict>
+	<key>Stop after %lld songs</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>Arrêter après %lld titre</string>
+			<key>other</key>
+			<string>Arrêter après %lld titres</string>
+		</dict>
+	</dict>
+	<key>Stops after %lld more songs</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>S'arrête après %lld titre de plus</string>
+			<key>other</key>
+			<string>S'arrête après %lld titres de plus</string>
+		</dict>
+	</dict>
 	<key>%lld missing audio files</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>

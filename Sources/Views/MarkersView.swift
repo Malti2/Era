@@ -154,7 +154,7 @@ struct ScrubberOverlay: View {
                 }
                 ForEach(markers) { marker in
                     Button { onMarkerTap?(marker) } label: {
-                        Capsule().fill(.white.opacity(0.75))
+                        Capsule().fill(.primary.opacity(0.75))
                             .frame(width: 3, height: 8)
                     }
                     .frame(width: 24, height: 12)

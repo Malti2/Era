@@ -82,6 +82,45 @@ struct EraStartRadioIntent: AppIntent {
     }
 }
 
+struct EraAddMarkerIntent: AppIntent {
+    static var title: LocalizedStringResource = "Add marker"
+    static var description = IntentDescription("Adds a marker at the current position of the song playing in Era.")
+    static var openAppWhenRun: Bool = true
+
+    @MainActor
+    func perform() async throws -> some IntentResult {
+        PlayerEngine.shared.addMarkerHere()
+        return .result()
+    }
+}
+
+struct EraToggleFavoriteIntent: AppIntent {
+    static var title: LocalizedStringResource = "Toggle favorite"
+    static var description = IntentDescription("Marks the currently playing song as a favorite, or removes it.")
+    static var openAppWhenRun: Bool = true
+
+    @MainActor
+    func perform() async throws -> some IntentResult {
+        let player = PlayerEngine.shared
+        if let song = player.current?.song, let store = player.store {
+            store.setFavorite(!song.isFavorite, for: [song])
+        }
+        return .result()
+    }
+}
+
+struct EraSleepAfterTrackIntent: AppIntent {
+    static var title: LocalizedStringResource = "Stop after this track"
+    static var description = IntentDescription("Stops playback in Era after the current track ends.")
+    static var openAppWhenRun: Bool = true
+
+    @MainActor
+    func perform() async throws -> some IntentResult {
+        PlayerEngine.shared.setSleepAtEndOfTrack()
+        return .result()
+    }
+}
+
 struct EraShortcuts: AppShortcutsProvider {
     static var shortcutTileColor: ShortcutTileColor = .grape
 
@@ -140,6 +179,33 @@ struct EraShortcuts: AppShortcutsProvider {
             ],
             shortTitle: "Start Radio",
             systemImageName: "dot.radiowaves.left.and.right"
+        )
+        AppShortcut(
+            intent: EraAddMarkerIntent(),
+            phrases: [
+                "Add a marker with \(.applicationName)",
+                "Mark this moment in \(.applicationName)"
+            ],
+            shortTitle: "Add Marker",
+            systemImageName: "bookmark.fill"
+        )
+        AppShortcut(
+            intent: EraToggleFavoriteIntent(),
+            phrases: [
+                "Favorite this song with \(.applicationName)",
+                "Mark as favorite in \(.applicationName)"
+            ],
+            shortTitle: "Toggle Favorite",
+            systemImageName: "heart.fill"
+        )
+        AppShortcut(
+            intent: EraSleepAfterTrackIntent(),
+            phrases: [
+                "Stop after this track with \(.applicationName)",
+                "Stop playing after this song in \(.applicationName)"
+            ],
+            shortTitle: "Stop After Track",
+            systemImageName: "moon.zzz.fill"
         )
     }
 }

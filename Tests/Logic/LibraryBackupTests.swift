@@ -173,4 +173,69 @@ final class LibraryBackupTests: XCTestCase {
         XCTAssertNil(decoded.playEvents)
         XCTAssertTrue(RestorePlanner.plan(decoded, against: LibraryState()).newPlayEvents.isEmpty)
     }
+
+    // MARK: - Einstellungen, Checksumme, Validierung (Lauf 21)
+
+    func testSettingsSurviveRoundtripAndOldBackupsHaveNone() throws {
+        let s = song("A")
+        var original = backup([s], [version(s.id, file: "a.m4a")])
+        original.settings = LibraryBackup.SettingsEntry(defaultRate: 1.25, skipInterval: 10, autoplay: true,
+                                                        weeklyGoalMinutes: 120,
+                                                        savedSearches: [SavedSearch(query: "tag:demo")],
+                                                        ignoredSimilar: ["a+b"])
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        let decoded = try LibraryBackup.decode(from: encoder.encode(original))
+        XCTAssertEqual(decoded.settings, original.settings)
+        XCTAssertEqual(decoded.settings?.savedSearches?.first?.query, "tag:demo")
+
+        // Altes Backup ohne Settings-Block: decodiert mit nil statt Fehler.
+        XCTAssertNil(try LibraryBackup.decode(from: encoder.encode(backup([s], []))).settings)
+    }
+
+    func testChecksumCatchesTamperedBackup() throws {
+        let s = song("A")
+        var stamped = backup([s], [version(s.id, file: "a.m4a")])
+        stamped.checksum = LibraryBackup.checksum(of: stamped)
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        let data = try encoder.encode(stamped)
+        // Unveraendert: decodiert, und die Pruefsumme ist stabil ueber den Roundtrip.
+        let decoded = try LibraryBackup.decode(from: data)
+        XCTAssertEqual(decoded.songs, stamped.songs)
+        XCTAssertEqual(LibraryBackup.checksum(of: decoded), stamped.checksum)
+        // Titel von Hand geaendert: Checksumme stimmt nicht mehr.
+        var object = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        var songs = try XCTUnwrap(object["songs"] as? [[String: Any]])
+        songs[0]["title"] = "Tampered"
+        object["songs"] = songs
+        let tampered = try JSONSerialization.data(withJSONObject: object)
+        XCTAssertThrowsError(try LibraryBackup.decode(from: tampered)) { XCTAssertEqual($0 as? BackupError, .checksumMismatch) }
+    }
+
+    func testValidationRejectsCorruptContent() throws {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        func invalidDetail(for original: LibraryBackup) -> String? {
+            guard case let .failure(error) = Result(catching: { try LibraryBackup.decode(from: encoder.encode(original)) }),
+                  case let BackupError.invalidContent(detail) = error else { return nil }
+            return detail
+        }
+        var badRating = song("A")
+        badRating.rating = 6
+        XCTAssertEqual(invalidDetail(for: backup([badRating], [])), "rating outside 0...5")
+        let dupeID = UUID()
+        XCTAssertEqual(invalidDetail(for: backup([song("A", id: dupeID), song("B", id: dupeID)], [])), "duplicate song id")
+        let s = song("A")
+        var badDuration = version(s.id, file: "a.m4a")
+        badDuration.duration = -5
+        XCTAssertEqual(invalidDetail(for: backup([s], [badDuration])), "negative duration")
+        var badGoal = backup([s], [])
+        badGoal.settings = LibraryBackup.SettingsEntry(weeklyGoalMinutes: -30)
+        XCTAssertEqual(invalidDetail(for: badGoal), "negative weekly goal")
+        // Gueltiges Backup mit Checksumme passiert die Validierung.
+        var good = backup([s], [version(s.id, file: "a.m4a")])
+        good.checksum = LibraryBackup.checksum(of: good)
+        XCTAssertNoThrow(try LibraryBackup.decode(from: encoder.encode(good)))
+    }
 }

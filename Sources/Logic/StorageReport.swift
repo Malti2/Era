@@ -59,7 +59,8 @@ struct StorageReport: Equatable {
 
     /// Anteil von `bytes` an der Gesamtgroesse (0...1), fuer Balken.
     func share(of bytes: Int64) -> Double {
-        totalBytes > 0 ? Double(bytes) / Double(totalBytes) : 0
+        guard totalBytes > 0 else { return 0 }
+        return min(1, max(0, Double(bytes) / Double(totalBytes)))
     }
 }
 

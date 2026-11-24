@@ -258,7 +258,7 @@ final class PlayerEngine: NSObject, ObservableObject, AVAudioPlayerDelegate {
     }
 
     private func prepareNext() {
-        guard nextAudio == nil, AppSettings.transitionStyle != .off, !sleepTimer.stopsAtTrackEnd,
+        guard nextAudio == nil, AppSettings.transitionStyle != .off, !sleepTimer.fadesAtTrackEnd,
               let next = linearSuccessor(), next.id != current?.id || repeatMode == 2 else { return }
         let url = LibraryFiles.url(for: next)
         guard FileManager.default.fileExists(atPath: url.path),
@@ -281,7 +281,7 @@ final class PlayerEngine: NSObject, ObservableObject, AVAudioPlayerDelegate {
     }
 
     private func checkTransition() {
-        guard isPlaying, let a = audio, !sleepTimer.stopsAtTrackEnd, !loop.isActive else { return }
+        guard isPlaying, let a = audio, !sleepTimer.fadesAtTrackEnd, !loop.isActive else { return }
         if let left = sleepTimer.remaining, left <= SleepTimerState.fadeSeconds + 1 { return }
         if !transitionArmed && nextAudio == nil { prepareNext() }
         guard let nextA = nextAudio, let next = nextVersion, a.duration > 1 else { return }
@@ -333,6 +333,13 @@ final class PlayerEngine: NSObject, ObservableObject, AVAudioPlayerDelegate {
         isPlaying = true
         markPlayed(next)
         updateNowPlaying()
+        // Natuerliches Titelende beim Gapless-/Crossfade-Handoff: der Zaehler
+        // des Nach-N-Titeln-Timers laeuft hier weiter (sonst wuerde er bei
+        // Uebergaengen nie herunterzaehlen).
+        if sleepTimer.trackFinished() {
+            stopForSleepTimer()
+            return
+        }
         prepareNext()
     }
 
@@ -466,10 +473,19 @@ final class PlayerEngine: NSObject, ObservableObject, AVAudioPlayerDelegate {
     func next() { move(1) }
     func previous() { if currentTime > 4 { seek(0) } else { move(-1) } }
 
-    private func move(_ offset: Int, skipped: Int = 0) {
+    private func move(_ offset: Int, skipped: Int = 0, countSkip: Bool = true) {
         cancelTransition()
         guard !queue.isEmpty, let current, let index = queue.firstIndex(where: { $0.id == current.id }) else { return }
         if repeatMode == 2 { play(current, from: queue); return }
+        // Manuelles Weiterspringen zaehlt beim Nach-N-Titeln-Timer wie ein
+        // gehoerter Titel (Zurueckspringen nie, Repeat-One nie). Der Zaehler
+        // darf hier nur einmal laufen: die Rekursion bei fehlenden Dateien
+        // bekommt countSkip: false, und das natuerliche Titelende ruft move
+        // ebenfalls mit countSkip: false (dort hat trackFinished() schon gezaehlt).
+        if offset > 0, countSkip, sleepTimer.songSkipped() {
+            stopForSleepTimer()
+            return
+        }
         var target: Int
         if shuffle {
             if offset < 0 {
@@ -490,7 +506,7 @@ final class PlayerEngine: NSObject, ObservableObject, AVAudioPlayerDelegate {
             if target < 0 { target = queue.count - 1 }
         }
         // A track whose file is gone is skipped instead of stalling the queue.
-        if !play(queue[target], from: queue), skipped < queue.count - 1 { move(offset, skipped: skipped + 1) }
+        if !play(queue[target], from: queue), skipped < queue.count - 1 { move(offset, skipped: skipped + 1, countSkip: false) }
     }
 
     // MARK: - Radio & Autoplay
@@ -566,6 +582,9 @@ final class PlayerEngine: NSObject, ObservableObject, AVAudioPlayerDelegate {
 
     private func endOfQueue() {
         if continueWithSimilar() { return }
+        // Titelbasierter Timer ohne Queue: wuerde sonst bei einem spaeteren
+        // manuellen Start weiterzaehlen, obwohl die gezaehlte Reihe vorbei ist.
+        if sleepTimer.remainingSongs != nil { sleepTimer.cancel() }
         seek(0)
         audio?.pause()
         isPlaying = false
@@ -592,6 +611,24 @@ final class PlayerEngine: NSObject, ObservableObject, AVAudioPlayerDelegate {
         sleepTicker?.invalidate()
         sleepTimer.startEndOfTrack()
         cancelTransition()
+    }
+
+    /// Stoppt nach `count` weiteren Titeln (inklusive des laufenden).
+    func setSleepAfterSongs(_ count: Int) {
+        sleepTicker?.invalidate()
+        sleepTimer.startAfterSongs(count)
+        if sleepTimer.isLastSong { cancelTransition() }
+    }
+
+    /// Wiedergabe anhalten, wenn ein titelbasierter Timer abgelaufen ist.
+    private func stopForSleepTimer() {
+        audio?.pause()
+        audio?.volume = 1
+        isPlaying = false
+        currentTime = 0
+        audio?.currentTime = 0
+        updateNowPlaying()
+        persistSession()
     }
 
     func cancelSleep() {
@@ -636,9 +673,10 @@ final class PlayerEngine: NSObject, ObservableObject, AVAudioPlayerDelegate {
                     }
                     self.currentTime = a.currentTime
                     self.isPlaying = a.isPlaying
-                    // Sleep-Timer "bis Titelende": in den letzten Sekunden ausblenden,
-                    // davor (z. B. nach Zurueckspulen) die Lautstaerke wieder herstellen.
-                    if self.sleepTimer.stopsAtTrackEnd, self.duration > 0 {
+                    // Sleep-Timer "bis Titelende" / "nach N Titeln" (letzter Titel):
+                    // in den letzten Sekunden ausblenden, davor (z. B. nach Zurueckspulen)
+                    // die Lautstaerke wieder herstellen.
+                    if self.sleepTimer.fadesAtTrackEnd, self.duration > 0 {
                         switch self.sleepTimer.tick(remainingSeconds: self.duration - a.currentTime) {
                         case .fade(let volume): a.volume = volume
                         case .none: a.volume = 1
@@ -663,14 +701,9 @@ final class PlayerEngine: NSObject, ObservableObject, AVAudioPlayerDelegate {
                 } else {
                     self.recordPlayEvent(finished: true)
                     if self.sleepTimer.trackFinished() {
-                        self.isPlaying = false
-                        self.currentTime = 0
-                        self.audio?.currentTime = 0
-                        self.audio?.volume = 1
-                        self.updateNowPlaying()
-                        self.persistSession()
+                        self.stopForSleepTimer()
                     } else {
-                        self.next()
+                        self.move(1, countSkip: false)
                     }
                 }
             }

@@ -88,6 +88,9 @@ struct LibraryHealthReport: Equatable {
     }
 
     var missingAudio: [MissingAudio] = []
+    /// Audiodateien, die existieren, aber 0 Bytes gross sind: nicht abspielbar.
+    /// Gleicher Fix wie bei fehlendem Audio (Version entfernen).
+    var brokenAudio: [MissingAudio] = []
     var emptySongIDs: [UUID] = []
     var brokenArtworkVersionIDs: [UUID] = []
     var orphanAudioFiles: [String] = []
@@ -108,7 +111,7 @@ struct LibraryHealthReport: Equatable {
     }
 
     var isHealthy: Bool {
-        missingAudio.isEmpty && emptySongIDs.isEmpty && brokenArtworkVersionIDs.isEmpty
+        missingAudio.isEmpty && brokenAudio.isEmpty && emptySongIDs.isEmpty && brokenArtworkVersionIDs.isEmpty
             && orphanAudioFiles.isEmpty && orphanArtworkFiles.isEmpty && duplicates.isEmpty && trackIssues.isEmpty
             && playlistDuplicates.isEmpty
     }
@@ -133,10 +136,12 @@ enum LibraryHealth {
                 referencedAudio.insert(version.fileName)
                 if files.audio[version.fileName] == nil {
                     report.missingAudio.append(.init(songID: song.id, versionID: version.id, title: song.title, versionName: version.name))
+                } else if files.audio[version.fileName] == 0 {
+                    report.brokenAudio.append(.init(songID: song.id, versionID: version.id, title: song.title, versionName: version.name))
                 }
                 if let art = version.artworkFile {
                     referencedArtwork.insert(art)
-                    if files.artwork[art] == nil { report.brokenArtworkVersionIDs.append(version.id) }
+                    if files.artwork[art] == nil || files.artwork[art] == 0 { report.brokenArtworkVersionIDs.append(version.id) }
                 }
             }
         }

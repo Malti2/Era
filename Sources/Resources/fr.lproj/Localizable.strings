@@ -231,6 +231,8 @@
 "Downloading…" = "Téléchargement…";
 "Downloaded - use the share sheet to open it in your sideloading app." = "Téléchargé - ouvrez le fichier via le menu de partage dans votre app de sideloading.";
 "%lld songs" = "%lld morceaux";
+"Stop after %lld songs" = "Arrêter après %lld titres";
+"Stops after %lld more songs" = "S'arrête après %lld titres de plus";
 "Apple Intelligence is not available on this device." = "Apple Intelligence n'est pas disponible sur cet appareil.";
 "Apple Intelligence picks matching songs from your library. Everything stays on this iPhone." = "Apple Intelligence choisit des morceaux dans ta bibliothèque. Tout reste sur cet iPhone.";
 "Create" = "Créer";
@@ -662,3 +664,14 @@
 "Go to" = "Aller à";
 "Songs you have played at least once" = "Morceaux écoutés au moins une fois";
 "Songs you have rated" = "Morceaux que tu as notés";
+"Settings restored." = "Réglages restaurés.";
+"This backup is damaged and cannot be restored." = "Cette sauvegarde est endommagée et ne peut pas être restaurée.";
+"This backup contains invalid data." = "Cette sauvegarde contient des données non valides.";
+"%lld empty audio files" = "%lld fichiers audio vides";
+"These files are 0 bytes and cannot be played." = "Ces fichiers font 0 octet et ne peuvent pas être lus.";
+"Remove Broken Files?" = "Supprimer les fichiers endommagés ?";
+"These audio files are empty (0 bytes) and cannot be played. They are removed from your library and playlists." = "Ces fichiers audio sont vides (0 octet) et ne peuvent pas être lus. Ils sont supprimés de ta bibliothèque et de tes playlists.";
+"Reading file sizes…" = "Lecture des tailles de fichiers…";
+"Add marker" = "Ajouter un marqueur";
+"Toggle favorite" = "Basculer le favori";
+"Stop after this track" = "Arrêter après ce titre";

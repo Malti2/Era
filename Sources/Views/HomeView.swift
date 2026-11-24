@@ -115,6 +115,12 @@ struct HomeView: View {
         }
     }
 
+    /// Schrift auf der Mix-Kachel: Weiss auf Gelb (Best Of) ist kaum lesbar,
+    /// dort ist Schwarz der Kontrast - alle anderen Kacheln bleiben weiss.
+    private func mixTextColor(_ kind: MixKind) -> Color {
+        kind == .bestOf ? .black : .white
+    }
+
     private func mixesRow(_ mixes: [HomeMix]) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Mixes").font(.title2.bold()).padding(.horizontal)
@@ -127,12 +133,12 @@ struct HomeView: View {
                             }
                         } label: {
                             VStack(alignment: .leading, spacing: 4) {
-                                Image(systemName: mixSymbol(mix.kind)).font(.title2).foregroundStyle(.white.opacity(0.95))
+                                Image(systemName: mixSymbol(mix.kind)).font(.title2).foregroundStyle(mixTextColor(mix.kind).opacity(0.95))
                                 Spacer(minLength: 6)
-                                Text(mixTitle(mix.kind)).font(.headline).foregroundStyle(.white)
-                                Text(mixSubtitle(mix.kind)).font(.caption).foregroundStyle(.white.opacity(0.85)).lineLimit(2)
+                                Text(mixTitle(mix.kind)).font(.headline).foregroundStyle(mixTextColor(mix.kind))
+                                Text(mixSubtitle(mix.kind)).font(.caption).foregroundStyle(mixTextColor(mix.kind).opacity(0.85)).lineLimit(2)
                                 Text("\(mix.songs.count) songs · \(TimeFormatting.spoken(mix.songs.reduce(0) { $0 + $1.duration }))")
-                                    .font(.caption2).foregroundStyle(.white.opacity(0.75))
+                                    .font(.caption2).foregroundStyle(mixTextColor(mix.kind).opacity(0.75))
                             }
                             .padding(14)
                             .frame(width: 170, height: 130, alignment: .leading)

@@ -17,6 +17,32 @@ final class SongSearchTests: XCTestCase {
         XCTAssertTrue(SongSearch.search("   ", in: songs).isEmpty)
     }
 
+    func testFoldedSnapshotMatchesManualFolding() {
+        let song = SearchableSong(title: "Café del Mar", artist: "Björk", album: "Über", era: "Synth-Ära",
+                                  tags: ["Chill"], statuses: ["Unreleased"], versionNames: ["Démo"],
+                                  notes: "Gitarren-Riff", markerLabels: ["Refrain"])
+        let folded = song.folded()
+        XCTAssertEqual(folded.title, "cafe del mar")
+        XCTAssertEqual(folded.artist, "bjork")
+        XCTAssertEqual(folded.album, "uber")
+        XCTAssertEqual(folded.era, "synth-ara")
+        XCTAssertEqual(folded.tags, ["chill"])
+        XCTAssertEqual(folded.versionNames, ["demo"])
+        XCTAssertEqual(folded.notes, "gitarren-riff")
+        XCTAssertEqual(folded.markerLabels, ["refrain"])
+        XCTAssertTrue(folded.contains(folded: "demo"))
+        XCTAssertFalse(folded.contains(folded: "techno"))
+    }
+
+    func testFoldedMatchFindsSameSongsAsBefore() {
+        // Gleiche Abfragen wie im Rest der Datei, aber ueber den Snapshot-Pfad:
+        // Akzente, Filter und Ausschluesse muessen identisch treffen.
+        XCTAssertEqual(titles("cafe"), ["Café del Mar"])
+        XCTAssertEqual(titles("tag:synth"), ["Night Drive", "Drive"])
+        XCTAssertEqual(titles("drive -demo"), ["Drive"])
+        XCTAssertEqual(titles("has:notes"), [])
+    }
+
     func testIgnoresCaseAndAccents() {
         XCTAssertEqual(titles("CAFE"), ["Café del Mar"])
         XCTAssertEqual(titles("café"), ["Café del Mar"])

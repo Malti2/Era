@@ -112,4 +112,13 @@ final class SearchHelpTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(SearchHelp.groups.count, 4)
         XCTAssertTrue(SearchHelp.groups.allSatisfy { !$0.entries.isEmpty })
     }
+
+    func testHelpExamplesFindSongsWhenTheyMatch() {
+        // Spot check: die Beispiele sind nicht nur parsebar, sie treffen auch.
+        let songs = [SearchableSong(title: "Night Drive", artist: "Neon", tags: ["demo"], playCount: 3, rating: 4)]
+        XCTAssertFalse(SongSearch.search("tag:demo", in: songs).isEmpty)
+        XCTAssertFalse(SongSearch.search("is:rated", in: songs).isEmpty)
+        XCTAssertFalse(SongSearch.search("is:played", in: songs).isEmpty)
+        XCTAssertTrue(SongSearch.search("is:unrated", in: songs).isEmpty)
+    }
 }

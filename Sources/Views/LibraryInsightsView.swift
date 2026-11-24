@@ -7,6 +7,7 @@ struct LibraryInsightsView: View {
     @Query private var songs: [Song]
     @State private var storageItems: [StorageItem] = []
     @State private var storage: StorageReport?
+    @State private var storageLoading = false
 
     private var insights: LibraryInsights {
         LibraryInsights.make(from: songs.map { song in
@@ -52,6 +53,14 @@ struct LibraryInsightsView: View {
                 }
                 if insights.addedPerYear.count > 1 { growthSection(insights) }
                 if let storage, !storage.isEmpty { storageSections(storage) }
+                else if storageLoading {
+                    Section("Storage") {
+                        HStack(spacing: 8) {
+                            ProgressView()
+                            Text("Reading file sizes…").foregroundStyle(.secondary)
+                        }
+                    }
+                }
             }
         }
         .navigationTitle("Library Overview")
@@ -60,6 +69,8 @@ struct LibraryInsightsView: View {
     }
 
     private func refreshStorage() async {
+        storageLoading = true
+        defer { storageLoading = false }
         let items = await loadStorageItems()
         storageItems = items
         storage = StorageReport.make(from: items)

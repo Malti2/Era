@@ -9,6 +9,30 @@ struct PlaybackSnapshot: Codable, Equatable {
     var shuffle: Bool
     var repeatMode: Int
 
+    init(queue: [UUID], current: UUID, position: Double, shuffle: Bool = false, repeatMode: Int = 0) {
+        self.queue = queue
+        self.current = current
+        self.position = position
+        self.shuffle = shuffle
+        self.repeatMode = repeatMode
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case queue, current, position, shuffle, repeatMode
+    }
+
+    /// Tolerantes Laden: Ein altes Snapshot-JSON ohne ein spaeter hinzugefuegtes
+    /// Feld (z. B. `repeatMode`) darf die Session nicht verlieren - fehlende
+    /// Felder fallen auf ihre Defaults zurueck.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        queue = try container.decode([UUID].self, forKey: .queue)
+        current = try container.decode(UUID.self, forKey: .current)
+        position = try container.decodeIfPresent(Double.self, forKey: .position) ?? 0
+        shuffle = try container.decodeIfPresent(Bool.self, forKey: .shuffle) ?? false
+        repeatMode = try container.decodeIfPresent(Int.self, forKey: .repeatMode) ?? 0
+    }
+
     struct Restored: Equatable {
         var queue: [UUID]
         var current: UUID

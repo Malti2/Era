@@ -332,6 +332,37 @@ struct SongSearchQuery: Equatable {
     }
 }
 
+/// Alle Textfelder eines Songs einmal gefaltet (klein, ohne Akzente). Eine Suche
+/// laeuft pro Tastendruck ueber die ganze Bibliothek - ohne diesen Snapshot wuerde
+/// `fold()` (teures Diacritic-Folding) jedes Feld pro Song und pro Filter neu falten.
+struct FoldedSong: Equatable {
+    var title: String
+    var artist: String
+    var album: String
+    var era: String
+    var notes: String
+    var tags: [String]
+    var statuses: [String]
+    var versionNames: [String]
+    var markerLabels: [String]
+
+    /// Kommt der (bereits gefaltete) Begriff in irgendeinem Textfeld vor? Fuer `-wort`.
+    func contains(folded term: String) -> Bool {
+        ([title, artist, album, era, notes] + tags + statuses + versionNames + markerLabels)
+            .contains { $0.contains(term) }
+    }
+}
+
+extension SearchableSong {
+    /// Faltet alle Textfelder einmal - danach vergleicht die Suche nur noch Strings.
+    func folded() -> FoldedSong {
+        FoldedSong(title: SongSearch.fold(title), artist: SongSearch.fold(artist), album: SongSearch.fold(album),
+                   era: SongSearch.fold(era), notes: SongSearch.fold(notes), tags: tags.map(SongSearch.fold),
+                   statuses: statuses.map(SongSearch.fold), versionNames: versionNames.map(SongSearch.fold),
+                   markerLabels: markerLabels.map(SongSearch.fold))
+    }
+}
+
 enum SongSearch {
     /// Kleinschreibung ohne Akzente - gemeinsame Basis fuer jeden Vergleich.
     static func fold(_ text: String) -> String {
@@ -345,7 +376,8 @@ enum SongSearch {
         guard !query.isEmpty, !query.isOnlyExclusions else { return [] }
         var hits: [(hit: SearchHit, song: SearchableSong)] = []
         for song in songs {
-            guard let hit = match(song, query: query, now: now) else { continue }
+            // Einmal falten, dann alle Filter und Begriffe gegen den Snapshot.
+            guard let hit = match(song.folded(), song: song, query: query, now: now) else { continue }
             hits.append((hit, song))
         }
         hits.sort { lhs, rhs in
@@ -356,17 +388,22 @@ enum SongSearch {
         return hits.map(\.hit)
     }
 
+    /// Einzelner Song gegen die Abfrage (faltet einmal, dann gegen den Snapshot).
     static func match(_ song: SearchableSong, query: SongSearchQuery, now: Date = Date()) -> SearchHit? {
+        match(song.folded(), song: song, query: query, now: now)
+    }
+
+    static func match(_ folded: FoldedSong, song: SearchableSong, query: SongSearchQuery, now: Date = Date()) -> SearchHit? {
         var fields = Set<SearchField>()
         var score = 0
         for filter in query.filters {
-            guard let matched = apply(filter, to: song, now: now) else { return nil }
+            guard let matched = apply(filter, to: folded, song: song, now: now) else { return nil }
             fields.formUnion(matched)
             score += 5
         }
-        let title = fold(song.title), artist = fold(song.artist), album = fold(song.album), era = fold(song.era)
-        let tags = song.tags.map(fold), statuses = song.statuses.map(fold), versions = song.versionNames.map(fold)
-        let notes = fold(song.notes), markerLabels = song.markerLabels.map(fold)
+        let title = folded.title, artist = folded.artist, album = folded.album, era = folded.era
+        let tags = folded.tags, statuses = folded.statuses, versions = folded.versionNames
+        let notes = folded.notes, markerLabels = folded.markerLabels
         for term in query.terms {
             var best = 0
             var termFields = Set<SearchField>()
@@ -395,13 +432,14 @@ enum SongSearch {
             score += best
             fields.formUnion(termFields)
         }
-        for excluded in query.excludedTerms where song.contains(folded: excluded) { return nil }
+        for excluded in query.excludedTerms where folded.contains(folded: excluded) { return nil }
         if song.isFavorite { score += 2 }
         return SearchHit(id: song.id, score: score, matchedFields: fields)
     }
 
     /// nil = Filter passt nicht; sonst die Felder, in denen er getroffen hat.
-    private static func apply(_ filter: SearchFilter, to song: SearchableSong, now: Date) -> Set<SearchField>? {
+    /// Textfilter lesen den gefalteten Snapshot, Zaehler/Daten den rohen Song.
+    private static func apply(_ filter: SearchFilter, to folded: FoldedSong, song: SearchableSong, now: Date) -> Set<SearchField>? {
         switch filter {
         case .favorite:
             return song.isFavorite ? [] : nil
@@ -409,19 +447,19 @@ enum SongSearch {
             guard let year = song.year, range.contains(year) else { return nil }
             return []
         case .tag(let value):
-            return song.tags.contains { fold($0).contains(value) } ? [.tag] : nil
+            return folded.tags.contains { $0.contains(value) } ? [.tag] : nil
         case .status(let value):
-            return song.statuses.contains { fold($0).hasPrefix(value) } ? [.status] : nil
+            return folded.statuses.contains { $0.hasPrefix(value) } ? [.status] : nil
         case .version(let value):
-            return song.versionNames.contains { fold($0).contains(value) } ? [.version] : nil
+            return folded.versionNames.contains { $0.contains(value) } ? [.version] : nil
         case .artist(let value):
-            return fold(song.artist).contains(value) ? [.artist] : nil
+            return folded.artist.contains(value) ? [.artist] : nil
         case .album(let value):
-            return fold(song.album).contains(value) ? [.album] : nil
+            return folded.album.contains(value) ? [.album] : nil
         case .era(let value):
-            return fold(song.era).contains(value) ? [.era] : nil
+            return folded.era.contains(value) ? [.era] : nil
         case .hasNotes:
-            return song.notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : [.note]
+            return folded.notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : [.note]
         case .hasMarkers:
             return song.markerCount > 0 ? [.note] : nil
         case .hasArtwork:
@@ -449,16 +487,8 @@ enum SongSearch {
         case .length(let comparison):
             return song.duration > 0 && comparison.matches(song.duration) ? [] : nil
         case .not(let inner):
-            return apply(inner, to: song, now: now) == nil ? [] : nil
+            return apply(inner, to: folded, song: song, now: now) == nil ? [] : nil
         }
-    }
-}
-
-extension SearchableSong {
-    /// Kommt der (bereits gefaltete) Begriff in irgendeinem Textfeld vor? Fuer `-wort`.
-    fileprivate func contains(folded term: String) -> Bool {
-        let fields = [title, artist, album, era, notes] + tags + statuses + versionNames + markerLabels
-        return fields.contains { SongSearch.fold($0).contains(term) }
     }
 }
 

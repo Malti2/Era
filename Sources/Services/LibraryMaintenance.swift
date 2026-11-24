@@ -228,7 +228,9 @@ extension BackupService {
             context.insert(song)
             summary.songs += 1
         }
-        store.save()
+        // Ein Save am Ende statt zwischendurch: Bricht der Restore vorher ab, bleibt
+        // die Bibliothek unveraendert, statt Songs ohne Playlists/Packs zu haben.
+        // (Fetches im selben Context sehen auch ungespeicherte Inserts.)
 
         for entry in plan.newPacks {
             let tagIDs = entry.tagIDs.compactMap { localTag($0)?.id }
@@ -270,6 +272,7 @@ extension BackupService {
             context.insert(event)
             summary.playEvents += 1
         }
+        if let settings = backup.settings { summary.settingsRestored = BackupService.applySettings(settings) }
         store.save()
         if summary.songs > 0 { SpotlightIndexer.reindex(songs: (try? store.allSongs()) ?? []) }
         return summary

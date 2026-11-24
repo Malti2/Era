@@ -85,10 +85,16 @@ struct NowPlayingView: View {
     @State private var queuePlaylistName = ""
     @State private var queueEditing = false
     @State private var artworkTint = Color(white: 0.10)
+    @Environment(\.colorScheme) private var colorScheme
     @AppStorage(AppSettings.skipIntervalKey) private var skipInterval = 15
     @AppStorage(AppSettings.hapticsEnabledKey) private var haptics = true
 
     init() {
+        // Heller Startwert im Light Mode, damit der Player beim Oeffnen nicht
+        // einen Frame lang dunkel aufblitzt (der echte Cover-Ton kommt per .task).
+        if UITraitCollection.current.userInterfaceStyle == .light {
+            _artworkTint = State(initialValue: Color(white: 0.85))
+        }
         if ProcessInfo.processInfo.arguments.contains("--era-queue") {
             _showQueue = State(initialValue: true)
         }
@@ -195,7 +201,7 @@ struct NowPlayingView: View {
                                         .font(.caption2.bold())
                                         .padding(.horizontal, 4)
                                         .padding(.vertical, 1)
-                                        .background(.white.opacity(0.18), in: RoundedRectangle(cornerRadius: 3))
+                                        .background(.primary.opacity(0.14), in: RoundedRectangle(cornerRadius: 3))
                                         .fixedSize()
                                 }
                             }
@@ -396,7 +402,7 @@ struct NowPlayingView: View {
                 .frame(width: geometry.size.width, height: geometry.size.height, alignment: .top)
             }
         }
-        .foregroundStyle(.white)
+        .foregroundStyle(colorScheme == .dark ? .white : .primary)
         .toolbarBackground(.hidden, for: .navigationBar)
         .task(id: version.id) {
             let nextTint = ArtworkColor.tint(for: song, version: version)
@@ -408,13 +414,15 @@ struct NowPlayingView: View {
 
     private var playerBackground: some View {
         ZStack {
-            // Keep a dark neutral foundation and mix the cover colour in lightly.
-            // This gives the whole player Apple Music's calm artwork tint without
-            // sacrificing white-text contrast on unusually bright covers.
-            Color(white: 0.055)
+            // Ruhige neutrale Basis (hell im Light Mode, dunkel im Dark Mode) und
+            // die Cover-Farbe leicht darueber - der Text bleibt in beiden Modi lesbar,
+            // weil die Schriftfarbe zum Modus passt (s. .foregroundStyle oben).
+            colorScheme == .dark ? Color(white: 0.055) : Color(white: 0.93)
             artworkTint.opacity(0.34)
             LinearGradient(
-                colors: [.black.opacity(0.05), .black.opacity(0.32)],
+                colors: colorScheme == .dark
+                    ? [.black.opacity(0.05), .black.opacity(0.32)]
+                    : [.white.opacity(0.02), .black.opacity(0.10)],
                 startPoint: .top,
                 endPoint: .bottom
             )
@@ -541,6 +549,8 @@ struct NowPlayingView: View {
     private var sleepTimerLabel: String {
         if let r = player.sleepRemaining {
             String(localized: "Sleep Timer") + " · \(r / 60):\(String(format: "%02d", r % 60))"
+        } else if let songs = player.sleepTimer.remainingSongs {
+            String(localized: "Sleep Timer") + " · " + String(format: String(localized: "%lld songs"), songs)
         } else if player.sleepTimer.stopsAtTrackEnd {
             String(localized: "Sleep Timer") + " · " + String(localized: "End of Current Track")
         } else {
@@ -557,6 +567,11 @@ struct NowPlayingView: View {
                         Button("+15 Minutes") { player.extendSleep(minutes: 15) }
                         Button("Stop Timer", role: .destructive) { player.cancelSleep(); showTimer = false }
                     }
+                } else if let songs = player.sleepTimer.remainingSongs {
+                    Section {
+                        Label(String(format: String(localized: "Stops after %lld more songs"), songs), systemImage: "moon.zzz.fill").font(.headline)
+                        Button("Stop Timer", role: .destructive) { player.cancelSleep(); showTimer = false }
+                    }
                 } else if player.sleepTimer.stopsAtTrackEnd {
                     Section {
                         Label("Stops after this track", systemImage: "moon.zzz.fill").font(.headline)
@@ -565,6 +580,9 @@ struct NowPlayingView: View {
                 }
                 Section("Stop Playback After") {
                     Button("End of Current Track") { player.setSleepAtEndOfTrack(); showTimer = false }
+                    ForEach([1, 2, 3, 5, 10], id: \.self) { n in
+                        Button(String(format: String(localized: "Stop after %lld songs"), n)) { player.setSleepAfterSongs(n); showTimer = false }
+                    }
                     ForEach([5, 10, 15, 30, 45, 60], id: \.self) { m in
                         Button("\(m) Minutes") { player.setSleep(minutes: m); showTimer = false }
                     }

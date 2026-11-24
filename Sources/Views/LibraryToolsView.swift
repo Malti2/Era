@@ -29,11 +29,12 @@ struct LibraryToolsView: View {
     }
 
     private enum PendingAction: Identifiable {
-        case removeMissing, deleteOrphans, merge(LibraryHealthReport.DuplicateGroup), mergeSimilar(LibraryHealthReport.DuplicateGroup),
+        case removeMissing, removeBroken, deleteOrphans, merge(LibraryHealthReport.DuplicateGroup), mergeSimilar(LibraryHealthReport.DuplicateGroup),
              deduplicate(LibraryHealthReport.PlaylistDuplicate)
         var id: String {
             switch self {
             case .removeMissing: "missing"
+            case .removeBroken: "broken"
             case .deleteOrphans: "orphans"
             case .merge(let group): "merge-\(group.songIDs.first?.uuidString ?? "")"
             case .mergeSimilar(let group): "similar-\(group.songIDs.first?.uuidString ?? "")"
@@ -168,6 +169,12 @@ struct LibraryToolsView: View {
                         + "\n" + String(localized: "Importing the same files again relinks them."),
                     action: String(localized: "Remove")) { pending = .removeMissing }
         }
+        if !report.brokenAudio.isEmpty {
+            finding(String(localized: "\(report.brokenAudio.count) empty audio files"), symbol: "exclamationmark.triangle.fill", tint: .red,
+                    detail: report.brokenAudio.prefix(3).map { "\($0.title) (\($0.versionName))" }.joined(separator: ", ")
+                        + "\n" + String(localized: "These files are 0 bytes and cannot be played."),
+                    action: String(localized: "Remove")) { pending = .removeBroken }
+        }
         if !report.emptySongIDs.isEmpty {
             finding(String(localized: "\(report.emptySongIDs.count) songs without versions"), symbol: "questionmark.folder", tint: .orange,
                     action: String(localized: "Remove")) { store.removeEmptySongs(); runCheck() }
@@ -286,6 +293,7 @@ struct LibraryToolsView: View {
         guard let report, let action else { return }
         switch action {
         case .removeMissing: store.removeMissingAudio(report.missingAudio)
+        case .removeBroken: store.removeMissingAudio(report.brokenAudio)
         case .deleteOrphans: store.deleteOrphans(audio: report.orphanAudioFiles, artwork: report.orphanArtworkFiles)
         case .merge(let group): store.mergeDuplicates(songIDs: group.songIDs)
         case .mergeSimilar(let group): store.mergeSimilar(songIDs: group.songIDs)
@@ -297,6 +305,7 @@ struct LibraryToolsView: View {
     private var confirmTitle: String {
         switch pending {
         case .removeMissing: String(localized: "Remove Missing Entries?")
+        case .removeBroken: String(localized: "Remove Broken Files?")
         case .deleteOrphans: String(localized: "Delete Unused Files?")
         case .merge: String(localized: "Merge Duplicates?")
         case .mergeSimilar: String(localized: "Merge as Versions?")
@@ -307,6 +316,7 @@ struct LibraryToolsView: View {
     private var confirmButton: String {
         switch pending {
         case .removeMissing: String(localized: "Remove")
+        case .removeBroken: String(localized: "Remove")
         case .deleteOrphans: String(localized: "Delete")
         case .merge, .mergeSimilar: String(localized: "Merge")
         case .deduplicate: String(localized: "Remove")
@@ -316,6 +326,7 @@ struct LibraryToolsView: View {
     private var confirmMessage: String {
         switch pending {
         case .removeMissing: String(localized: "These versions cannot be played because their audio files are gone. They are removed from your library and playlists.")
+        case .removeBroken: String(localized: "These audio files are empty (0 bytes) and cannot be played. They are removed from your library and playlists.")
         case .deleteOrphans: String(localized: "Files that no song uses are permanently deleted from this device.")
         case .merge: String(localized: "All copies become versions of one song.")
         case .mergeSimilar: String(localized: "The songs become versions of one song. Each keeps its original title as the version title.")
@@ -365,6 +376,9 @@ struct LibraryToolsView: View {
         if summary.skippedMissingAudio > 0 {
             lines.append(String(localized: "\(summary.skippedMissingAudio) versions skipped: audio file not found on this device."))
         }
+        if summary.settingsRestored {
+            lines.append(String(localized: "Settings restored."))
+        }
         return lines.joined(separator: "\n")
     }
 
@@ -373,6 +387,8 @@ struct LibraryToolsView: View {
         case .unreadable: String(localized: "This file could not be read as an Era backup.")
         case .notAnEraBackup: String(localized: "This file is not an Era backup.")
         case .newerFormat: String(localized: "This backup was made with a newer version of Era.")
+        case .checksumMismatch: String(localized: "This backup is damaged and cannot be restored.")
+        case .invalidContent: String(localized: "This backup contains invalid data.")
         }
     }
 }

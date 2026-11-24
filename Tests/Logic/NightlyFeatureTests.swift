@@ -29,6 +29,28 @@ final class StorageReportTests: XCTestCase {
         XCTAssertEqual(report.share(of: 10), 0)
         XCTAssertEqual(report.averageBytes, 0)
     }
+
+    func testEmptyExtensionBecomesQuestionMarkAndFormatsTieBreakByName() {
+        let report = StorageReport.make(from: [item("A", "", 10), item("B", "Mp3", 10)])
+        // Gleiche Bytes -> Name aufsteigend ("?" = 63, "M" = 77)
+        XCTAssertEqual(report.formats.map(\.name), ["?", "MP3"])
+    }
+
+    func testLargestTieBreaksByTitle() {
+        let report = StorageReport.make(from: [item("Zulu", "flac", 100), item("Alpha", "flac", 100)])
+        XCTAssertEqual(report.largest.map(\.title), ["Alpha", "Zulu"])
+    }
+
+    func testMissingFilesAloneAreNotEmpty() {
+        XCTAssertFalse(StorageReport.make(from: [item("A", "flac", nil)]).isEmpty)
+    }
+
+    func testShareIsClampedToZeroThroughOne() {
+        let report = StorageReport.make(from: [item("A", "flac", 100)])
+        XCTAssertEqual(report.share(of: 50), 0.5)
+        XCTAssertEqual(report.share(of: 200), 1, "more than the total still fits the bar")
+        XCTAssertEqual(report.share(of: -10), 0)
+    }
 }
 
 final class CollectionProfileTests: XCTestCase {
@@ -51,6 +73,16 @@ final class CollectionProfileTests: XCTestCase {
         let profile = CollectionProfile.make(from: [ProfileSong(title: "X", playCount: 0, isFavorite: false, versionCount: 1)])
         XCTAssertNil(profile.mostPlayed)
         XCTAssertEqual(CollectionProfile.make(from: []), CollectionProfile())
+    }
+
+    func testEquatableComparesMostPlayed() {
+        let a = CollectionProfile.make(from: [ProfileSong(title: "Alpha", playCount: 3, isFavorite: false, versionCount: 1)])
+        let b = CollectionProfile.make(from: [ProfileSong(title: "Alpha", playCount: 3, isFavorite: false, versionCount: 1)])
+        let c = CollectionProfile.make(from: [ProfileSong(title: "Alpha", playCount: 4, isFavorite: false, versionCount: 1)])
+        let d = CollectionProfile.make(from: [ProfileSong(title: "Beta", playCount: 3, isFavorite: false, versionCount: 1)])
+        XCTAssertEqual(a, b)
+        XCTAssertNotEqual(a, c)
+        XCTAssertNotEqual(a, d)
     }
 }
 
@@ -84,6 +116,26 @@ final class SavedSearchesTests: XCTestCase {
         XCTAssertEqual(SavedSearches.chips(for: "other", in: list).map(\.query), ["tag:Demo", "year:2019"])
         XCTAssertEqual(SavedSearches.chips(for: "   ", in: list).map(\.query), ["tag:Demo", "year:2019"])
     }
+
+    func testDedupIgnoresDiacritics() {
+        var list: [SavedSearch] = []
+        list = SavedSearches.toggling("tag:démo", in: list)
+        XCTAssertTrue(SavedSearches.contains("tag:demo", in: list))
+        list = SavedSearches.toggling("tag:demo", in: list)
+        XCTAssertTrue(list.isEmpty, "toggling the folded twin unpins it")
+    }
+
+    func testContainsReturnsFalseForEmptyQuery() {
+        XCTAssertFalse(SavedSearches.contains("", in: [SavedSearch(query: "tag:demo")]))
+        XCTAssertFalse(SavedSearches.contains("tag:demo", in: []))
+    }
+
+    func testDecodeNormalizesLimitAndDuplicates() {
+        let many = (0..<15).map { SavedSearch(query: "q\($0)") }
+        XCTAssertEqual(SavedSearches.decode(SavedSearches.encode(many)).count, SavedSearches.limit)
+        let dupes = [SavedSearch(query: "tag:demo"), SavedSearch(query: "TAG:DEMO"), SavedSearch(query: "is:played")]
+        XCTAssertEqual(SavedSearches.decode(SavedSearches.encode(dupes)).map(\.query), ["tag:demo", "is:played"])
+    }
 }
 
 final class QueueSummaryTests: XCTestCase {
@@ -101,6 +153,20 @@ final class QueueSummaryTests: XCTestCase {
     func testLastTrackAndOutOfRange() {
         XCTAssertEqual(QueueSummary.make(durations: [90], currentIndex: 0, currentTime: 100), QueueSummary(upNextCount: 0, remainingSeconds: 0))
         XCTAssertEqual(QueueSummary.make(durations: [90], currentIndex: 5, currentTime: 0).upNextCount, 1)
+    }
+
+    func testNegativeCurrentTimeCountsFullCurrentTrack() {
+        XCTAssertEqual(QueueSummary.make(durations: [100, 50], currentIndex: 0, currentTime: -10).remainingSeconds, 150)
+    }
+
+    func testNegativeAndZeroDurationsAreClamped() {
+        let s = QueueSummary.make(durations: [-30, 0, 60], currentIndex: nil, currentTime: 0)
+        XCTAssertEqual(s.remainingSeconds, 60)
+        XCTAssertEqual(s.upNextCount, 3)
+    }
+
+    func testEmptyQueueIsZero() {
+        XCTAssertEqual(QueueSummary.make(durations: [], currentIndex: nil, currentTime: 0), QueueSummary(upNextCount: 0, remainingSeconds: 0))
     }
 }
 
@@ -144,6 +210,28 @@ final class WeeklyRecapTests: XCTestCase {
         XCTAssertEqual(empty.days.count, 7)
         XCTAssertEqual(empty.barHeight(for: empty.days[0]), 0)
     }
+
+    func testFuturePlaysFallInNeitherWeek() {
+        let recap = WeeklyRecap.make(from: [play(-1)], now: now, calendar: calendar)
+        XCTAssertEqual(recap.plays, 0)
+        XCTAssertEqual(recap.previousPlays, 0)
+    }
+
+    func testTrendRoundingAndFullDrop() {
+        // +0,4 % rundet auf 0 -> same; diese Woche nichts -> -100 %.
+        XCTAssertEqual(WeeklyRecap.make(from: [play(0, 1004), play(8, 1000)], now: now, calendar: calendar).trend, .same)
+        XCTAssertEqual(WeeklyRecap.make(from: [play(8, 100)], now: now, calendar: calendar).trend, .down(percent: 100))
+    }
+
+    func testTopTrackIgnoresLastWeekEvenWhenItPlayedMore() {
+        let recap = WeeklyRecap.make(from: [play(0, 60, title: "This Week"), play(8, 60, title: "Last Week"), play(8, 60, title: "Last Week")], now: now, calendar: calendar)
+        XCTAssertEqual(recap.topTrack?.title, "This Week")
+    }
+
+    func testStreakRunsFromYesterdayWhenTodayIsEmpty() {
+        let recap = WeeklyRecap.make(from: [play(1), play(2)], now: now, calendar: calendar)
+        XCTAssertEqual(recap.streak, 2)
+    }
 }
 
 final class StorageCleanupTests: XCTestCase {
@@ -172,5 +260,13 @@ final class StorageCleanupTests: XCTestCase {
 
     func testEmptyWhenEverythingIsPrimary() {
         XCTAssertTrue(StorageCleanup.make(from: [item("A", 10, primary: true)]).isEmpty)
+    }
+
+    func testCleanupTieBreaksByTitleThenVersionName() {
+        let a = StorageItem(id: UUID(), songID: UUID(), title: "Same", versionName: "B", fileExtension: "wav", bytes: 100, isPrimary: false, siblingCount: 2)
+        let b = StorageItem(id: UUID(), songID: UUID(), title: "Same", versionName: "A", fileExtension: "wav", bytes: 100, isPrimary: false, siblingCount: 2)
+        let cleanup = StorageCleanup.make(from: [a, b])
+        XCTAssertEqual(cleanup.candidates.map(\.versionName), ["A", "B"])
+        XCTAssertEqual(cleanup.ids(atLeast: 100), Set(cleanup.candidates.map(\.id)), "threshold is inclusive")
     }
 }
